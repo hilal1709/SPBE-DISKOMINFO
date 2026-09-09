@@ -1,0 +1,11 @@
+import type { Service } from "./types";
+export const opdList = ["Dinas Komunikasi dan Informatika", "Dinas Kesehatan", "Dinas Pendidikan", "Badan Kepegawaian Daerah dan Pengembangan SDM", "Sekretariat Daerah"];
+export const rabList = ["RAB.02.01 Industri", "RAB.02.03 Pertanian", "RAB.02.04 Perdagangan", "RAB.04.01 Pemerintahan", "RAB.05.03 Pendidikan"];
+export const ralList = ["RAL.01 Layanan Publik", "RAL.02 Layanan Administrasi Pemerintahan"];
+export const processList = ["PRB-001 Penyusunan Kebijakan", "PRB-002 Pelayanan Publik Digital", "PRB-003 Pengelolaan Data Pemerintah", "PRB-004 Pengawasan Internal"];
+export const services: Service[] = [
+ {id:"LYN-001",name:"Layanan Informasi Publik Terpadu",opd:opdList[0],purpose:"Memperluas akses informasi pemerintah daerah",function:"Penyediaan informasi publik",rab:rabList[3],ral:ralList[0],method:"Digital dan tatap muka",target:"Masyarakat Kabupaten Gresik",benefit:"Akses informasi cepat",risk:"Ketersediaan konten",mitigation:"Standar pembaruan konten",processBusiness:processList[1],status:"approved",period:"2025–2029",updatedAt:"09 Sep 2026"},
+ {id:"LYN-002",name:"Layanan Perizinan Kesehatan",opd:opdList[1],purpose:"Mempercepat layanan administrasi kesehatan",function:"Penerbitan rekomendasi",rab:rabList[4],ral:ralList[1],method:"Digital",target:"Tenaga dan fasilitas kesehatan",benefit:"Waktu proses lebih singkat",risk:"Data tidak lengkap",mitigation:"Validasi berlapis",processBusiness:processList[0],status:"submitted",period:"2025–2029",updatedAt:"08 Sep 2026"},
+ {id:"LYN-003",name:"Pendaftaran Peserta Didik Baru",opd:opdList[2],purpose:"Menyediakan proses penerimaan peserta didik yang adil",function:"Pendaftaran pendidikan",rab:rabList[4],ral:ralList[0],method:"Digital",target:"Calon peserta didik",benefit:"Transparansi seleksi",risk:"Lonjakan trafik",mitigation:"Kapasitas server",processBusiness:processList[1],status:"approved",period:"2025–2029",updatedAt:"07 Sep 2026"},
+ {id:"LYN-004",name:"Kenaikan Pangkat ASN",opd:opdList[3],purpose:"Mendukung layanan kepegawaian",function:"Administrasi ASN",rab:rabList[3],ral:ralList[1],method:"Digital",target:"ASN Pemkab Gresik",benefit:"Ketepatan administrasi",risk:"Ketidaksesuaian dokumen",mitigation:"Verifikasi dokumen",processBusiness:processList[0],status:"draft",period:"2025–2029",updatedAt:"06 Sep 2026"},
+];

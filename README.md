@@ -1,4 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## SPBE Kabupaten Gresik
+
+CMS awal untuk domain Arsitektur Layanan, meliputi dashboard, form wizard, verifikasi, gap analysis, peta rencana, master data, dan autentikasi lokal.
+
+1. Salin `.env.example` menjadi `.env.local`, isi `DATABASE_URL` dan `AUTH_SECRET`.
+2. Jalankan `database/schema.sql`, lalu `database/seed.sql` pada PostgreSQL Supabase.
+3. Jalankan `npm run dev`.
+
+Saat `AUTH_REQUIRED=false`, portal memakai mode demo. Set menjadi `true` setelah pengguna database dan endpoint autentikasi produksi sudah diaktifkan.
 
 ## Getting Started
 
