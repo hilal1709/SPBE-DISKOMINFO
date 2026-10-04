@@ -6,6 +6,7 @@ import { Download04Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { Banner } from "@/components/blocks/banner";
 import { DetailDialog, DetailField } from "@/components/blocks/detail-dialog";
 import { EmptyState } from "@/components/blocks/empty-state";
+import { FilterBar } from "@/components/blocks/filter-bar";
 import { HeatTile } from "@/components/blocks/heat-tile";
 import { PageHeader } from "@/components/blocks/page-header";
 import { StatCard } from "@/components/blocks/stat-card";
@@ -60,6 +61,8 @@ function Section({ id, title, description, children }: { id: string; title: stri
 export function DesignSystemShowcase() {
   const [loading, setLoading] = useState(false);
   const [dialog, setDialog] = useState(false);
+  const [tiles, setTiles] = useState<number[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
 
   return (
     <div className="min-h-svh">
@@ -141,8 +144,11 @@ export function DesignSystemShowcase() {
             </Card>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {[0, 0.25, 0.5, 0.75, 1].map((v) => <HeatTile key={v} label={`Intensitas ${v}`} value={String(Math.round(v * 100))} intensity={v} />)}
+            {[0, 0.25, 0.5, 0.75, 1].map((v) => (
+              <HeatTile key={v} label={`Intensitas ${v}`} value={String(Math.round(v * 100))} intensity={v} onClick={() => setTiles((t) => (t.includes(v) ? t.filter((x) => x !== v) : [...t, v]))} active={tiles.includes(v)} dimmed={tiles.length > 0 && !tiles.includes(v)} />
+            ))}
           </div>
+          <FilterBar filters={[{ label: "MultiSelect", multiple: true, searchable: true, options: ["Sekretariat Daerah", "Dinas Kesehatan", "Dinas Pendidikan"], values: picked, onValuesChange: setPicked }, { label: "Select", options: ["2020–2024", "2025–2029"] }]} />
           <Card>
             <CardContent className="grid gap-3 md:grid-cols-2">
               <Meter value={76} label="Contoh 76%" />

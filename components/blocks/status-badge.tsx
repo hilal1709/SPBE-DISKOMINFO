@@ -4,18 +4,24 @@ import type { SubmissionStatus } from "@/lib/types";
 export const statusLabel: Record<SubmissionStatus, string> = {
   approved: "Disetujui",
   submitted: "Diajukan",
+  verified: "Diverifikasi",
   draft: "Draf",
   rejected: "Ditolak",
   archived: "Arsip",
 };
 
-const variants: Record<string, "success" | "warning" | "muted" | "destructive" | "secondary"> = {
+const variants: Record<string, "success" | "warning" | "muted" | "destructive" | "secondary" | "info"> = {
   Disetujui: "success",
   Selesai: "success",
   Terintegrasi: "success",
   Diajukan: "warning",
+  Diverifikasi: "info",
+  Terverifikasi: "info",
+  Tervalidasi: "success",
+  Dikembalikan: "destructive",
   Berjalan: "warning",
   Upgrade: "secondary",
+  Baru: "info",
   Tinggi: "destructive",
   Ditolak: "destructive",
   Sedang: "warning",

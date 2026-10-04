@@ -9,4 +9,4 @@ export const proxy = auth((request) => {
   return NextResponse.next();
 });
 
-export const config = { matcher:["/cms/:path*","/pengajuan/:path*","/verifikasi/:path*","/gap-analysis/:path*","/master/:path*","/pengguna/:path*"] };
+export const config = { matcher: ["/cms/:path*"] };

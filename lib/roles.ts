@@ -2,12 +2,12 @@ import type { Role } from "@/lib/types";
 
 export const roleLabel: Record<Role, string> = {
   operator_opd: "Operator OPD",
-  organisasi: "Bagian Organisasi",
+  organisasi: "Tim Verifikasi (Bag. Organisasi)",
   validator_data: "Validator Data",
   validator_aplikasi: "Validator Aplikasi",
   validator_infrastruktur: "Validator Infrastruktur",
   validator_keamanan: "Validator Keamanan",
-  admin: "Admin",
+  admin: "Tim Validasi (Diskominfo)",
   pimpinan: "Pimpinan",
   superadmin: "Superadmin",
 };

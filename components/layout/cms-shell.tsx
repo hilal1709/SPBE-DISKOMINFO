@@ -8,15 +8,16 @@ import { logout } from "@/app/actions/auth";
 import { Banner } from "@/components/blocks/banner";
 import { Logo } from "@/components/brand/logo";
 import { Icon } from "@/components/icon";
-import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { SidebarNav, type NavBadges } from "@/components/layout/sidebar-nav";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { activeItem, cmsNav } from "@/lib/navigation";
+import { activeItem, cmsNav, flattenNav, navFor } from "@/lib/navigation";
 import { initials } from "@/lib/roles";
+import type { Role } from "@/lib/types";
 
-export type CmsUser = { name: string; roleLabel: string; demo: boolean };
+export type CmsUser = { name: string; role: Role; roleLabel: string; opdName?: string | null; demo: boolean; badges?: NavBadges };
 
 function LogoutButton() {
   const { pending } = useFormStatus();
@@ -36,14 +37,14 @@ function Sidebar({ user, onNavigate }: { user: CmsUser; onNavigate?: () => void 
   return (
     <div className="flex h-full flex-col gap-8 px-4 py-6">
       <Logo href="/cms" subtitle="CMS · Kabupaten Gresik" className="px-1" />
-      <SidebarNav items={cmsNav} onNavigate={onNavigate} />
+      <SidebarNav items={navFor(cmsNav, user.role)} badges={user.badges} onNavigate={onNavigate} />
       <div className="mt-auto flex items-center gap-3 rounded-xl bg-card/70 p-2.5">
         <Avatar className="size-9">
           <AvatarFallback className="bg-brand-teal font-bold text-brand-charcoal">{initials(user.name)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 leading-tight">
           <p className="truncate text-sm font-semibold">{user.name}</p>
-          <p className="truncate text-xs text-muted-foreground">{user.roleLabel}</p>
+          <p className="truncate text-xs text-muted-foreground">{user.roleLabel}{user.opdName && ` · ${user.opdName}`}</p>
         </div>
         {!user.demo && (
           <form action={logout} className="ml-auto">
@@ -56,10 +57,11 @@ function Sidebar({ user, onNavigate }: { user: CmsUser; onNavigate?: () => void 
 }
 
 /** Kerangka back-office CMS. Token warnanya dapat di-override lewat [data-theme="cms"] di globals.css. */
-export function CmsShell({ user, children }: { user: CmsUser; children: React.ReactNode }) {
+export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const section = activeItem(cmsNav, pathname)?.section ?? "CMS";
+  const current = activeItem(flattenNav(cmsNav), pathname);
+  const section = current?.section ?? "CMS";
 
   // Modal, sheet, dan toast dirender di luar shell (portal ke <body>), jadi tema CMS juga dipasang di <html>.
   useEffect(() => {
@@ -90,7 +92,10 @@ export function CmsShell({ user, children }: { user: CmsUser; children: React.Re
               <Sidebar user={user} onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
-          <h1 className="truncate text-lg font-bold tracking-tight">{section}</h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold tracking-tight">{section}</h1>
+            {current?.description && <p className="hidden truncate text-xs text-muted-foreground sm:block">{current.description}</p>}
+          </div>
           <Button asChild variant="outline" className="ml-auto rounded-full">
             <Link href="/">
               <Icon icon={ViewIcon} size={16} />
@@ -104,6 +109,7 @@ export function CmsShell({ user, children }: { user: CmsUser; children: React.Re
               Login belum diwajibkan (<b>AUTH_REQUIRED</b> nonaktif), jadi CMS bisa dibuka tanpa akun.
             </Banner>
           )}
+          {notice}
           {children}
         </main>
       </div>

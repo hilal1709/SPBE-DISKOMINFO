@@ -10,18 +10,54 @@ export function heatColor(intensity: number) {
   return `color-mix(in oklab, ${stops[i + 1]} ${local}%, ${stops[i]})`;
 }
 
-/** Petak heat map dengan intensitas 0–1. Teks charcoal kontras di seluruh gradasi. */
-export function HeatTile({ label, value, intensity, className }: { label: string; value: string; intensity: number; className?: string }) {
+/**
+ * Petak heat map dengan intensitas 0–1. Teks charcoal kontras di seluruh gradasi.
+ * Dengan `onClick` petak menjadi tombol filter (bentogrid click-to-filter); `active` menandai pilihan.
+ */
+export function HeatTile({
+  label,
+  eyebrow,
+  value,
+  intensity,
+  className,
+  style,
+  onClick,
+  active,
+  dimmed,
+}: {
+  label: string;
+  /** Teks kecil di atas label (mis. kode RAB). */
+  eyebrow?: string;
+  value: string;
+  intensity: number;
+  className?: string;
+  style?: React.CSSProperties;
+  onClick?: () => void;
+  active?: boolean;
+  /** Redup saat ada pilihan lain yang aktif. */
+  dimmed?: boolean;
+}) {
+  const Comp = onClick ? "button" : "div";
   return (
-    <div
+    <Comp
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      aria-pressed={onClick ? !!active : undefined}
       className={cn(
-        "flex min-h-20 flex-col justify-between rounded-xl p-3 text-left text-brand-charcoal transition-transform duration-300 ease-(--ease-out) hover:-translate-y-0.5 hover:scale-[1.02]",
+        "flex min-h-20 min-w-0 flex-col justify-between overflow-hidden rounded-xl p-3 text-left text-brand-charcoal transition-[transform,opacity,box-shadow] duration-300 ease-(--ease-out) hover:-translate-y-0.5 hover:scale-[1.02]",
+        onClick && "cursor-pointer focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
+        active && "ring-3 ring-brand-charcoal",
+        dimmed && "opacity-45 hover:opacity-100",
         className,
       )}
-      style={{ background: heatColor(intensity) }}
+      style={{ background: heatColor(intensity), ...style }}
+      title={eyebrow ? `${eyebrow} ${label}` : label}
     >
-      <span className="text-[11px] leading-snug font-semibold">{label}</span>
+      <span className="min-w-0">
+        {eyebrow && <span className="block text-[10px] font-medium tabular-nums opacity-75">{eyebrow}</span>}
+        <span className="line-clamp-2 text-[11px] leading-snug font-semibold">{label}</span>
+      </span>
       <span className="mt-2 text-lg font-bold tabular-nums">{value}</span>
-    </div>
+    </Comp>
   );
 }

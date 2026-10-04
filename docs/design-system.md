@@ -97,13 +97,28 @@ components/
   motion/        GSAP: Reveal, CountUp, Meter, SpotlightCard, PageTransition, gsap.ts
   illustrations/ <Illustration name=.../> + data/*.json (hasil generator)
   loader.tsx     Loader bermerek (Lottie "loader")
-  blocks/        Pola tingkat aplikasi: StatCard, FilterBar, DataTable, DetailDialog,
+  blocks/        Pola tingkat aplikasi: StatCard, FilterBar, MultiSelect, Segmented, Treemap, DataTable, DetailDialog,
                  StatusBadge, HeatTile, PageHeader, EmptyState, DashboardSkeleton, Banner
   layout/        PublicShell, CmsShell, SidebarNav
   dashboards/    Dashboard domain portal publik
   portal/        Halaman portal lain (katalog, pengajuan, verifikasi, …)
   cms/           Halaman CMS
 ```
+
+Pola filter & tabel dashboard:
+
+- `FilterBar`: filter `multiple` (+ `searchable`) memakai `MultiSelect` (popover + pencarian, "Pilih semua"/"Hapus"). Daftar kosong berarti "Semua". Tombol reset dikirim lewat `actions`.
+- `Treemap` (`components/blocks/treemap.tsx`): squarified treemap satu rona teal, petak rapat tanpa celah, klik petak untuk memfilter (`selected` + `onToggle`). Dipakai untuk sebaran RAB 1/RAB 2. `HeatTile` juga menerima `onClick`/`active`/`dimmed` untuk petak lepas.
+- `FilterChips`: chip filter aktif di dalam `FilterBar` (children); muncul memantul, menyusut saat dihapus (pola "chip group" 21st.dev).
+- Klik-untuk-filter (petak treemap, baris PD) memakai `toast` dengan aksi **Urungkan**.
+- `CountUp` bergulir dari nilai sebelumnya saat data berubah; pakai `instant` untuk angka di dalam daftar bergulir.
+- Navigasi CMS memakai menu besar (`NavGroup`) berisi sub-menu dengan keterangan satu baris dan lencana angka antrean; grup membuka otomatis bila berisi halaman aktif (GSAP). Keterangan menu aktif juga tampil di header halaman.
+- Referensi RAB dibaca dari database per versi: komponen klien memakai `useRab(period)` / `useRabSet()` (`components/probis/rab-context.tsx`), bukan impor JSON statis. RAB *tidak berlaku* disembunyikan dari isian baru dan diberi lencana pada data lama.
+- `Segmented` (`components/blocks/segmented.tsx`, shadcn ToggleGroup): pilihan tunggal berbentuk segmen, mis. status probis. Jangan membuat radio/segmen dari `<button>` manual.
+- `RabPicker` (`components/blocks/rab-picker.tsx`): pilih RAB Level 3 lewat pencarian; Level 1–2 terisi otomatis (chip hierarki beranimasi). Level 1/2 bisa dipilih dulu untuk mempersempit daftar.
+- Panel **Asisten AI** di form CMS: saran ditampilkan per item dengan tombol *Pakai* / *Pakai semua*; kolom yang terisi disorot sebentar (GSAP). Badge sumber: Gemini / Saran lokal.
+- Pratinjau impor: kartu hitungan (siap/peringatan/galat), tabel per baris dengan badge *Siap/Cek/Galat* dan catatan, baru disimpan setelah dikonfirmasi.
+- `DataTable`: `sortValue` per kolom (header jadi tombol sort), `hideable`/`defaultHidden` (menu "Kolom" — tampilkan hanya info inti secara default), `pageSize` (paginasi), `onRowClick` (baris membuka `DetailDialog`).
 
 Halaman (`app/**/page.tsx`) cukup merangkai komponen. Shell dipasang di layout: `app/(public)/layout.tsx` dan `app/cms/layout.tsx`.
 
@@ -172,6 +187,8 @@ Ilustrasi dibuat dari kode, bukan aset unduhan, agar ringan (6–21 KB) dan kons
 | `error` | `error.tsx` |
 | `building` | Modul CMS yang belum siap |
 | `success` | Pengajuan berhasil (`loop={false}`) |
+| `explore` | Kartu sambutan/petunjuk interaksi dashboard |
+| `filter-empty` | Hasil filter kosong |
 
 Cara menambah atau mengubah ilustrasi:
 1. Edit atau tambah fungsi di `scripts/lottie/build.mjs`. Helper ada di `scripts/lottie/lib.mjs`, dan warna wajib dari `palette` (palet Diskominfo).

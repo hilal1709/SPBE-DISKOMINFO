@@ -20,6 +20,8 @@ const catalog = {
   error: { load: () => import("./data/error.json"), ratio: "4 / 3", still: 0 },
   building: { load: () => import("./data/building.json"), ratio: "4 / 3", still: 120 },
   success: { load: () => import("./data/success.json"), ratio: "1", still: 89 },
+  explore: { load: () => import("./data/explore.json"), ratio: "3 / 2", still: 90 },
+  "filter-empty": { load: () => import("./data/filter-empty.json"), ratio: "4 / 3", still: 100 },
 } as const;
 
 export type IllustrationName = keyof typeof catalog;

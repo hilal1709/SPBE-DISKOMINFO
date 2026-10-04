@@ -247,7 +247,74 @@ function success() {
   });
 }
 
-const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success };
+/* 8. Explore — kursor mengeklik petak treemap; petak lain meredup (petunjuk interaksi dashboard). */
+function explore() {
+  const frames = 180;
+  const click = 62;
+  const dim = anim([[0, 100], [click + 6, 100], [click + 16, 40], [140, 40], [156, 100], [frames, 100]], ease.inOut);
+  const tile = (name, w, h, x, y, opacity, o) => layer(name, group([rect(w, h, 4), fill(c.teal, opacity)]), { p: [120 + x, 80 + y], o });
+  return composition("explore", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("kursor", group([
+        path([[0, 0], [0, 22], [6, 16], [10, 26], [14, 24], [10, 15], [18, 15]], true),
+        fill(c.charcoal),
+        stroke(c.white, 2),
+      ]), {
+        p: anim([[0, [214, 150]], [48, [146, 108]], [140, [146, 108]], [170, [214, 150]], [frames, [214, 150]]], ease.inOut),
+        s: anim([[0, [100, 100]], [click - 4, [100, 100]], [click, [82, 82]], [click + 8, [100, 100]], [frames, [100, 100]]]),
+      }),
+      layer("riak", group([ellipse(30, 30), stroke(c.charcoal, 2.5)]), {
+        p: [146, 108],
+        s: anim([[0, [0, 0]], [click, [0, 0]], [click + 30, [180, 180]], [frames, [180, 180]]]),
+        o: anim([[0, 0], [click, 70], [click + 30, 0], [frames, 0]], ease.linear),
+      }),
+      layer("sorot", group([rect(44, 52, 4), stroke(c.charcoal, 3)]), {
+        p: [146, 108],
+        o: anim([[0, 0], [click + 2, 0], [click + 10, 100], [140, 100], [150, 0], [frames, 0]], ease.linear),
+      }),
+      tile("petak-a", 96, 108, -46, 0, 100, dim),
+      tile("petak-b", 92, 52, 50, -28, 70, dim),
+      tile("petak-c", 44, 52, 26, 28, 45),
+      tile("petak-d", 44, 52, 74, 28, 30, dim),
+      layer("papan", group([rect(204, 120, 12), fill(c.white), stroke(c.line, 2)]), { p: [120, 80] }),
+      layer("bayangan", group([ellipse(190, 10), fill(c.navy, 8)]), { p: [120, 150] }),
+    ],
+  });
+}
+
+/* 9. Filter empty — corong menelan titik data, tapi tak ada yang keluar (hasil filter kosong). */
+function filterEmpty() {
+  const frames = 180;
+  const dots = [[-50, c.teal, 0], [-15, c.yellow, 30], [25, c.orange, 60], [55, c.sky, 90]];
+  return composition("filter-empty", {
+    w: 400, h: 300, frames,
+    layers: [
+      layer("gelembung", [
+        ...[-10, 0, 10].map((x, i) => group([ellipse(6, 6, [x, 0]), fill(c.navy)], { o: anim([[0, 30], [20 + i * 15, 100], [50 + i * 15, 30], [frames, 30]], ease.inOut) })),
+        group([ellipse(46, 34), fill(c.amberSoft)]),
+      ], { p: [300, 86], s: pingPong([100, 100], [106, 106], frames) }),
+      ...dots.map(([x, color, t], i) =>
+        layer(`titik-${i}`, group([ellipse(14, 14), fill(color)]), {
+          p: anim([[0, [200 + x, 40]], [t, [200 + x, 40]], [t + 44, [200 + x * 0.3, 128], ease.inOut], [frames, [200 + x * 0.3, 128]]]),
+          o: anim([[0, 0], [t, 0], [t + 6, 100], [t + 40, 100], [t + 50, 0], [frames, 0]], ease.linear),
+        }),
+      ),
+      layer("corong", [
+        group([ellipse(180, 22, [0, -60]), fill(c.amberPale), stroke(c.navySoft, 3)]),
+        group([path([[-90, -60], [90, -60], [12, 20], [12, 62], [-12, 62], [-12, 20]], true), fill(c.white), stroke(c.navySoft, 3)]),
+      ], { p: [200, 160] }),
+      layer("tetes", group([ellipse(8, 8), fill(c.navySoft, 40)]), {
+        p: anim([[0, [200, 228]], [frames / 2, [200, 236]], [frames, [200, 228]]], ease.inOut),
+        o: pingPong(0, 70, frames),
+      }),
+      layer("bayangan", group([ellipse(170, 14), fill(c.navy, 7)]), { p: [200, 262] }),
+      layer("blob", group([ellipse(300, 220), fill(c.amberPale)]), { p: [200, 150], s: pingPong([100, 100], [104, 104], frames) }),
+    ],
+  });
+}
+
+const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty };
 for (const [name, build] of Object.entries(builds)) {
   const json = JSON.stringify(build());
   writeFileSync(join(out, `${name}.json`), json);

@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "illustrations": "node scripts/lottie/build.mjs"
+    "illustrations": "node scripts/lottie/build.mjs",
+    "seed:contoh": "tsx scripts/seed-sample-probis.mts",
+    "migrate": "node database/migrate.mjs",
+    "referensi": "node scripts/extract-reference.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -17,7 +20,9 @@
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "cn": "^0.4.0",
+    "fflate": "^0.8.3",
     "gsap": "^3.15.0",
     "lottie-react": "^3.1.2",
     "next": "16.3.4",
@@ -38,11 +43,13 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

@@ -23,6 +23,7 @@ export function StatCard({
   hint,
   tone = "plain",
   trend,
+  footer,
   className,
 }: {
   label: string;
@@ -33,6 +34,8 @@ export function StatCard({
   tone?: StatTone;
   /** Deret nilai untuk sparkline kecil di pojok kartu. */
   trend?: number[];
+  /** Konten tambahan di bawah angka (mis. bar komposisi). */
+  footer?: React.ReactNode;
   className?: string;
 }) {
   const solid = tone !== "plain";
@@ -47,6 +50,7 @@ export function StatCard({
         <CountUp value={value} suffix={suffix} decimals={decimals} />
       </p>
       {hint && <p className={cn("text-xs", solid ? "font-medium" : "text-muted-foreground")}>{hint}</p>}
+      {footer}
       {trend && (
         <div className="pointer-events-none absolute right-4 bottom-4 h-10 w-24 opacity-90">
           <Sparkline data={trend} color={solid ? "rgba(45,45,47,0.75)" : undefined} />

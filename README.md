@@ -1,12 +1,27 @@
 ## SPBE Kabupaten Gresik
 
-CMS awal untuk domain Arsitektur Layanan, meliputi dashboard, form wizard, verifikasi, gap analysis, peta rencana, master data, dan autentikasi lokal.
+Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat ini **Proses Bisnis** sudah lengkap, domain lain menyusul.
 
-1. Salin `.env.example` menjadi `.env.local`, isi `DATABASE_URL` dan `AUTH_SECRET`.
-2. Jalankan `database/schema.sql`, lalu `database/seed.sql` pada PostgreSQL Supabase.
-3. Jalankan `npm run dev`.
+### Menjalankan
 
-Saat `AUTH_REQUIRED=false`, portal memakai mode demo. Set menjadi `true` setelah pengguna database dan endpoint autentikasi produksi sudah diaktifkan.
+1. Salin `.env.example` menjadi `.env.local`, isi `DATABASE_URL` dan `AUTH_SECRET` (wajib untuk `pnpm build && pnpm start`).
+2. `pnpm migrate` — skema dasar (bila database kosong) lalu migrasi di `database/migrations/` (dicatat di tabel `schema_migrations`).
+3. (Opsional) `pnpm seed:contoh` mengisi 3.501 probis contoh (status Tervalidasi, ditandai *contoh*). `pnpm seed:contoh --hapus` menghapusnya; tim Diskominfo juga bisa menghapus dari banner di CMS.
+4. `pnpm dev`.
+
+`AUTH_REQUIRED=true` mewajibkan login di `/cms`. Akun demo per peran (operator, organisasi, validator, pimpinan `@gresikkab.go.id`) dan kata sandinya ada di `database/migrations/004_opd_and_demo_users.sql` — ganti sebelum produksi.
+
+### CMS Proses Bisnis
+
+- Alur: Operator OPD (draf → ajukan) → **Verifikasi** oleh tim Bagian Organisasi → **Validasi** oleh tim Diskominfo → tampil di dashboard publik. Tiap tim punya menu dan antreannya sendiri; dikembalikan wajib dengan catatan dan tercatat di riwayat.
+- Periode arsitektur dikelola di *Pengaturan › Periode Arsitektur* (2–5 tahun, satu periode aktif). Kode probis unik per periode.
+- Form: pilih RAB Level 3 dan Level 1–2 terisi otomatis. Tombol **Isi dengan AI** memakai Gemini (gratis) bila `GEMINI_API_KEY` diisi, selain itu heuristik lokal.
+- Impor/ekspor memakai kolom template `public/templates/proses-bisnis.xlsx` (bisa .xlsx atau .zip paket arsitektur).
+- **Referensi RAB berversi** (Level 1–5) disimpan di database dan dikelola di *Pengaturan › Referensi RAB*:
+  - Perubahan nama/kode/induk/status dilakukan pada **versi draf** (salinan versi terbit), lalu **diterbitkan**. Versi terbit hanya boleh koreksi nama.
+  - Tiap periode memakai satu versi (*Periode Arsitektur › Versi RAB*). Saat diganti, RAB setiap probis dipetakan otomatis lewat asal-usul node; yang tidak punya padanan ditandai **Perlu pemetaan RAB**. Periode lama tetap menampilkan RAB versinya sendiri.
+  - Semua perubahan tercatat di riwayat versi.
+  - Opsional: `node scripts/extract-reference.mjs --db --versi "Nama"` membuat versi draf dari template Excel (mis. bila analis mengisi sheet RAB Level 4/5). `lib/probis/rab-reference.json` hanya cadangan bawaan.
 
 ## Getting Started
 
