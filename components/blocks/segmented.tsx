@@ -2,7 +2,7 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
-/** Pilihan tunggal berbentuk segmen (shadcn ToggleGroup), mis. status probis Baru / Upgrade / AS-IS. */
+/** Pilihan tunggal berbentuk pil; pil aktif kuning seperti referensi (shadcn ToggleGroup), mis. status probis Baru / Upgrade / AS-IS. */
 export function Segmented<T extends string>({
   value,
   onChange,
@@ -23,13 +23,14 @@ export function Segmented<T extends string>({
       // Tidak boleh kosong: abaikan klik pada segmen yang sedang aktif.
       onValueChange={(v) => v && onChange(v as T)}
       aria-label={label}
-      className={cn("grid w-full auto-cols-fr grid-flow-col gap-1 rounded-lg bg-muted p-1", className)}
+      spacing={1.5}
+      className={cn("grid w-full auto-cols-fr grid-flow-col", className)}
     >
       {options.map((o) => (
         <ToggleGroupItem
           key={o.value}
           value={o.value}
-          className="h-8 rounded-md text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-transparent hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-card"
+          className="h-8 rounded-full border border-border px-3.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-brand-charcoal/30 hover:bg-transparent hover:text-foreground data-[state=on]:border-transparent data-[state=on]:bg-brand-yellow data-[state=on]:font-semibold data-[state=on]:text-on-brand"
         >
           {o.label}
         </ToggleGroupItem>

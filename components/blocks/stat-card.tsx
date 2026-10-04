@@ -3,7 +3,7 @@ import { CountUp } from "@/components/motion/count-up";
 import { SpotlightCard } from "@/components/motion/spotlight-card";
 import { cn } from "@/lib/utils";
 
-export type StatTone = "teal" | "orange" | "yellow" | "amber" | "plain";
+export type StatTone = "teal" | "orange" | "yellow" | "amber" | "sky" | "plain";
 
 /** Blok warna solid seperti referensi; teks charcoal agar kontras AA di semua warna palet. */
 const tones: Record<StatTone, string> = {
@@ -11,6 +11,7 @@ const tones: Record<StatTone, string> = {
   orange: "bg-brand-orange ring-transparent",
   yellow: "bg-brand-yellow ring-transparent",
   amber: "bg-brand-amber ring-transparent",
+  sky: "bg-brand-sky ring-transparent",
   plain: "",
 };
 

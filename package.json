@@ -12,7 +12,8 @@
     "migrate": "node database/migrate.mjs",
     "referensi": "node scripts/extract-reference.mjs",
     "seed:layanan": "tsx scripts/seed-sample-layanan.mts",
-    "referensi:ral": "node scripts/extract-ral.mjs"
+    "referensi:ral": "node scripts/extract-ral.mjs",
+    "referensi:rad": "node scripts/extract-rad.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

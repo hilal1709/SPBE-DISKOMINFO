@@ -4,8 +4,8 @@ import { Bar } from "react-chartjs-2";
 import { useInView } from "@/hooks/use-in-view";
 import { configureCharts, prefersReducedMotion, resolveColor, seriesColors } from "./theme";
 
-/** `color` boleh nama token, mis. "--brand-teal". */
-export type Series = { label: string; data: number[]; color?: string };
+/** `color` boleh nama token, mis. "--brand-teal". `colors` memberi warna per batang (seri tunggal multi-warna). */
+export type Series = { label: string; data: number[]; color?: string; colors?: string[] };
 
 type Props = {
   labels: string[];
@@ -37,10 +37,12 @@ export default function BarChart({ labels, series, stacked = false, horizontal =
             labels,
             datasets: series.map((s, i) => {
               const color = s.color ? resolveColor(s.color) : colors[i % colors.length]!;
+              const perBar = s.colors?.map(resolveColor);
+              const at = (j: number) => perBar?.[j % perBar.length] ?? color;
               return {
                 label: s.label,
                 data: s.data,
-                backgroundColor: selected.length ? s.data.map((_, j) => (selected.some((x) => x.label === j && x.series === i) ? color : faded(color))) : color,
+                backgroundColor: selected.length ? s.data.map((_, j) => (selected.some((x) => x.label === j && x.series === i) ? at(j) : faded(at(j)))) : perBar ? s.data.map((_, j) => at(j)) : color,
                 borderRadius: stacked ? 4 : 6,
                 borderSkipped: false,
                 barPercentage: 0.7,
@@ -64,8 +66,9 @@ export default function BarChart({ labels, series, stacked = false, horizontal =
               },
             },
             scales: {
-              x: { stacked, grid: { display: horizontal }, border: { display: false } },
-              y: { stacked, grid: { display: !horizontal }, border: { display: false }, beginAtZero: true, ticks: { maxTicksLimit: 6 } },
+              // Batasi tick hanya di sumbu nilai; sumbu kategori menampilkan semua label.
+              x: { stacked, grid: { display: horizontal }, border: { display: false }, ...(horizontal && { beginAtZero: true, ticks: { maxTicksLimit: 6 } }) },
+              y: { stacked, grid: { display: !horizontal }, border: { display: false }, beginAtZero: true, ticks: horizontal ? { autoSkip: false } : { maxTicksLimit: 6 } },
             },
           }}
         />

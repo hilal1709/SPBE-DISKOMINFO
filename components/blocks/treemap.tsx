@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
+import { categoryColor } from "@/lib/palette";
 import { cn } from "@/lib/utils";
 
 export type TreemapItem = { code: string; label: string; value: number };
@@ -53,15 +54,28 @@ function squarify(values: number[], width: number, height: number): Rect[] {
   return out;
 }
 
-/** Warna satu rona (teal) bergradasi sesuai intensitas 0–1. */
-const shade = (t: number) => `color-mix(in oklab, var(--brand-teal) ${Math.round(22 + t * 78)}%, var(--card))`;
+/** Warna kategori (token palet) dipekatkan sesuai intensitas 0–1. */
+const shade = (color: string, t: number) => `color-mix(in oklab, var(${color}) ${Math.round(55 + t * 45)}%, var(--card))`;
 
 /**
  * Treemap interaktif: ukuran petak sebanding nilai, klik petak untuk memfilter.
  * Petak muncul berurutan, berubah ukuran dengan halus saat data berubah, dan
  * menampilkan tooltip yang mengikuti kursor (pola "cursor tooltip" 21st.dev).
  */
-export function Treemap({ items, selected = [], onToggle, className }: { items: TreemapItem[]; selected?: string[]; onToggle?: (code: string) => void; className?: string }) {
+export function Treemap({
+  items,
+  selected = [],
+  onToggle,
+  colorOf = (_, rank) => categoryColor(rank),
+  className,
+}: {
+  items: TreemapItem[];
+  selected?: string[];
+  onToggle?: (code: string) => void;
+  /** Token warna petak; bawaan bergiliran per peringkat. */
+  colorOf?: (item: TreemapItem, rank: number) => string;
+  className?: string;
+}) {
   const box = useRef<HTMLDivElement>(null);
   const tip = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -137,7 +151,7 @@ export function Treemap({ items, selected = [], onToggle, className }: { items: 
               active && "z-10 ring-3 ring-brand-charcoal ring-inset",
               selected.length > 0 && !active && "opacity-40 hover:opacity-90",
             )}
-            style={{ left: r.x, top: r.y, width: r.w, height: r.h, background: shade(Math.sqrt(item.value / max)) }}
+            style={{ left: r.x, top: r.y, width: r.w, height: r.h, background: shade(colorOf(item, i), Math.sqrt(item.value / max)) }}
           >
             {showLabel && (
               <span className="min-w-0">

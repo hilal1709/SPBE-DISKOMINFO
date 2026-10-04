@@ -7,8 +7,8 @@
 /*
  * Design system SPBE Gresik — lihat docs/design-system.md.
  * Palet Diskominfo: biru muda #BBDEF0, teal #00A6A6, kuning #EFCA08, amber #F49F0A, oranye #F08700, charcoal #2D2D2F.
- * Distribusi: ±60% putih/netral, ±15% biru muda (sidebar, permukaan lembut), ±10% charcoal (teks, aksi utama),
- * ±15% aksen hangat + teal (kartu statistik, grafik, status).
+ * Distribusi seperti referensi dashboard: latar putih, sidebar biru muda, charcoal untuk teks & aksi utama,
+ * dan kelima warna palet sebagai blok solid (kartu statistik, tag status, pil filter, CTA teal, petak/bar per kategori).
  */
 :root {
   --radius: 0.875rem;

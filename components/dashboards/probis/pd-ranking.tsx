@@ -21,6 +21,7 @@ export function PdRankingCard({
   className,
   title = "Proses bisnis per Perangkat Daerah",
   unit = "probis",
+  colorOf,
 }: {
   rows: PdRow[];
   selected: string[];
@@ -30,6 +31,8 @@ export function PdRankingCard({
   className?: string;
   title?: string;
   unit?: string;
+  /** Token warna per kode sektor; bila ada, bar dipecah per sektor. */
+  colorOf?: (code: string) => string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const list = useRef<HTMLOListElement>(null);
@@ -68,7 +71,9 @@ export function PdRankingCard({
                       <b className="ml-auto tabular-nums"><CountUp instant value={row.count} /></b>
                     </span>
                     <span className="ml-7 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-                      <span className="block h-full rounded-full bg-brand-amber transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${(row.count / max) * 100}%` }} />
+                      <span className="flex h-full overflow-hidden rounded-full bg-brand-amber transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${(row.count / max) * 100}%` }}>
+                        {colorOf && row.sektor.map(([code, n]) => <span key={code} className="h-full" style={{ width: `${(n / row.count) * 100}%`, background: `var(${colorOf(code)})` }} />)}
+                      </span>
                     </span>
                   </button>
                   <Button variant="ghost" size="icon-xs" aria-expanded={isOpen} aria-label={`Rincian ${row.name}`} onClick={() => setOpen(isOpen ? null : row.code)}>
@@ -78,8 +83,9 @@ export function PdRankingCard({
                 {isOpen && (
                   <li data-detail className="mb-1 ml-9 grid gap-1 overflow-hidden rounded-lg bg-muted/50 px-3 py-2 text-[11px]">
                     {row.sektor.map(([code, n]) => (
-                      <span key={code} className="flex justify-between gap-3">
-                        <span className="truncate text-muted-foreground">{label(code)}</span>
+                      <span key={code} className="flex items-center gap-2">
+                        {colorOf && <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: `var(${colorOf(code)})` }} />}
+                        <span className="flex-1 truncate text-muted-foreground">{label(code)}</span>
                         <b className="tabular-nums">{n}</b>
                       </span>
                     ))}

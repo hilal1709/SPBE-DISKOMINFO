@@ -36,6 +36,16 @@ function steps(actor: Actor, domain: Domain, { counts, review }: Summary) {
   return list;
 }
 
+/** Warna titik linimasa sama dengan warna badge statusnya. */
+const dotTone: Record<SubmissionStatus, string> = {
+  draft: "bg-muted-foreground/40",
+  submitted: "bg-brand-yellow",
+  verified: "bg-brand-sky",
+  approved: "bg-brand-teal",
+  rejected: "bg-brand-orange",
+  archived: "bg-muted-foreground/40",
+};
+
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
 /** Beranda CMS: ringkasan status per domain dalam cakupan pengguna, tindakan berikutnya, dan aktivitas terbaru. */
@@ -74,7 +84,7 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
         <StatCard tone="orange" label="Menunggu verifikasi" value={counts.submitted ?? 0} hint="tim Bagian Organisasi" />
         <StatCard tone="yellow" label="Menunggu validasi" value={counts.verified ?? 0} hint="tim Diskominfo" />
         <StatCard tone="amber" label="Tervalidasi" value={counts.approved ?? 0} hint="tayang di portal publik" />
-        <StatCard label="Draf & dikembalikan" value={(counts.draft ?? 0) + (counts.rejected ?? 0)} hint="perlu dilengkapi OPD" />
+        <StatCard tone="sky" label="Draf & dikembalikan" value={(counts.draft ?? 0) + (counts.rejected ?? 0)} hint="perlu dilengkapi OPD" />
       </section>
 
       <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.2fr_1fr]">
@@ -87,7 +97,7 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
               next.map((step) => (
                 <div key={step.href + step.label} className="flex flex-wrap items-center gap-3 rounded-xl bg-accent p-4 text-accent-foreground">
                   <p className="flex-1 text-sm font-medium">{step.text}</p>
-                  <Button asChild size="sm">
+                  <Button asChild size="sm" variant="teal" className="rounded-full">
                     <Link href={step.href}>
                       {step.label}
                       <Icon icon={ArrowRight01Icon} size={14} />
@@ -100,10 +110,10 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
             )}
             {can.create(actor) && (
               <div className="grid gap-3 sm:grid-cols-2">
-                <QuickLink href="/cms/proses-bisnis/baru" icon={Add01Icon} title="Tambah probis" text="Isi form dengan bantuan AI" />
-                <QuickLink href="/cms/layanan/baru" icon={Add01Icon} title="Tambah layanan" text="Isi form dengan bantuan AI" />
-                {can.import(actor) && <QuickLink href="/cms/impor" icon={FileImportIcon} title="Impor probis" text="Unggah xlsx / zip arsitektur" />}
-                {can.import(actor) && <QuickLink href="/cms/layanan/impor" icon={FileImportIcon} title="Impor layanan" text="Unggah template analis" />}
+                <QuickLink tone="bg-brand-orange" href="/cms/proses-bisnis/baru" icon={Add01Icon} title="Tambah probis" text="Isi form dengan bantuan AI" />
+                <QuickLink tone="bg-brand-teal" href="/cms/layanan/baru" icon={Add01Icon} title="Tambah layanan" text="Isi form dengan bantuan AI" />
+                {can.import(actor) && <QuickLink tone="bg-brand-yellow" href="/cms/impor" icon={FileImportIcon} title="Impor probis" text="Unggah xlsx / zip arsitektur" />}
+                {can.import(actor) && <QuickLink tone="bg-brand-amber" href="/cms/layanan/impor" icon={FileImportIcon} title="Impor layanan" text="Unggah template analis" />}
               </div>
             )}
           </CardContent>
@@ -118,7 +128,7 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
               <ol ref={timeline} className="relative grid gap-3 border-l pl-4">
                 {recent.map((a) => (
                   <li key={a.id} className="relative text-sm">
-                    <span aria-hidden className="absolute top-1.5 -left-[1.3rem] size-2.5 rounded-full border-2 border-card bg-brand-amber" />
+                    <span aria-hidden className={`absolute top-1.5 -left-[1.3rem] size-2.5 rounded-full border-2 border-card ${dotTone[a.toStatus]}`} />
                     <p className="flex flex-wrap items-center gap-2">
                       <ReviewBadge status={a.toStatus} />
                       <span className="truncate font-medium">{a.name}</span>
@@ -141,10 +151,10 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
   );
 }
 
-function QuickLink({ href, icon, title, text }: { href: string; icon: typeof Add01Icon; title: string; text: string }) {
+function QuickLink({ href, icon, title, text, tone }: { href: string; icon: typeof Add01Icon; title: string; text: string; tone: string }) {
   return (
     <Link href={href} className="group/q flex items-center gap-3 rounded-xl border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-teal hover:shadow-card">
-      <span className="grid size-10 place-items-center rounded-xl bg-brand-teal/15 transition-transform duration-300 group-hover/q:scale-110 group-hover/q:rotate-6">
+      <span className={`${tone} grid size-10 place-items-center rounded-xl text-on-brand transition-transform duration-300 group-hover/q:scale-110 group-hover/q:rotate-6`}>
         <Icon icon={icon} size={20} />
       </span>
       <span className="grid">

@@ -18,10 +18,13 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
-        success: "bg-success-soft text-success",
-        warning: "bg-warning-soft text-warning",
+        // Tag status berwarna solid dari palet (seperti referensi dashboard), teks gelap on-brand.
+        success: "bg-brand-teal font-semibold text-on-brand",
+        warning: "bg-brand-yellow font-semibold text-on-brand",
         muted: "bg-muted text-muted-foreground",
-        info: "bg-info-soft text-info",
+        info: "bg-brand-sky font-semibold text-on-brand",
+        accent: "bg-brand-amber font-semibold text-on-brand",
+        alert: "bg-brand-orange font-semibold text-on-brand",
       },
     },
     defaultVariants: {

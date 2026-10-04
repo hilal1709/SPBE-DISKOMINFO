@@ -6,7 +6,7 @@ import type { Layanan } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Warna seri sama dengan rincian metode di kartu digitalisasi. */
-const metodeColor: Record<Metode, string> = { elektronik: "--brand-teal", hybrid: "--brand-sky", tatap_muka: "--brand-charcoal" };
+const metodeColor: Record<Metode, string> = { elektronik: "--brand-teal", hybrid: "--brand-yellow", tatap_muka: "--brand-orange" };
 
 /** Batang bertumpuk Target × Metode layanan. Klik segmen untuk memfilter pasangan target dan metode. */
 export function TargetMetodeCard({

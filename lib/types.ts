@@ -60,6 +60,34 @@ export type Layanan = {
   probis: { id: string; name: string }[];
 };
 
+/** Data & informasi di dashboard publik (kolom mengikuti template "Domain Arsitektur Data dan Informasi.xlsx"). */
+export type DataInfo = {
+  id: string;
+  name: string;
+  uraian: string;
+  tujuan: string;
+  /** Kode PD penghasil/produsen data. */
+  produsen: string;
+  /** Kode PD penanggung jawab/wali data. */
+  wali: string;
+  /** Informasi terkait (output/input). */
+  output: string | null;
+  input: string | null;
+  sifat: "terbuka" | "terbatas" | "tertutup";
+  jenis: "statistik" | "geopasial" | "keuangan" | "lainnya";
+  validitas: string;
+  interoperabel: boolean;
+  period: string;
+  rad1: string;
+  rad2: string;
+  /** Sebagian RAD L2 tidak memiliki turunan L3. */
+  rad3: string | null;
+  /** ← Proses bisnis penghasil data. */
+  probis: { id: string; name: string }[];
+  /** → Layanan pengguna data. */
+  layanan: { id: string; name: string }[];
+};
+
 /** Layanan di CMS (satu baris tabel services beserta referensinya). */
 export type LayananRecord = {
   id: string;

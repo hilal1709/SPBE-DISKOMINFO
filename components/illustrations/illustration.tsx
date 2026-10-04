@@ -23,6 +23,7 @@ const catalog = {
   explore: { load: () => import("./data/explore.json"), ratio: "3 / 2", still: 90 },
   "filter-empty": { load: () => import("./data/filter-empty.json"), ratio: "4 / 3", still: 100 },
   "service-desk": { load: () => import("./data/service-desk.json"), ratio: "3 / 2", still: 120 },
+  "data-catalog": { load: () => import("./data/data-catalog.json"), ratio: "3 / 2", still: 120 },
 } as const;
 
 export type IllustrationName = keyof typeof catalog;

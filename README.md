@@ -32,6 +32,12 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 - Impor/ekspor memakai kolom template analis (`/cms/layanan/impor`); kolom target/metode teks bebas dibaca otomatis (ditandai bila ditebak), proses bisnis dicocokkan lewat ID atau nama. **Isi dengan AI** memakai Gemini bila `GEMINI_API_KEY` diisi.
 - `pnpm referensi:ral` membuat ulang `lib/layanan/ral-reference.json` dari template analis.
 
+### Domain Data
+
+- Dashboard `/data` mengikuti kolom template analis `public/templates/data.xlsx` (Domain Arsitektur Data dan Informasi): uraian, tujuan, produsen & wali data, informasi terkait, sifat (Terbuka/Terbatas/Tertutup), jenis, validitas (frekuensi pemutakhiran), interoperabilitas, RAD L1–L3, serta dependensi proses bisnis dan layanan.
+- Sementara memakai data contoh (`lib/data/generate.ts`, diturunkan dari layanan contoh) sampai modul CMS Data tersedia.
+- `pnpm referensi:rad` membuat ulang `lib/data/rad-reference.json` dari template analis.
+
 ## Getting Started
 
 First, run the development server:

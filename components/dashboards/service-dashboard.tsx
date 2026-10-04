@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { allLayanan } from "@/lib/layanan/generate";
 import { activeFilterCount, countBy, emptyFilter, filterFromParams, filterLayanan, filterToParams, ralOptions, ralTree, sanitizeFilter, type LayananFilter } from "@/lib/layanan/query";
+import { colorByRoot } from "@/lib/palette";
 import { useRalSet } from "@/components/layanan/ral-context";
 import { RAL_PUBLIK, isDigital, metodeLabel, metodeOptions, targetLabel, targetOptions, type Metode, type Target } from "@/lib/layanan/reference";
 import type { RabIndex } from "@/lib/probis/rab-index";
@@ -35,7 +36,7 @@ const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name 
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 const ralLevels = ["", "Jenis", "Urusan", "Sub-urusan"];
-const metodeTone: Record<Metode, string> = { elektronik: "bg-brand-teal", hybrid: "bg-brand-sky", tatap_muka: "bg-brand-charcoal/70" };
+const metodeTone: Record<Metode, string> = { elektronik: "bg-brand-teal", hybrid: "bg-brand-yellow", tatap_muka: "bg-brand-orange" };
 
 type RalKey = "ral1" | "ral2" | "ral3";
 
@@ -102,6 +103,8 @@ export function ServiceDashboard({
   const ralLabel = ral.label;
   const options = ralOptions(filter, ral);
   const tree = useMemo(() => ralTree(rows, ral), [rows, ral]);
+  /** Satu warna per urusan (RAL 2), dipakai sama di treemap dan ranking. */
+  const urusanColor = useMemo(() => colorByRoot(ral.level(2).map((n) => n.code)), [ral]);
   const jenis = countBy(rows, "ral1");
   const metode = countBy(rows, "metode");
   const digital = rows.filter((l) => isDigital(l.metode)).length;
@@ -194,7 +197,7 @@ export function ServiceDashboard({
                   </div>
                 }
               />
-              <StatCard className="justify-center" tone="yellow" label="Perangkat Daerah pemilik layanan" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+              <StatCard className="justify-center" tone="orange" label="Perangkat Daerah pemilik layanan" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
             </div>
 
             <Card data-reveal className="gap-3">
@@ -239,6 +242,7 @@ export function ServiceDashboard({
               unit="layanan"
               label={ralLabel}
               rows={pdRows}
+              colorOf={urusanColor}
               selected={filter.pd}
               onToggle={(code) => clickFilter(pdName(code), (c) => ({ ...c, pd: toggle(c.pd, code) }), !filter.pd.includes(code))}
             />
@@ -249,7 +253,7 @@ export function ServiceDashboard({
               <CardTitle className="section-title">Urusan layanan (RAL 2)</CardTitle>
             </CardHeader>
             <CardContent>
-              <Treemap items={urusan} selected={filter.ral2} onToggle={(code) => clickFilter(ralLabel(code), (c) => withRal(c, { ral2: toggle(c.ral2, code) }, ral), !filter.ral2.includes(code))} className="h-[22rem] sm:h-[26rem]" />
+              <Treemap items={urusan} colorOf={(item) => urusanColor(item.code)} selected={filter.ral2} onToggle={(code) => clickFilter(ralLabel(code), (c) => withRal(c, { ral2: toggle(c.ral2, code) }, ral), !filter.ral2.includes(code))} className="h-[22rem] sm:h-[26rem]" />
             </CardContent>
           </Card>
 

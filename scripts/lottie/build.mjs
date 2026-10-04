@@ -360,7 +360,61 @@ function serviceDesk() {
   });
 }
 
-const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty, "service-desk": serviceDesk };
+/* 11. Katalog data — kartu data dari dokumen masuk ke basis data, baris katalog bertambah, lalu tercentang. */
+function dataCatalog() {
+  const frames = 180;
+  // Satu tingkat silinder: tutup atas, badan, dan alas melengkung.
+  const disk = (y, led) => group([
+    group([ellipse(5, 5, [18, 2]), fill(c.white)], { o: led }),
+    group([ellipse(60, 16, [0, -10]), fill(c.sky), stroke(c.charcoal, 2)]),
+    group([path([[-30, -10], [-30, 10]]), path([[30, -10], [30, 10]]), stroke(c.charcoal, 2)]),
+    group([rect(60, 20), fill(c.teal)]),
+    group([ellipse(60, 16, [0, 10]), fill(c.teal), stroke(c.charcoal, 2)]),
+  ], { p: [0, y] });
+  const blink = (t) => anim([[0, 100], [t, 100], [t + 4, 20], [t + 10, 100], [frames, 100]], ease.linear);
+  // Baris katalog tumbuh dari kiri: titik asal grup di tepi kiri baris.
+  const row = (y, w, t) => group([rect(w, 5, 2.5, [w / 2, 0]), fill(c.slateSoft)], {
+    p: [-14, y],
+    s: anim([[0, [0, 100]], [t, [0, 100]], [t + 16, [100, 100]], [150, [100, 100]], [164, [0, 100]], [frames, [0, 100]]]),
+  });
+  return composition("data-catalog", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("blob", group([ellipse(220, 140), fill(c.amberPale)]), { p: [120, 80], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(200, 10), fill(c.navy, 8)]), { p: [120, 144] }),
+      layer("basis data", [disk(-24, blink(60)), disk(0, blink(66)), disk(24, blink(72))], {
+        p: [78, 92],
+        s: anim([[0, [100, 100]], [52, [100, 100]], [58, [104, 96], ease.inOut], [66, [100, 100], ease.back], [frames, [100, 100]]]),
+      }),
+      layer("kartu belakang", group([rect(58, 76, 8), fill(c.surface), stroke(c.line, 2)]), { p: [186, 88] }),
+      layer("katalog", [
+        group([ellipse(6, 6, [-20, -14]), fill(c.teal)]),
+        group([ellipse(6, 6, [-20, -2]), fill(c.teal)]),
+        group([ellipse(6, 6, [-20, 10]), fill(c.amber)]),
+        row(-14, 32, 70),
+        row(-2, 26, 80),
+        row(10, 30, 90),
+        group([rect(46, 10, 3), fill(c.yellow)], { p: [0, -32] }),
+        group([rect(58, 76, 8), fill(c.white), stroke(c.charcoal, 3)]),
+      ], { p: [178, 80] }),
+      layer("jejak", group([curve([[150, 52], [124, 26], [96, 46]]), trim(0, anim([[0, 0], [12, 0], [50, 100], [150, 100], [166, 0], [frames, 0]], ease.inOut)), stroke(c.charcoal, 2, { opacity: 60, dash: [4, 4] })]), {}),
+      layer("kartu data", group([rect(22, 14, 3), fill(c.yellow), stroke(c.charcoal, 1.5)]), {
+        p: anim([[0, [156, 56]], [12, [156, 56]], [52, [80, 58], ease.inOut], [frames, [80, 58]]]),
+        s: anim([[0, [100, 100]], [44, [100, 100]], [56, [0, 0]], [frames, [0, 0]]]),
+        o: anim([[0, 0], [8, 0], [16, 100], [50, 100], [60, 0], [frames, 0]], ease.linear),
+      }),
+      layer("centang", [
+        group([path([[-6, 0], [-2, 4], [6, -4]]), trim(0, anim([[0, 0], [96, 0], [112, 100], [150, 100], [160, 0], [frames, 0]], ease.inOut)), stroke(c.white, 3)]),
+        group([ellipse(24, 24), fill(c.teal), stroke(c.white, 2)]),
+      ], {
+        p: [112, 52],
+        s: anim([[0, [0, 0]], [88, [0, 0]], [100, [100, 100], ease.back], [150, [100, 100]], [162, [0, 0]], [frames, [0, 0]]]),
+      }),
+    ],
+  });
+}
+
+const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty, "service-desk": serviceDesk, "data-catalog": dataCatalog };
 for (const [name, build] of Object.entries(builds)) {
   const json = JSON.stringify(build());
   writeFileSync(join(out, `${name}.json`), json);

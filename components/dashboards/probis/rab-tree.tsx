@@ -6,6 +6,7 @@ import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { CountUp } from "@/components/motion/count-up";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { categoryColor } from "@/lib/palette";
 import type { RabTreeNode } from "@/lib/probis/query";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ export function RabTreeCard({
   levelLabel = rabLevels,
   expandLabel = "Buka sektor",
   defaultExpanded = false,
+  colorOf,
 }: {
   tree: RabTreeNode[];
   total: number;
@@ -33,6 +35,8 @@ export function RabTreeCard({
   expandLabel?: string;
   /** Level 1 langsung terbuka (cocok bila jumlah L1 sedikit, mis. RAL). */
   defaultExpanded?: boolean;
+  /** Token warna per kode level 1; anak-anaknya mewarisi. Bawaan bergiliran sesuai urutan. */
+  colorOf?: (code: string) => string;
 }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(defaultExpanded ? tree.map((n) => n.code) : []));
   /** Node yang baru dibuka; anak-anaknya dianimasikan masuk. */
@@ -63,9 +67,10 @@ export function RabTreeCard({
   const allL1 = tree.map((n) => n.code);
   const expanded = allL1.length > 0 && allL1.every((c) => open.has(c));
 
-  const renderRows = (nodes: RabTreeNode[]): React.ReactNode =>
-    nodes.map((node) => {
+  const renderRows = (nodes: RabTreeNode[], inherited?: string): React.ReactNode =>
+    nodes.map((node, i) => {
       const isOpen = open.has(node.code);
+      const color = inherited ?? colorOf?.(node.code) ?? categoryColor(i);
       const share = total ? (node.count / total) * 100 : 0;
       return (
         <Fragment key={node.code}>
@@ -80,6 +85,7 @@ export function RabTreeCard({
                   <span className="w-6 shrink-0" />
                 )}
                 <div className="min-w-0">
+                  {node.level === 1 && <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full" style={{ background: `var(${color})` }} />}
                   <span className="mr-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground tabular-nums">{node.code}</span>
                   <span className={cn("text-xs", node.level > 1 && "font-normal")}>{node.name}</span>
                 </div>
@@ -89,13 +95,13 @@ export function RabTreeCard({
             <td className="w-28 py-2 pr-3">
               <div className="flex items-center justify-end gap-2">
                 <span className="h-1.5 w-12 overflow-hidden rounded-full bg-muted" aria-hidden>
-                  <span className="block h-full rounded-full bg-brand-teal transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${Math.max(share, 2)}%` }} />
+                  <span className="block h-full rounded-full transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${Math.max(share, 2)}%`, background: `var(${color})` }} />
                 </span>
                 <b className="w-10 text-right text-xs tabular-nums"><CountUp instant value={node.count} /></b>
               </div>
             </td>
           </tr>
-          {isOpen && renderRows(node.children)}
+          {isOpen && renderRows(node.children, color)}
         </Fragment>
       );
     });

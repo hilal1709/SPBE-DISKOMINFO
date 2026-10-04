@@ -10,12 +10,11 @@ import { Reveal } from "@/components/motion/reveal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { opdList } from "@/lib/demo-data";
 
-export type DomainKey = "data" | "aplikasi" | "domain-infrastruktur" | "aplikasi-usulan" | "peta-rencana" | "infrastruktur";
+export type DomainKey = "aplikasi" | "domain-infrastruktur" | "aplikasi-usulan" | "peta-rencana" | "infrastruktur";
 
 type DomainConfig = { title: string; metric: string; count: number; cols: string[]; rows: string[][] };
 
 const cfg: Record<DomainKey, DomainConfig> = {
-  data: { title: "Domain Data", metric: "Set data", count: 426, cols: ["ID", "Status", "Nama Data", "Pemilik", "Klasifikasi", "Standar"], rows: [["DAT-001", "Disetujui", "Data Penduduk", "Disdukcapil", "Data Induk", "Satu Data"], ["DAT-002", "Disetujui", "Data Kesehatan", "Dinas Kesehatan", "Sektoral", "Satu Data"]] },
   aplikasi: { title: "Domain Aplikasi", metric: "Jumlah aplikasi", count: 312, cols: ["ID", "Status", "Nama Aplikasi", "OPD", "Fungsi", "Integrasi"], rows: [["APP-001", "Disetujui", "Gresik Satu Data", "Diskominfo", "Manajemen Data", "Terintegrasi"], ["APP-002", "Disetujui", "SIPD Pendidikan", "Dinas Pendidikan", "Pendidikan", "Terintegrasi"]] },
   "domain-infrastruktur": { title: "Domain Infrastruktur", metric: "Komponen infrastruktur", count: 164, cols: ["ID", "Status", "Komponen", "Lokasi", "Jenis", "Kapasitas"], rows: [["INF-001", "Disetujui", "Server Aplikasi", "Data Center", "Server", "64 Core"], ["INF-002", "Disetujui", "Jaringan OPD", "Kabupaten Gresik", "Jaringan", "10 Gbps"]] },
   "aplikasi-usulan": { title: "Aplikasi Usulan", metric: "Usulan disetujui", count: 27, cols: ["ID", "Status", "Usulan", "OPD", "Prioritas", "Target"], rows: [["USL-001", "Disetujui", "Sistem Pengaduan", "Diskominfo", "Tinggi", "2026"], ["USL-002", "Disetujui", "Monitoring Stunting", "Dinas Kesehatan", "Tinggi", "2026"]] },

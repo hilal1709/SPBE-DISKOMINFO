@@ -10,7 +10,7 @@ export const statusLabel: Record<SubmissionStatus, string> = {
   archived: "Arsip",
 };
 
-const variants: Record<string, "success" | "warning" | "muted" | "destructive" | "secondary" | "info"> = {
+const variants: Record<string, "success" | "warning" | "muted" | "alert" | "accent" | "info"> = {
   Disetujui: "success",
   Selesai: "success",
   Terintegrasi: "success",
@@ -18,15 +18,19 @@ const variants: Record<string, "success" | "warning" | "muted" | "destructive" |
   Diverifikasi: "info",
   Terverifikasi: "info",
   Tervalidasi: "success",
-  Dikembalikan: "destructive",
-  Berjalan: "warning",
-  Upgrade: "secondary",
+  Dikembalikan: "alert",
+  Berjalan: "accent",
+  Upgrade: "accent",
   Baru: "info",
-  Tinggi: "destructive",
-  Ditolak: "destructive",
+  Tinggi: "alert",
+  Ditolak: "alert",
   Sedang: "warning",
   Elektronik: "success",
   Hybrid: "info",
+  Terbuka: "success",
+  Terbatas: "warning",
+  Tertutup: "alert",
+  Interoperabel: "success",
 };
 
 /** Badge status dengan warna semantik. Terima kode status atau label bebas. */

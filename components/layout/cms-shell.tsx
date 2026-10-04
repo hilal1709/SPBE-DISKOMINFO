@@ -96,7 +96,7 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
             <h1 className="truncate text-lg font-bold tracking-tight">{section}</h1>
             {current?.description && <p className="hidden truncate text-xs text-muted-foreground sm:block">{current.description}</p>}
           </div>
-          <Button asChild variant="outline" className="ml-auto rounded-full">
+          <Button asChild className="ml-auto rounded-full">
             <Link href="/">
               <Icon icon={ViewIcon} size={16} />
               <span className="hidden sm:inline">Lihat portal</span>
