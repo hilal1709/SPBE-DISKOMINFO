@@ -5,7 +5,7 @@ import { Alert02Icon, ArrowLeft01Icon, ViewIcon, ViewOffSlashIcon } from "@hugei
 import { login } from "@/app/actions/auth";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustrations/illustration";
-import { Brand } from "@/components/layout/brand";
+import { Logo } from "@/components/brand/logo";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Reveal } from "@/components/motion/reveal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,16 +30,17 @@ export default function Login() {
 
   return (
     <main className="grid min-h-svh lg:grid-cols-[1.05fr_1fr]">
-      <section className="relative hidden overflow-hidden bg-panel text-panel-foreground lg:flex lg:flex-col">
-        <div aria-hidden className="absolute -top-40 -left-40 size-[520px] rounded-full bg-primary/15 blur-3xl" />
+      <section className="relative m-3 hidden overflow-hidden rounded-3xl bg-brand-sky text-brand-charcoal lg:flex lg:flex-col">
+        <div aria-hidden className="absolute -top-32 -left-32 size-[440px] rounded-full bg-brand-yellow/40 blur-3xl" />
+        <div aria-hidden className="absolute -right-24 -bottom-24 size-[380px] rounded-full bg-brand-teal/25 blur-3xl" />
         <Reveal className="relative flex flex-1 flex-col p-10">
           <div data-reveal>
-            <Brand tone="dark" />
+            <Logo />
           </div>
           <Illustration name="login-hero" className="mx-auto my-auto w-full max-w-md" />
           <div data-reveal>
-            <h2 className="max-w-md text-3xl leading-tight font-bold text-balance text-white">Satu peta arsitektur untuk layanan digital Gresik.</h2>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-panel-muted">
+            <h2 className="max-w-md text-3xl leading-tight font-bold text-balance">Satu peta arsitektur untuk layanan digital Gresik.</h2>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-brand-charcoal/75">
               Proses bisnis, layanan, data, aplikasi, dan infrastruktur seluruh Perangkat Daerah terhubung dalam satu sistem.
             </p>
           </div>
@@ -56,12 +57,11 @@ export default function Login() {
 
         <Reveal className="m-auto w-full max-w-sm py-10">
           <div data-reveal className="lg:hidden">
-            <Brand />
+            <Logo />
           </div>
           <div data-reveal className="mt-8 lg:mt-0">
             <p className="eyebrow">CMS SPBE</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Masuk ke akun Anda</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Gunakan akun yang dibuat oleh Superadmin.</p>
           </div>
 
           <form ref={form} action={formAction} className="mt-8" data-reveal>

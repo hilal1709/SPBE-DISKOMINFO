@@ -30,9 +30,8 @@ export function ServiceCatalog() {
   const [selected, setSelected] = useState<Service | null>(null);
   return (
     <Reveal className="grid gap-5">
-      <PageHeader eyebrow="Domain layanan" title="Katalog Layanan" description="Master data arsitektur layanan seluruh Perangkat Daerah." />
       <DataTable
-        title="Daftar layanan"
+        title="Layanan seluruh Perangkat Daerah"
         rows={services}
         rowId={(s) => s.id}
         searchText={(s) => [s.name, s.opd, s.rab].join(" ")}
@@ -112,13 +111,15 @@ export function ServiceForm() {
 
   const save = () => {
     setSaving(true);
-    setTimeout(() => { setSaving(false); setSaved(true); }, 900);
+    const request = new Promise<void>((resolve) => setTimeout(resolve, 900));
+    toast.promise(request, { loading: "Menyimpan draf…", success: "Draf layanan tersimpan", error: "Gagal menyimpan draf" });
+    request.then(() => { setSaving(false); setSaved(true); });
   };
 
   if (saved) {
     return (
       <Card className="mx-auto max-w-xl py-10">
-        <EmptyState illustration="success" title="Draf layanan tersimpan" description="Anda dapat melanjutkan pengisian atau mengajukannya untuk verifikasi dari CMS.">
+        <EmptyState illustration="success" title="Draf tersimpan" description="Lanjutkan pengisian atau ajukan untuk verifikasi dari CMS.">
           <Button variant="outline" onClick={() => { setSaved(false); setStep(1); }}>Buat usulan lain</Button>
           <Button asChild><Link href="/cms/layanan">Buka Layanan Saya</Link></Button>
         </EmptyState>
@@ -128,7 +129,7 @@ export function ServiceForm() {
 
   return (
     <Reveal className="mx-auto grid max-w-4xl gap-5">
-      <PageHeader eyebrow="Pengajuan" title="Input layanan baru" description="Lengkapi empat tahap berikut. Data tersimpan sebagai draf sampai diajukan." />
+      <p className="text-sm text-muted-foreground" data-reveal>Lengkapi empat tahap berikut. Data tersimpan sebagai draf sampai diajukan.</p>
       <div data-reveal>
         <ol className="relative grid grid-cols-4 gap-2">
           <div aria-hidden className="absolute top-4 right-[12.5%] left-[12.5%] h-0.5 bg-border">
@@ -145,7 +146,7 @@ export function ServiceForm() {
                   className={cn(
                     "grid size-8 place-items-center rounded-full border-2 text-xs font-bold transition-all duration-300 ease-(--ease-out)",
                     n < step && "border-primary bg-primary text-primary-foreground",
-                    n === step && "scale-110 border-primary bg-card text-foreground shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_20%,transparent)]",
+                    n === step && "scale-110 border-primary bg-card text-foreground shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-yellow)_55%,transparent)]",
                     n > step && "border-border bg-card text-muted-foreground",
                   )}
                 >
@@ -165,9 +166,7 @@ export function ServiceForm() {
         </CardHeader>
         <CardContent key={step} className="animate-in duration-300 fade-in slide-in-from-right-2">
           {step === 4 ? (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Periksa kembali isian pada tahap sebelumnya. Setelah disimpan, draf dapat dilengkapi dan diajukan untuk verifikasi oleh Bagian Organisasi melalui CMS.
-            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">Periksa kembali isian sebelumnya, lalu simpan sebagai draf.</p>
           ) : (
             <FieldGroup className="grid gap-4 md:grid-cols-2">
               {step === 1 && (
@@ -224,7 +223,6 @@ const gaps = [
 export function GapAnalysis() {
   return (
     <Reveal className="grid gap-5">
-      <PageHeader eyebrow="Evaluasi" title="Gap Analysis" description="Kesenjangan layanan terhadap referensi arsitektur SPBE nasional." />
       <div className="grid gap-4 lg:grid-cols-3">
         {gaps.map((gap) => (
           <Card key={gap.title} data-reveal>
@@ -234,7 +232,7 @@ export function GapAnalysis() {
               <CardDescription>{gap.finding}</CardDescription>
             </CardHeader>
             <CardFooter className="mt-auto">
-              <Button variant="ghost" className="group -ml-2 text-secondary-foreground" onClick={() => toast.success("Usulan peta rencana dibuat", { description: gap.title })}>
+              <Button variant="ghost" className="group -ml-2 text-link" onClick={() => toast.success("Usulan peta rencana dibuat", { description: gap.title, action: { label: "Lihat", onClick: () => {} } })}>
                 Buat usulan peta rencana
                 <Icon icon={ArrowRight01Icon} size={16} className="transition-transform duration-300 group-hover:translate-x-0.5" />
               </Button>
@@ -254,8 +252,19 @@ export function VerificationQueue() {
   const decide = (item: Service, approved: boolean) => {
     const el = list.current?.querySelector(`[data-id="${item.id}"]`);
     const done = () => {
-      setQueue((q) => q.filter((s) => s.id !== item.id));
-      toast[approved ? "success" : "info"](approved ? "Usulan disetujui" : "Usulan dikembalikan ke OPD", { description: item.name });
+      let index = 0;
+      setQueue((q) => {
+        index = q.findIndex((s) => s.id === item.id);
+        return q.filter((s) => s.id !== item.id);
+      });
+      // Pola "undo pill": keputusan bisa dibatalkan selama toast tampil.
+      toast[approved ? "success" : "info"](approved ? "Usulan disetujui" : "Usulan dikembalikan ke OPD", {
+        description: item.name,
+        action: {
+          label: "Urungkan",
+          onClick: () => setQueue((q) => (q.some((s) => s.id === item.id) ? q : [...q.slice(0, index), item, ...q.slice(index)])),
+        },
+      });
     };
     if (!el) return done();
     gsap.to(el, { opacity: 0, x: approved ? 24 : -24, height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, duration: 0.4, ease: "power2.in", onComplete: done });
@@ -263,7 +272,7 @@ export function VerificationQueue() {
 
   return (
     <Reveal className="grid gap-5">
-      <PageHeader eyebrow="Bagian Organisasi" title="Antrean verifikasi" description="Setujui atau kembalikan usulan dengan catatan evaluasi." actions={<Badge variant="warning" className="h-7 px-3">{queue.length} menunggu</Badge>} />
+      <PageHeader title={`${queue.length} usulan menunggu`} description="Setujui atau kembalikan dengan catatan evaluasi." />
       <Card data-reveal className="py-2">
         {queue.length ? (
           <div ref={list} className="divide-y">
@@ -284,7 +293,7 @@ export function VerificationQueue() {
             ))}
           </div>
         ) : (
-          <EmptyState illustration="success" className="py-10" title="Antrean sudah bersih" description="Semua usulan telah diverifikasi. Usulan baru akan muncul di sini." />
+          <EmptyState illustration="success" className="py-10" title="Antrean sudah bersih" description="Usulan baru akan muncul di sini." />
         )}
       </Card>
     </Reveal>
@@ -296,11 +305,13 @@ export function VerificationQueue() {
 export function MasterData() {
   return (
     <Reveal className="grid gap-5">
-      <PageHeader eyebrow="Referensi" title="Master data" description="Referensi arsitektur yang dipakai seluruh domain." actions={<Button asChild variant="outline"><Link href="/cms/master">Kelola di CMS</Link></Button>} />
+      <div className="flex justify-end" data-reveal>
+        <Button asChild variant="outline"><Link href="/cms/master">Kelola di CMS</Link></Button>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Master RAL" value={ralList.length} hint="Referensi Arsitektur Layanan" />
-        <StatCard label="Master RAB" value={rabList.length} hint="Referensi Arsitektur Bisnis" />
-        <StatCard label="Master proses bisnis" value={processList.length} hint="Proses bisnis baku" />
+        <StatCard tone="teal" label="Referensi Arsitektur Layanan" value={ralList.length} />
+        <StatCard tone="yellow" label="Referensi Arsitektur Bisnis" value={rabList.length} />
+        <StatCard tone="amber" label="Proses bisnis baku" value={processList.length} />
       </div>
     </Reveal>
   );
@@ -315,18 +326,17 @@ const users = [
 export function UsersOverview() {
   return (
     <Reveal className="grid gap-5">
-      <PageHeader eyebrow="Akses" title="Pengelolaan pengguna" description="Superadmin mengelola akun dan peran lokal." />
       <Card data-reveal className="py-2">
         {users.map((user) => (
           <div key={user.email} className="flex items-center gap-3 px-5 py-3">
             <Avatar className="size-10">
-              <AvatarFallback className="bg-secondary font-semibold text-secondary-foreground">{initials(user.name)}</AvatarFallback>
+              <AvatarFallback className="bg-brand-sky font-semibold text-brand-charcoal">{initials(user.name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <p className="text-sm font-semibold">{user.name}</p>
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             </div>
-            <Badge variant="secondary" className="ml-auto">{user.role}</Badge>
+            <Badge variant="info" className="ml-auto">{user.role}</Badge>
           </div>
         ))}
       </Card>

@@ -21,7 +21,7 @@ export function SpotlightCard({ className, children, style, ...props }: React.Co
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/spot:opacity-100"
-        style={{ background: "radial-gradient(260px circle at var(--spot-x) var(--spot-y), color-mix(in oklab, var(--primary) 14%, transparent), transparent 70%)" }}
+        style={{ background: "radial-gradient(260px circle at var(--spot-x) var(--spot-y), var(--spot-color, color-mix(in oklab, var(--brand-sky) 55%, transparent)), transparent 70%)" }}
       />
       {children}
     </Card>

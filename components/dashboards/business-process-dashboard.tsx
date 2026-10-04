@@ -6,13 +6,20 @@ import { FilterBar } from "@/components/blocks/filter-bar";
 import { HeatTile } from "@/components/blocks/heat-tile";
 import { StatCard } from "@/components/blocks/stat-card";
 import { StatusBadge } from "@/components/blocks/status-badge";
+import { BarChart, DoughnutChart } from "@/components/charts";
 import { Meter } from "@/components/motion/meter";
 import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { opdList, rabList, services } from "@/lib/demo-data";
 import type { Service } from "@/lib/types";
 
+const years = ["2025", "2026", "2027", "2028", "2029"];
+const trend = [
+  { label: "AS-IS", data: [1513, 1460, 1402, 1351, 1298], color: "--brand-teal" },
+  { label: "Upgrade", data: [143, 168, 190, 214, 236], color: "--brand-yellow" },
+  { label: "Baru", data: [189, 221, 258, 290, 327], color: "--brand-orange" },
+];
 const sectors = [
   { label: "RAB.02 Ekonomi dan Industri", value: 2316 },
   { label: "RAB.03 Pembangunan dan Kewilayahan", value: 238 },
@@ -30,20 +37,38 @@ export function BusinessProcessDashboard() {
 
   return (
     <Reveal className="grid gap-5">
-      <FilterBar filters={[{ label: "Status", options: ["AS-IS", "Upgrade", "New"] }, { label: "Sasaran", options: ["Tata kelola", "Layanan publik"] }, { label: "RAB Level 3", options: rabList }]} />
+      <FilterBar filters={[{ label: "Status", options: ["AS-IS", "Upgrade", "Baru"] }, { label: "Sasaran", options: ["Tata kelola", "Layanan publik"] }, { label: "RAB Level 3", options: rabList }]} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Jumlah proses bisnis" value={1845} hint="Seluruh OPD periode 2025–2029" highlight />
-        <StatCard label="Probis AS-IS" value={1513} hint="Berjalan sesuai kondisi saat ini" />
-        <StatCard label="Probis upgrade" value={143} hint="Perlu peningkatan" />
-        <StatCard label="Probis baru" value={189} hint="Direncanakan dalam periode" />
+        <StatCard tone="teal" label="Proses bisnis" value={1845} trend={[1620, 1688, 1702, 1770, 1845]} />
+        <StatCard tone="orange" label="AS-IS" value={1513} hint="82% dari total" />
+        <StatCard tone="yellow" label="Upgrade" value={143} hint="8% dari total" />
+        <StatCard tone="amber" label="Baru" value={189} hint="10% dari total" />
       </section>
 
-      <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.15fr_1.15fr_0.9fr]">
+      <section className="grid gap-5 *:min-w-0 xl:grid-cols-[2fr_1fr]">
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Referensi Arsitektur Proses Bisnis</CardTitle>
-            <CardDescription className="pl-3">Heat map RAB Level 1 (sektor)</CardDescription>
+            <CardTitle className="section-title">Tren proses bisnis</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <BarChart labels={years} series={trend} stacked />
+          </CardContent>
+        </Card>
+        <Card data-reveal>
+          <CardHeader>
+            <CardTitle className="section-title">Komposisi status</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <DoughnutChart labels={["AS-IS", "Upgrade", "Baru"]} data={[1513, 143, 189]} caption="proses bisnis" colors={["--brand-teal", "--brand-yellow", "--brand-orange"]} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1fr_1.2fr_1fr]">
+        <Card data-reveal>
+          <CardHeader>
+            <CardTitle className="section-title">RAB Level 1 (sektor)</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-2">
             {sectors.map((s) => <HeatTile key={s.label} label={s.label} value={fmt.format(s.value)} intensity={Math.sqrt(s.value / maxSector)} />)}
@@ -53,17 +78,15 @@ export function BusinessProcessDashboard() {
         <Card data-reveal>
           <CardHeader>
             <CardTitle className="section-title">RAB Level 2 (urusan)</CardTitle>
-            <CardDescription className="pl-3">Jumlah proses bisnis per urusan</CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
-            {affairs.map((a) => <HeatTile key={a.label} label={a.label} value={String(a.value)} intensity={a.value / 64} className="min-h-16" />)}
+          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
+            {affairs.map((a) => <HeatTile key={a.label} label={a.label} value={String(a.value)} intensity={a.value / 64} className="min-h-14" />)}
           </CardContent>
         </Card>
 
         <Card data-reveal>
           <CardHeader>
             <CardTitle className="section-title">Perangkat Daerah teratas</CardTitle>
-            <CardDescription className="pl-3">Pemilik proses bisnis terbanyak</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {opdTotals.map((opd) => (
@@ -83,12 +106,11 @@ export function BusinessProcessDashboard() {
       </section>
 
       <DataTable
-        title="Katalog Proses Bisnis Perangkat Daerah"
-        description="Klik detail untuk melihat klasifikasi RAB dan indikator kinerja."
+        title="Katalog proses bisnis"
         rows={services}
         rowId={(s) => s.id}
         searchText={(s) => [s.processBusiness, s.opd, s.purpose, s.rab].join(" ")}
-        searchPlaceholder="Cari proses bisnis atau perangkat daerah"
+        searchPlaceholder="Cari proses bisnis atau OPD"
         onView={setSelected}
         minWidth={980}
         columns={[
@@ -106,28 +128,25 @@ export function BusinessProcessDashboard() {
         <DetailDialog
           open
           onOpenChange={(open) => !open && setSelected(null)}
-          eyebrow="Detail proses bisnis"
+          eyebrow={`PRB-${selected.id.slice(-3)}`}
           title={selected.processBusiness}
-          description="Informasi lengkap arsitektur proses bisnis Pemerintah Kabupaten Gresik."
           meta={
             <>
-              <Badge variant="outline">Kode {selected.id}</Badge>
               <StatusBadge status="Upgrade" />
-              <Badge variant="success">{selected.opd}</Badge>
-              <Badge variant="muted">2025–2029</Badge>
+              <Badge variant="info">{selected.opd}</Badge>
             </>
           }
         >
-          <DetailSection title="Uraian proses bisnis" tone="accent">
+          <DetailSection title="Uraian" tone="accent">
             <p className="text-sm leading-relaxed text-muted-foreground">
-              {selected.purpose}. Proses bisnis ini mencakup tahapan penyusunan, harmonisasi, pelaksanaan standar operasional, dan pemantauan layanan Pemerintah Kabupaten Gresik.
+              {selected.purpose}. Mencakup penyusunan, harmonisasi, pelaksanaan standar operasional, dan pemantauan layanan.
             </p>
           </DetailSection>
-          <DetailSection title="Klasifikasi Referensi Arsitektur Bisnis (RAB)">
+          <DetailSection title="Klasifikasi RAB">
             <div className="grid gap-2 sm:grid-cols-3">
-              <DetailField label="RAB Level 1" value="RAB.09 Pemerintahan Umum" />
-              <DetailField label="RAB Level 2" value={selected.rab} />
-              <DetailField label="RAB Level 3" value="Penataan SDM Aparatur" />
+              <DetailField label="Level 1" value="RAB.09 Pemerintahan Umum" />
+              <DetailField label="Level 2" value={selected.rab} />
+              <DetailField label="Level 3" value="Penataan SDM Aparatur" />
             </div>
           </DetailSection>
           <div className="grid gap-2 sm:grid-cols-2">

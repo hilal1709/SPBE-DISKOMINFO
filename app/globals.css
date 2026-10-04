@@ -6,94 +6,158 @@
 
 /*
  * Design system SPBE Gresik — lihat docs/design-system.md.
- * Amber = aksi & sorotan, navy = struktur & navigasi CMS, netral sejuk = permukaan.
+ * Palet Diskominfo: biru muda #BBDEF0, teal #00A6A6, kuning #EFCA08, amber #F49F0A, oranye #F08700, charcoal #2D2D2F.
+ * Distribusi: ±60% putih/netral, ±15% biru muda (sidebar, permukaan lembut), ±10% charcoal (teks, aksi utama),
+ * ±15% aksen hangat + teal (kartu statistik, grafik, status).
  */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.875rem;
 
-  --background: #f4f6f9;
-  --foreground: #1c2735;
+  /* Palet merek — pakai lewat utilitas bg-brand-*, jangan hex langsung. */
+  --brand-sky: #bbdef0;
+  --brand-teal: #00a6a6;
+  --brand-yellow: #efca08;
+  --brand-amber: #f49f0a;
+  --brand-orange: #f08700;
+  --brand-charcoal: #2d2d2f;
+
+  --background: #f5f8fa;
+  --foreground: #2d2d2f;
   --card: #ffffff;
-  --card-foreground: #1c2735;
+  --card-foreground: #2d2d2f;
   --popover: #ffffff;
-  --popover-foreground: #1c2735;
+  --popover-foreground: #2d2d2f;
 
-  --primary: #ffb000;
-  --primary-foreground: #2a1a00;
-  --secondary: #fff4d6;
-  --secondary-foreground: #7a4b00;
-  --muted: #eef1f5;
-  --muted-foreground: #64748b;
-  --accent: #fff7e3;
-  --accent-foreground: #7a4b00;
-  --destructive: #dc2626;
-  --success: #16a34a;
-  --success-soft: #dcfce7;
-  --warning: #b45309;
-  --warning-soft: #fef3c7;
+  --primary: #2d2d2f;
+  --primary-foreground: #ffffff;
+  --secondary: #e4f1f8;
+  --secondary-foreground: #2d2d2f;
+  --muted: #eef2f5;
+  --muted-foreground: #5f6b76;
+  --accent: #e8f3f9;
+  --accent-foreground: #2d2d2f;
+  --destructive: #d93a2b;
+  /* Varian teks gelap agar lolos kontras AA di atas putih. */
+  --success: #007a7a;
+  --success-soft: rgb(0 166 166 / 0.14);
+  --warning: #8a5300;
+  --warning-soft: rgb(239 202 8 / 0.26);
+  --link: #007a7a;
+  --info: #24607e;
+  --info-soft: rgb(187 222 240 / 0.6);
 
-  --border: #e3e8ef;
-  --input: #dfe5ed;
-  --ring: #f5a300;
+  --border: #e2e8ee;
+  --input: #d7e0e7;
+  --ring: #00a6a6;
 
-  --chart-1: #ffb000;
-  --chart-2: #e89400;
-  --chart-3: #ffd66b;
-  --chart-4: #2b3a4e;
-  --chart-5: #94a3b8;
+  --chart-1: #efca08;
+  --chart-2: #f49f0a;
+  --chart-3: #f08700;
+  --chart-4: #00a6a6;
+  --chart-5: #bbdef0;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #475569;
-  --sidebar-primary: #ffb000;
-  --sidebar-primary-foreground: #2a1a00;
-  --sidebar-accent: #f4f6f9;
-  --sidebar-accent-foreground: #1c2735;
-  --sidebar-border: #e3e8ef;
-  --sidebar-ring: #f5a300;
+  --sidebar: #e8f3f9;
+  --sidebar-foreground: #3b444d;
+  --sidebar-primary: #2d2d2f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(187 222 240 / 0.75);
+  --sidebar-accent-foreground: #2d2d2f;
+  --sidebar-border: #d3e6f0;
+  --sidebar-ring: #00a6a6;
 
-  /* Panel CMS (navy) */
-  --panel: #1c2735;
-  --panel-foreground: #cbd5e1;
-  --panel-muted: #94a3b8;
-  --panel-accent: rgb(255 255 255 / 0.07);
+  /* Panel gelap (panel login). */
+  --panel: #2d2d2f;
+  --panel-foreground: #d9dde2;
+  --panel-muted: #9aa3ad;
+  --panel-accent: rgb(255 255 255 / 0.08);
 
-  --shadow-card: 0 1px 2px rgb(28 39 53 / 0.04), 0 1px 1px rgb(28 39 53 / 0.03);
-  --shadow-raised: 0 12px 32px -12px rgb(28 39 53 / 0.18), 0 2px 6px rgb(28 39 53 / 0.05);
+  --shadow-card: 0 1px 2px rgb(45 45 47 / 0.04), 0 1px 1px rgb(45 45 47 / 0.03);
+  --shadow-raised: 0 18px 40px -16px rgb(45 45 47 / 0.22), 0 2px 6px rgb(45 45 47 / 0.05);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/*
+ * Tema CMS — palet: sage #EAF2E3, aqua #61E8E1, koral #F25757, kuning #F2E863, emas #F2CD60.
+ * Peran warna tetap sama dengan portal (token --brand-* dipetakan ulang), jadi komponen tidak perlu berubah:
+ * teal→aqua, orange→koral, yellow→kuning, amber→emas, sky→sage. Teks di atas warna memakai hampir-hitam
+ * #1B1B1D agar koral tetap lolos AA (5.2:1).
+ */
+[data-theme="cms"] {
+  --brand-sky: #eaf2e3;
+  --brand-teal: #61e8e1;
+  --brand-yellow: #f2e863;
+  --brand-amber: #f2cd60;
+  --brand-orange: #f25757;
+  --brand-charcoal: #1b1b1d;
+
+  --background: #f6f8f4;
+  --foreground: #1b1b1d;
+  --card-foreground: #1b1b1d;
+  --popover-foreground: #1b1b1d;
+  --primary: #1b1b1d;
+  --secondary: #eef4e8;
+  --secondary-foreground: #1b1b1d;
+  --accent: #f1f6ec;
+  --accent-foreground: #1b1b1d;
+  --muted: #eff2ec;
+  --muted-foreground: #5c6656;
+  --destructive: #c23b3b;
+  --link: #0f7f7a;
+  --success: #0f7f7a;
+  --success-soft: rgb(97 232 225 / 0.22);
+  --warning: #6f5c00;
+  --warning-soft: rgb(242 232 99 / 0.4);
+  --info: #4a6340;
+  --info-soft: rgb(234 242 227 / 0.9);
+  --border: #e3e8de;
+  --input: #d8dfd1;
+  --ring: #2bbdb6;
+
+  --chart-1: #f2e863;
+  --chart-2: #f2cd60;
+  --chart-3: #f25757;
+  --chart-4: #61e8e1;
+  --chart-5: #cfe0c3;
+
+  --sidebar: #eaf2e3;
+  --sidebar-foreground: #3c4437;
+  --sidebar-primary: #1b1b1d;
+  --sidebar-accent: #dce8d2;
+  --sidebar-accent-foreground: #1b1b1d;
+  --sidebar-border: #dce8d2;
+  --sidebar-ring: #2bbdb6;
+
+  --panel: #1b1b1d;
+}
+
 .dark {
-  --background: #0f1722;
-  --foreground: #e2e8f0;
-  --card: #172130;
-  --card-foreground: #e2e8f0;
-  --popover: #172130;
-  --popover-foreground: #e2e8f0;
-  --primary: #ffb000;
-  --primary-foreground: #2a1a00;
-  --secondary: #2a2414;
-  --secondary-foreground: #ffd66b;
-  --muted: #1f2b3c;
-  --muted-foreground: #94a3b8;
-  --accent: #2a2414;
-  --accent-foreground: #ffd66b;
-  --destructive: #f87171;
-  --success: #4ade80;
-  --success-soft: rgb(74 222 128 / 0.14);
-  --warning: #fbbf24;
-  --warning-soft: rgb(251 191 36 / 0.14);
+  --background: #1f1f21;
+  --foreground: #eef1f4;
+  --card: #2d2d2f;
+  --card-foreground: #eef1f4;
+  --popover: #2d2d2f;
+  --popover-foreground: #eef1f4;
+  --primary: #efca08;
+  --primary-foreground: #2d2d2f;
+  --secondary: rgb(187 222 240 / 0.12);
+  --secondary-foreground: #eef1f4;
+  --muted: #38383b;
+  --muted-foreground: #a6adb5;
+  --accent: rgb(187 222 240 / 0.1);
+  --accent-foreground: #eef1f4;
+  --destructive: #f2786b;
+  --success: #3fd0d0;
+  --warning: #f5d64a;
+  --info: #bbdef0;
+  --link: #3fd0d0;
   --border: rgb(255 255 255 / 0.09);
   --input: rgb(255 255 255 / 0.13);
-  --ring: #ffb000;
-  --sidebar: #131c28;
-  --sidebar-foreground: #94a3b8;
-  --sidebar-primary: #ffb000;
-  --sidebar-primary-foreground: #2a1a00;
+  --sidebar: #262628;
+  --sidebar-foreground: #c3c9cf;
   --sidebar-accent: rgb(255 255 255 / 0.06);
-  --sidebar-accent-foreground: #e2e8f0;
+  --sidebar-accent-foreground: #eef1f4;
   --sidebar-border: rgb(255 255 255 / 0.08);
-  --sidebar-ring: #ffb000;
 }
 
 @theme inline {
@@ -139,6 +203,15 @@
   --color-panel-foreground: var(--panel-foreground);
   --color-panel-muted: var(--panel-muted);
   --color-panel-accent: var(--panel-accent);
+  --color-link: var(--link);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-brand-sky: var(--brand-sky);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-amber: var(--brand-amber);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-charcoal: var(--brand-charcoal);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -168,7 +241,7 @@
   * { @apply border-border outline-ring/50; }
   html { @apply font-sans antialiased; }
   body { @apply bg-background text-foreground; }
-  ::selection { background: rgb(255 176 0 / 0.3); }
+  ::selection { background: rgb(239 202 8 / 0.35); }
 }
 
 @layer components {
@@ -176,7 +249,7 @@
   .eyebrow { @apply text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase; }
   /* Garis aksen amber sebelum judul section. */
   .section-title { @apply flex items-center gap-2 text-sm font-semibold text-foreground; }
-  .section-title::before { content: ""; @apply block h-4 w-1 rounded-full bg-primary; }
+  .section-title::before { content: ""; @apply block h-4 w-1 rounded-full bg-brand-amber; }
 }
 
 /* Elemen [data-reveal] disiapkan untuk animasi masuk GSAP (components/motion/reveal.tsx). */

@@ -16,7 +16,7 @@ export function Meter({ value, label, className, indicatorClassName }: { value: 
 
   return (
     <div role="progressbar" aria-label={label} aria-valuenow={value} aria-valuemin={0} aria-valuemax={100} className={cn("h-2 overflow-hidden rounded-full bg-muted", className)}>
-      <div ref={bar} className={cn("h-full origin-left rounded-full bg-primary", indicatorClassName)} style={{ width: `${value}%` }} />
+      <div ref={bar} className={cn("h-full origin-left rounded-full bg-brand-amber", indicatorClassName)} style={{ width: `${value}%` }} />
     </div>
   );
 }

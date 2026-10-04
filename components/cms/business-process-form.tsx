@@ -2,14 +2,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download04Icon, FloppyDiskIcon, SentIcon } from "@hugeicons/core-free-icons";
+import { FloppyDiskIcon, SentIcon } from "@hugeicons/core-free-icons";
 import { PageHeader } from "@/components/blocks/page-header";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustrations/illustration";
 import { Reveal } from "@/components/motion/reveal";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -31,7 +30,7 @@ function Choice({ id, options, defaultValue }: { id: string; options: string[]; 
 }
 
 function Required() {
-  return <span aria-hidden className="text-primary">*</span>;
+  return <span aria-hidden className="text-brand-orange">*</span>;
 }
 
 /** Formulir input Proses Bisnis SPBE di CMS. */
@@ -41,42 +40,28 @@ export function BusinessProcessForm() {
 
   const run = (kind: "draft" | "submit") => {
     setPending(kind);
-    setTimeout(() => {
+    const request = new Promise<void>((resolve) => setTimeout(resolve, 900));
+    if (kind === "draft") toast.promise(request, { loading: "Menyimpan draf…", success: "Draf tersimpan", error: "Gagal menyimpan draf" });
+    request.then(() => {
       setPending(null);
-      if (kind === "draft") toast.success("Draf berhasil disimpan", { description: "Anda dapat melanjutkannya kapan saja." });
-      else setSubmitted(true);
-    }, 900);
+      if (kind === "submit") setSubmitted(true);
+    });
   };
 
   return (
     <Reveal className="grid gap-6">
       <PageHeader
-        eyebrow="CMS SPBE / Domain Proses Bisnis"
-        title="Input proses bisnis"
-        description="Entri dan kelola data arsitektur Proses Bisnis SPBE."
+        title="Proses bisnis baru"
+        description="Lengkapi sesuai standar Arsitektur SPBE Nasional."
         actions={
-          <>
-            <Button variant="outline" className="hidden sm:inline-flex">
-              <Icon icon={Download04Icon} size={16} />
-              Export
-            </Button>
-            <Button variant="outline" loading={pending === "draft"} onClick={() => run("draft")}>
-              {pending !== "draft" && <Icon icon={FloppyDiskIcon} size={16} />}
-              Simpan draf
-            </Button>
-          </>
+          <Button variant="outline" loading={pending === "draft"} onClick={() => run("draft")}>
+            {pending !== "draft" && <Icon icon={FloppyDiskIcon} size={16} />}
+            Simpan draf
+          </Button>
         }
       />
 
       <Card data-reveal className="gap-0 py-0">
-        <CardHeader className="border-b bg-accent/50 py-5">
-          <CardTitle>Form input proses bisnis SPBE</CardTitle>
-          <CardDescription>Lengkapi detail sesuai standar Arsitektur SPBE Nasional.</CardDescription>
-          <CardAction className="self-center">
-            <Badge variant="secondary">Mode entri aktif</Badge>
-          </CardAction>
-        </CardHeader>
-
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -91,7 +76,7 @@ export function BusinessProcessForm() {
                   <Field>
                     <FieldLabel htmlFor="opd">Perangkat Daerah <Required /></FieldLabel>
                     <Choice id="opd" options={opdList} />
-                    <FieldDescription>OPD yang bertanggung jawab atas proses bisnis.</FieldDescription>
+                    <FieldDescription>Penanggung jawab proses bisnis.</FieldDescription>
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="kode">ID proses bisnis</FieldLabel>
@@ -110,9 +95,9 @@ export function BusinessProcessForm() {
                 </Field>
               </FieldSet>
 
-              <div className="rounded-xl border border-primary/30 bg-accent/40 p-5">
+              <div className="rounded-xl border border-brand-sky bg-accent p-5">
                 <FieldSet>
-                  <FieldLegend className="section-title">Referensi Arsitektur Bisnis (RAB) multi-level</FieldLegend>
+                  <FieldLegend className="section-title">Referensi Arsitektur Bisnis (RAB)</FieldLegend>
                   <div className="grid gap-4 md:grid-cols-3">
                     <Field>
                       <FieldLabel htmlFor="rab1">RAB Level 1 (sektor)</FieldLabel>
@@ -169,7 +154,7 @@ export function BusinessProcessForm() {
         <DialogContent className="text-center sm:max-w-sm" showCloseButton={false}>
           <Illustration name="success" loop={false} className="mx-auto w-36" />
           <DialogTitle className="text-lg font-bold">Proses bisnis diajukan</DialogTitle>
-          <DialogDescription>Usulan masuk ke antrean verifikasi Bagian Organisasi. Anda akan diberi tahu jika ada catatan revisi.</DialogDescription>
+          <DialogDescription>Usulan masuk ke antrean verifikasi Bagian Organisasi.</DialogDescription>
           <DialogFooter className="mt-2 sm:justify-center">
             <Button variant="outline" onClick={() => setSubmitted(false)}>Tetap di sini</Button>
             <Button asChild><Link href="/cms">Ke beranda CMS</Link></Button>

@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <style>{"[data-reveal]{opacity:1!important;transform:none!important}"}</style>
         </noscript>
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
-        <Toaster position="top-right" richColors closeButton />
+        <Toaster position="bottom-right" closeButton />
       </body>
     </html>
   );

@@ -3,20 +3,27 @@
 
 export const FPS = 60;
 
+// Palet Diskominfo (sama dengan token di app/globals.css).
 export const palette = {
-  amber: "#FFB000",
-  amberDeep: "#E89400",
-  amberSoft: "#FFD66B",
-  amberPale: "#FFF1CC",
-  navy: "#1C2735",
-  navySoft: "#2B3A4E",
-  slate: "#64748B",
-  slateSoft: "#CBD5E1",
-  line: "#E3E8EF",
-  surface: "#F4F6F9",
+  sky: "#BBDEF0",
+  teal: "#00A6A6",
+  yellow: "#EFCA08",
+  amber: "#F49F0A",
+  orange: "#F08700",
+  charcoal: "#2D2D2F",
+  // Nama lama dipetakan ke palet baru agar ilustrasi tetap terbaca.
+  amberDeep: "#F08700",
+  amberSoft: "#EFCA08",
+  amberPale: "#E3F1F8",
+  navy: "#2D2D2F",
+  navySoft: "#46464A",
+  slate: "#5F6B76",
+  slateSoft: "#BBDEF0",
+  line: "#E2E8EE",
+  surface: "#F5F8FA",
   white: "#FFFFFF",
-  success: "#16A34A",
-  danger: "#EF4444",
+  success: "#00A6A6",
+  danger: "#D93A2B",
 };
 
 const EASE = { o: { x: 0.33, y: 0 }, i: { x: 0.2, y: 1 } };

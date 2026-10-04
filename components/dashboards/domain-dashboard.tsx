@@ -3,12 +3,11 @@ import { useState } from "react";
 import { DataTable } from "@/components/blocks/data-table";
 import { DetailDialog, DetailField } from "@/components/blocks/detail-dialog";
 import { FilterBar } from "@/components/blocks/filter-bar";
-import { HeatTile } from "@/components/blocks/heat-tile";
 import { StatCard } from "@/components/blocks/stat-card";
 import { StatusBadge } from "@/components/blocks/status-badge";
-import { Meter } from "@/components/motion/meter";
+import { BarChart, DoughnutChart } from "@/components/charts";
 import { Reveal } from "@/components/motion/reveal";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { opdList } from "@/lib/demo-data";
 
 export type DomainKey = "layanan" | "data" | "aplikasi" | "domain-infrastruktur" | "aplikasi-usulan" | "peta-rencana" | "infrastruktur";
@@ -37,37 +36,33 @@ export function DomainDashboard({ domain }: { domain: DomainKey }) {
       <FilterBar filters={[{ label: "Status", options: ["Disetujui", "Diajukan"] }, { label: "Perangkat Daerah", options: opdList }, { label: "Klasifikasi" }]} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={d.metric} value={d.count} hint="Periode 2025–2029" highlight />
-        <StatCard label="Disetujui" value={82} suffix="%" hint="Lolos verifikasi" />
-        <StatCard label="Terintegrasi" value={64} suffix="%" hint="Terhubung antar-OPD" />
-        <StatCard label="OPD terlibat" value={30} hint="Perangkat Daerah" />
+        <StatCard tone="teal" label={d.metric} value={d.count} trend={[0.82, 0.86, 0.9, 0.95, 1].map((f) => Math.round(d.count * f))} />
+        <StatCard tone="orange" label="Disetujui" value={82} suffix="%" />
+        <StatCard tone="yellow" label="Terintegrasi" value={64} suffix="%" />
+        <StatCard tone="amber" label="OPD terlibat" value={30} />
       </section>
 
-      <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
+      <section className="grid gap-5 *:min-w-0 lg:grid-cols-[1fr_2fr]">
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Sebaran {d.title}</CardTitle>
-            <CardDescription className="pl-3">Proporsi per kelompok klasifikasi</CardDescription>
+            <CardTitle className="section-title">Sebaran klasifikasi</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-3 gap-3">
-            {[64, 42, 28].map((n, i) => <HeatTile key={n} label={`Kelompok ${i + 1}`} value={`${n}%`} intensity={n / 64} className="min-h-24" />)}
+          <CardContent className="h-64">
+            <DoughnutChart labels={["Kelompok 1", "Kelompok 2", "Kelompok 3"]} data={[64, 42, 28]} caption="persen" colors={["--brand-teal", "--brand-amber", "--brand-sky"]} />
           </CardContent>
         </Card>
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Ringkasan status</CardTitle>
-            <CardDescription className="pl-3">Capaian indikator domain</CardDescription>
+            <CardTitle className="section-title">Capaian per tahun</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            {[88, 76, 64].map((n, i) => (
-              <div key={n} className="grid gap-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="font-medium">Indikator {i + 1}</span>
-                  <b className="tabular-nums">{n}%</b>
-                </div>
-                <Meter value={n} label={`Indikator ${i + 1}`} />
-              </div>
-            ))}
+          <CardContent className="h-64">
+            <BarChart
+              labels={["2025", "2026", "2027", "2028", "2029"]}
+              series={[
+                { label: "Disetujui", data: [64, 70, 76, 82, 88], color: "--brand-yellow" },
+                { label: "Terintegrasi", data: [41, 48, 55, 64, 72], color: "--brand-teal" },
+              ]}
+            />
           </CardContent>
         </Card>
       </section>

@@ -1,45 +1,41 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CheckmarkCircle02Icon, InformationCircleIcon, Alert02Icon, MultiplicationSignCircleIcon, Loading03Icon } from "@hugeicons/core-free-icons"
 
+/**
+ * Toast design system: kartu charcoal, ikon berwarna palet per tipe, aksi berbentuk pil kuning
+ * (pola toast-variants / promise-toast / undo-pill dari 21st.dev).
+ */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="dark"
       className="toaster group"
       icons={{
-        success: (
-          <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="size-4" />
-        ),
-        info: (
-          <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} className="size-4" />
-        ),
-        warning: (
-          <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-4" />
-        ),
-        error: (
-          <HugeiconsIcon icon={MultiplicationSignCircleIcon} strokeWidth={2} className="size-4" />
-        ),
-        loading: (
-          <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="size-4 animate-spin" />
-        ),
+        success: <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="size-5 text-brand-teal" />,
+        info: <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} className="size-5 text-brand-sky" />,
+        warning: <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-5 text-brand-yellow" />,
+        error: <HugeiconsIcon icon={MultiplicationSignCircleIcon} strokeWidth={2} className="size-5 text-brand-orange" />,
+        loading: <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="size-5 animate-spin text-brand-yellow" />,
       }}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          "--normal-bg": "var(--brand-charcoal)",
+          "--normal-text": "#ffffff",
+          "--normal-border": "transparent",
+          "--border-radius": "1rem",
         } as React.CSSProperties
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast gap-3! px-4! py-3.5! shadow-raised! font-sans!",
+          title: "font-semibold! text-sm!",
+          description: "text-white/70! text-xs!",
+          actionButton: "rounded-full! bg-brand-yellow! px-3! font-semibold! text-brand-charcoal!",
+          cancelButton: "rounded-full! bg-white/10! text-white!",
+          closeButton: "border-white/15! bg-brand-charcoal! text-white!",
         },
       }}
       {...props}

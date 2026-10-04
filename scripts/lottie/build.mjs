@@ -14,11 +14,11 @@ const star = (color) => group([path([[0, -8], [2, -2], [8, 0], [2, 2], [0, 8], [
 const twinkle = (start, frames) =>
   anim([[0, [55, 55]], [start, [55, 55]], [start + 40, [110, 110]], [start + 80, [55, 55]], [frames, [55, 55]]], ease.inOut);
 
-/* 1. Loader — lima lapisan arsitektur SPBE tersusun dari bawah ke atas. */
+/* 1. Loader — lima lapisan arsitektur SPBE (warna sama dengan logo) tersusun dari bawah ke atas. */
 function loader() {
   const frames = 96;
-  const widths = [32, 44, 56, 68, 80];
-  const colors = [c.amber, c.amber, c.amberSoft, c.navySoft, c.navy];
+  const widths = [56, 40, 64, 80, 64];
+  const colors = [c.teal, c.yellow, c.amber, c.orange, c.sky];
   const layers = widths.map((w, i) => {
     const y = 30 + i * 15;
     const j = widths.length - 1 - i;
@@ -56,60 +56,62 @@ function empty() {
         r: pingPong(0, -8, frames),
       }),
       layer("kilau-1", star(c.amber), { p: [108, 92], s: twinkle(0, frames) }),
-      layer("kilau-2", star(c.amberDeep), { p: [306, 96], s: twinkle(50, frames) }),
+      layer("kilau-2", star(c.teal), { p: [306, 96], s: twinkle(50, frames) }),
       layer("kilau-3", star(c.amber), { p: [322, 232], s: twinkle(95, frames) }),
     ],
   });
 }
 
-/* 3. Login hero — balai pemerintahan yang terhubung ke simpul-simpul layanan digital. */
+/* 3. Login hero — balai pemerintahan yang terhubung ke simpul layanan digital (untuk latar biru muda). */
 function loginHero() {
   const frames = 240;
   const roof = [240, 150];
   const nodes = [[80, 120], [400, 110], [70, 310], [410, 318], [240, 58]];
+  const nodeColors = [c.yellow, c.teal, c.orange, c.amber, c.teal];
   return composition("login-hero", {
     w: 480, h: 420, frames,
     layers: [
       layer("orbit", [
-        group([ellipse(360, 360), stroke(c.white, 1.5, { opacity: 10, dash: [4, 10], offset: anim([[0, 0], [frames, -56]], ease.linear) })]),
-        group([ellipse(250, 250), stroke(c.white, 1.5, { opacity: 14, dash: [2, 8], offset: anim([[0, 0], [frames, 40]], ease.linear) })]),
+        group([ellipse(360, 360), stroke(c.charcoal, 1.5, { opacity: 14, dash: [4, 10], offset: anim([[0, 0], [frames, -56]], ease.linear) })]),
+        group([ellipse(250, 250), fill(c.white, 35), stroke(c.charcoal, 1.5, { opacity: 18, dash: [2, 8], offset: anim([[0, 0], [frames, 40]], ease.linear) })]),
       ], { p: [240, 210] }),
       ...nodes.map(([x, y], i) =>
         layer(`jalur-${i}`, group([
           path([[roof[0], roof[1]], [x, y]]),
-          stroke(c.amberSoft, 1.5, { opacity: 45, dash: [6, 6], offset: anim([[0, 0], [frames, -48]], ease.linear) }),
+          stroke(c.charcoal, 1.5, { opacity: 35, dash: [6, 6], offset: anim([[0, 0], [frames, -48]], ease.linear) }),
         ])),
       ),
+      layer("bayangan", group([ellipse(250, 16), fill(c.charcoal, 10)]), { p: [240, 324] }),
       layer("balai", [
         group([ellipse(14, 14, [0, -64]), fill(c.white)]),
-        group([path([[-70, -52], [0, -84], [70, -52]], true), fill(c.navy, 25)]),
+        group([path([[-70, -52], [0, -84], [70, -52]], true), fill(c.orange)]),
         group([path([[-112, -46], [0, -100], [112, -46]], true), fill(c.amber)]),
-        group([rect(196, 12, 3, [0, -38]), fill(c.amber)]),
-        group([-72, -36, 0, 36, 72].map((x) => rect(14, 78, 3, [x, 6])).concat(fill(c.white, 85))),
-        group([rect(190, 10, 3, [0, 50]), fill(c.white, 65)]),
-        group([rect(220, 14, 4, [0, 62]), fill(c.white, 90)]),
+        group([rect(196, 12, 3, [0, -38]), fill(c.charcoal)]),
+        group([-72, -36, 0, 36, 72].map((x) => rect(14, 78, 3, [x, 6])).concat(fill(c.white))),
+        group([rect(190, 10, 3, [0, 50]), fill(c.white)]),
+        group([rect(220, 14, 4, [0, 62]), fill(c.charcoal)]),
       ], { p: [240, 250] }),
       ...nodes.flatMap(([x, y], i) => {
         const start = i * 40;
         return [
-          layer(`halo-${i}`, group([ellipse(36, 36), fill(c.amber)]), {
+          layer(`halo-${i}`, group([ellipse(36, 36), fill(nodeColors[i])]), {
             p: [x, y],
             s: anim([[0, [60, 60]], [start, [60, 60]], [start + 60, [150, 150]], [frames, [150, 150]]]),
-            o: anim([[0, 0], [start, 55], [start + 60, 0], [frames, 0]]),
+            o: anim([[0, 0], [start, 60], [start + 60, 0], [frames, 0]]),
           }),
-          layer(`simpul-${i}`, [group([ellipse(8, 8), fill(c.navy)]), group([ellipse(18, 18), fill(i % 2 ? c.white : c.amber)])], { p: [x, y] }),
+          layer(`simpul-${i}`, [group([ellipse(7, 7), fill(c.white)]), group([ellipse(18, 18), fill(nodeColors[i])])], { p: [x, y] }),
         ];
       }),
       layer("kartu-data", [
-        group([rect(50, 6, 3, [-12, -14]), fill(c.amber)]),
-        group([rect(64, 5, 2.5, [-5, 0]), rect(40, 5, 2.5, [-17, 12]), fill(c.white, 40)]),
-        group([rect(92, 58, 10), fill(c.navySoft), stroke(c.white, 1, { opacity: 14 })]),
+        group([rect(50, 6, 3, [-12, -14]), fill(c.teal)]),
+        group([rect(64, 5, 2.5, [-5, 0]), rect(40, 5, 2.5, [-17, 12]), fill(c.charcoal, 25)]),
+        group([rect(92, 58, 12), fill(c.white)]),
       ], { p: pingPong([92, 240], [92, 230], frames) }),
       layer("kartu-grafik", [
-        group([rect(10, 18, 2, [-16, 7]), fill(c.amberSoft)]),
-        group([rect(10, 30, 2, [0, 1]), fill(c.amber)]),
-        group([rect(10, 24, 2, [16, 4]), fill(c.white, 60)]),
-        group([rect(70, 58, 10), fill(c.navySoft), stroke(c.white, 1, { opacity: 14 })]),
+        group([rect(10, 18, 2, [-16, 7]), fill(c.yellow)]),
+        group([rect(10, 30, 2, [0, 1]), fill(c.orange)]),
+        group([rect(10, 24, 2, [16, 4]), fill(c.teal)]),
+        group([rect(70, 58, 12), fill(c.white)]),
       ], { p: pingPong([398, 238], [398, 248], frames, 0) }),
     ],
   });
@@ -181,7 +183,7 @@ function error() {
 /* 6. Building — papan rancangan dengan grafik yang sedang disusun (modul dalam pengembangan). */
 function building() {
   const frames = 180;
-  const bars = [[-92, 40, c.amberSoft], [-62, 70, c.amber], [-32, 55, c.amberSoft], [-2, 95, c.amber]];
+  const bars = [[-92, 40, c.yellow], [-62, 70, c.amber], [-32, 55, c.teal], [-2, 95, c.orange]];
   const grid = [];
   for (let x = -90; x <= 90; x += 30) grid.push(path([[x, -50], [x, 68]]));
   for (let y = -40; y <= 60; y += 25) grid.push(path([[-108, y], [108, y]]));
@@ -209,8 +211,8 @@ function building() {
       ], { p: [194, 150] }),
       layer("roda-gigi", [
         group([ellipse(10, 10), fill(c.white)]),
-        group([ellipse(28, 28), fill(c.amber)]),
-        group([ellipse(44, 44), stroke(c.amber, 10, { dash: [7, 6.82] })]),
+        group([ellipse(28, 28), fill(c.teal)]),
+        group([ellipse(44, 44), stroke(c.teal, 10, { dash: [7, 6.82] })]),
       ], { p: [318, 76], r: anim([[0, 0], [frames, 360]], ease.linear) }),
       layer("roda-gigi-kecil", [
         group([ellipse(14, 14), fill(c.navySoft)]),
@@ -226,7 +228,7 @@ function success() {
   const confetti = Array.from({ length: 8 }, (_, i) => {
     const a = (i * Math.PI) / 4 + Math.PI / 8;
     const at = (d) => [100 + Math.cos(a) * d, 100 + Math.sin(a) * d];
-    return layer(`konfeti-${i}`, group([ellipse(8, 8), fill([c.amber, c.success, c.navySoft][i % 3])]), {
+    return layer(`konfeti-${i}`, group([ellipse(8, 8), fill([c.yellow, c.teal, c.orange, c.sky][i % 4])]), {
       p: anim([[0, at(46)], [30, at(46)], [70, at(84)], [frames, at(84)]]),
       o: anim([[0, 0], [30, 0], [34, 100], [70, 0], [frames, 0]], ease.linear),
     });

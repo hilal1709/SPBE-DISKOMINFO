@@ -4,12 +4,13 @@ import { Add01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { PageHeader } from "@/components/blocks/page-header";
 import { StatCard } from "@/components/blocks/stat-card";
 import { StatusBadge } from "@/components/blocks/status-badge";
+import { BarChart } from "@/components/charts";
 import { Icon } from "@/components/icon";
 import { Meter } from "@/components/motion/meter";
 import { Reveal } from "@/components/motion/reveal";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { services } from "@/lib/demo-data";
 import { initials } from "@/lib/roles";
 
@@ -27,9 +28,8 @@ export function CmsDashboard() {
   return (
     <Reveal className="grid gap-6">
       <PageHeader
-        eyebrow="Beranda CMS"
         title="Selamat datang kembali"
-        description="Kelola pengajuan dan arsitektur layanan dari satu tempat."
+        description="Pantau pengajuan dan kelengkapan arsitektur Anda."
         actions={
           <Button asChild size="lg" className="group">
             <Link href="/cms/layanan/baru">
@@ -41,19 +41,18 @@ export function CmsDashboard() {
       />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Draf saya" value={4} hint="Belum diajukan" />
-        <StatCard label="Menunggu verifikasi" value={submitted} hint="Di Bagian Organisasi" highlight />
-        <StatCard label="Perlu revisi" value={2} hint="Dikembalikan dengan catatan" />
-        <StatCard label="Disetujui" value={12} hint="Periode 2025–2029" />
+        <StatCard tone="teal" label="Disetujui" value={12} trend={[4, 6, 7, 9, 12]} />
+        <StatCard tone="orange" label="Perlu revisi" value={2} />
+        <StatCard tone="yellow" label="Menunggu verifikasi" value={submitted} />
+        <StatCard tone="amber" label="Draf" value={4} />
       </section>
 
       <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.5fr_1fr]">
         <Card data-reveal>
           <CardHeader>
             <CardTitle className="section-title">Aktivitas terbaru</CardTitle>
-            <CardDescription className="pl-3">Perubahan pada usulan layanan</CardDescription>
             <CardAction>
-              <Button asChild variant="ghost" size="sm" className="group text-secondary-foreground">
+              <Button asChild variant="ghost" size="sm" className="group text-link">
                 <Link href="/cms/layanan">
                   Lihat semua
                   <Icon icon={ArrowRight01Icon} size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
@@ -65,7 +64,7 @@ export function CmsDashboard() {
             {services.map((s) => (
               <div key={s.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <Avatar className="size-9">
-                  <AvatarFallback className="bg-secondary text-xs font-semibold text-secondary-foreground">{initials(s.opd.replace(/^(Dinas|Badan)\s/, ""))}</AvatarFallback>
+                  <AvatarFallback className="bg-brand-sky text-xs font-semibold text-brand-charcoal">{initials(s.opd.replace(/^(Dinas|Badan)\s/, ""))}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{s.name}</p>
@@ -82,7 +81,6 @@ export function CmsDashboard() {
         <Card data-reveal>
           <CardHeader>
             <CardTitle className="section-title">Kelengkapan arsitektur</CardTitle>
-            <CardDescription className="pl-3">Progres pengisian periode 2025–2029</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             {progress.map((p) => (
@@ -97,6 +95,22 @@ export function CmsDashboard() {
           </CardContent>
         </Card>
       </section>
+
+      <Card data-reveal>
+        <CardHeader>
+          <CardTitle className="section-title">Pengajuan per bulan</CardTitle>
+        </CardHeader>
+        <CardContent className="h-64">
+          <BarChart
+            labels={["Apr", "Mei", "Jun", "Jul", "Agu", "Sep"]}
+            series={[
+              { label: "Diajukan", data: [6, 9, 7, 11, 8, 12], color: "--brand-yellow" },
+              { label: "Disetujui", data: [4, 7, 6, 9, 7, 10], color: "--brand-teal" },
+              { label: "Dikembalikan", data: [1, 2, 1, 2, 1, 2], color: "--brand-orange" },
+            ]}
+          />
+        </CardContent>
+      </Card>
     </Reveal>
   );
 }
