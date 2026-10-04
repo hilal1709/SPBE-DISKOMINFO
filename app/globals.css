@@ -1,8 +1,185 @@
 @import "tailwindcss";
-/* Visual authority: reference dashboard uses neutral surfaces and amber emphasis. */
-:root { --navy:#1f2d3d; --ink:#24364b; --muted:#65748a; --line:#e5eaf1; --bg:#f3f5f8; --orange:#ffb500; }
-* { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font-family:Arial, Helvetica, sans-serif; } button,input,select,textarea { font:inherit; }
-.card { background:#fff; border:1px solid var(--line); border-radius:9px; box-shadow:none; }.label { font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted); }.field {width:100%;border:1px solid #e7ebf0;border-radius:8px;padding:10px 12px;background:#fff;outline:none}.field:focus{border-color:#f5a000;box-shadow:0 0 0 3px rgb(245 160 0 / .12)}
-/* Replace former primary-blue utilities with the screenshot's amber accent. */
-.bg-blue-600,.bg-\[\#1268d6\],.bg-\[\#1c73da\]{background-color:#ffb500!important;color:#fff!important}.text-blue-600,.text-blue-700{color:#b56e00!important}.bg-blue-50{background-color:#fff7df!important}.text-blue-700{color:#9c6200!important}
-@media (min-width: 1024px) { aside { position: sticky; top: 0; height: 100vh; } }
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system SPBE Gresik — lihat docs/design-system.md.
+ * Amber = aksi & sorotan, navy = struktur & navigasi CMS, netral sejuk = permukaan.
+ */
+:root {
+  --radius: 0.75rem;
+
+  --background: #f4f6f9;
+  --foreground: #1c2735;
+  --card: #ffffff;
+  --card-foreground: #1c2735;
+  --popover: #ffffff;
+  --popover-foreground: #1c2735;
+
+  --primary: #ffb000;
+  --primary-foreground: #2a1a00;
+  --secondary: #fff4d6;
+  --secondary-foreground: #7a4b00;
+  --muted: #eef1f5;
+  --muted-foreground: #64748b;
+  --accent: #fff7e3;
+  --accent-foreground: #7a4b00;
+  --destructive: #dc2626;
+  --success: #16a34a;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+
+  --border: #e3e8ef;
+  --input: #dfe5ed;
+  --ring: #f5a300;
+
+  --chart-1: #ffb000;
+  --chart-2: #e89400;
+  --chart-3: #ffd66b;
+  --chart-4: #2b3a4e;
+  --chart-5: #94a3b8;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #475569;
+  --sidebar-primary: #ffb000;
+  --sidebar-primary-foreground: #2a1a00;
+  --sidebar-accent: #f4f6f9;
+  --sidebar-accent-foreground: #1c2735;
+  --sidebar-border: #e3e8ef;
+  --sidebar-ring: #f5a300;
+
+  /* Panel CMS (navy) */
+  --panel: #1c2735;
+  --panel-foreground: #cbd5e1;
+  --panel-muted: #94a3b8;
+  --panel-accent: rgb(255 255 255 / 0.07);
+
+  --shadow-card: 0 1px 2px rgb(28 39 53 / 0.04), 0 1px 1px rgb(28 39 53 / 0.03);
+  --shadow-raised: 0 12px 32px -12px rgb(28 39 53 / 0.18), 0 2px 6px rgb(28 39 53 / 0.05);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dark {
+  --background: #0f1722;
+  --foreground: #e2e8f0;
+  --card: #172130;
+  --card-foreground: #e2e8f0;
+  --popover: #172130;
+  --popover-foreground: #e2e8f0;
+  --primary: #ffb000;
+  --primary-foreground: #2a1a00;
+  --secondary: #2a2414;
+  --secondary-foreground: #ffd66b;
+  --muted: #1f2b3c;
+  --muted-foreground: #94a3b8;
+  --accent: #2a2414;
+  --accent-foreground: #ffd66b;
+  --destructive: #f87171;
+  --success: #4ade80;
+  --success-soft: rgb(74 222 128 / 0.14);
+  --warning: #fbbf24;
+  --warning-soft: rgb(251 191 36 / 0.14);
+  --border: rgb(255 255 255 / 0.09);
+  --input: rgb(255 255 255 / 0.13);
+  --ring: #ffb000;
+  --sidebar: #131c28;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-primary: #ffb000;
+  --sidebar-primary-foreground: #2a1a00;
+  --sidebar-accent: rgb(255 255 255 / 0.06);
+  --sidebar-accent-foreground: #e2e8f0;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #ffb000;
+}
+
+@theme inline {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-panel-muted: var(--panel-muted);
+  --color-panel-accent: var(--panel-accent);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+  --ease-out-expo: var(--ease-out);
+
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-pulse-ring: pulse-ring 1.2s var(--ease-out) infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { @apply font-sans antialiased; }
+  body { @apply bg-background text-foreground; }
+  ::selection { background: rgb(255 176 0 / 0.3); }
+}
+
+@layer components {
+  /* Label kecil kapital untuk metadata & judul kolom. */
+  .eyebrow { @apply text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase; }
+  /* Garis aksen amber sebelum judul section. */
+  .section-title { @apply flex items-center gap-2 text-sm font-semibold text-foreground; }
+  .section-title::before { content: ""; @apply block h-4 w-1 rounded-full bg-primary; }
+}
+
+/* Elemen [data-reveal] disiapkan untuk animasi masuk GSAP (components/motion/reveal.tsx). */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] { opacity: 0; transform: translateY(14px); }
+}

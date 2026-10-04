@@ -1,1 +1,5 @@
-import { CmsPage } from "@/components/cms-page"; export default function Page(){return <CmsPage title="Pengguna" description="Kelola akun, role, dan akses pengguna CMS."/>}
+import { CmsPlaceholder } from "@/components/cms/cms-placeholder";
+
+export default function Page() {
+  return <CmsPlaceholder title="Pengguna" description="Kelola akun, role, dan akses pengguna CMS." />;
+}

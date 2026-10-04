@@ -1,1 +1,5 @@
-import { CmsPage } from "@/components/cms-page"; export default function Page(){return <CmsPage title="Verifikasi" description="Tinjau pengajuan yang menunggu keputusan dan beri catatan evaluasi."/>}
+import { CmsPlaceholder } from "@/components/cms/cms-placeholder";
+
+export default function Page() {
+  return <CmsPlaceholder title="Verifikasi" description="Tinjau pengajuan yang menunggu keputusan dan beri catatan evaluasi." />;
+}

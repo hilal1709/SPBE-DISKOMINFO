@@ -1,0 +1,253 @@
+// Generator ilustrasi Lottie SPBE Gresik.
+// Jalankan: node scripts/lottie/build.mjs  → menulis components/illustrations/data/*.json
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  anim, composition, curve, ease, ellipse, fill, group, layer, palette as c, path, pingPong, rect, stroke, trim,
+} from "./lib.mjs";
+
+const out = join(dirname(fileURLToPath(import.meta.url)), "../../components/illustrations/data");
+mkdirSync(out, { recursive: true });
+
+const star = (color) => group([path([[0, -8], [2, -2], [8, 0], [2, 2], [0, 8], [-2, 2], [-8, 0], [-2, -2]], true), fill(color)]);
+const twinkle = (start, frames) =>
+  anim([[0, [55, 55]], [start, [55, 55]], [start + 40, [110, 110]], [start + 80, [55, 55]], [frames, [55, 55]]], ease.inOut);
+
+/* 1. Loader — lima lapisan arsitektur SPBE tersusun dari bawah ke atas. */
+function loader() {
+  const frames = 96;
+  const widths = [32, 44, 56, 68, 80];
+  const colors = [c.amber, c.amber, c.amberSoft, c.navySoft, c.navy];
+  const layers = widths.map((w, i) => {
+    const y = 30 + i * 15;
+    const j = widths.length - 1 - i;
+    const tin = j * 7;
+    const tout = 60 + j * 3;
+    return layer(`lapisan-${i}`, group([rect(w, 10, 5), fill(colors[i])]), {
+      p: anim([[0, [60, y - 12]], [tin, [60, y - 12]], [tin + 14, [60, y]], [tout, [60, y]], [tout + 12, [60, y + 6]], [frames, [60, y - 12]]]),
+      o: anim([[0, 0], [tin, 0], [tin + 14, 100], [tout, 100], [tout + 12, 0], [frames, 0]]),
+    });
+  });
+  return composition("loader", { w: 120, h: 120, frames, layers });
+}
+
+/* 2. Empty state — dokumen kosong yang sedang ditelusuri kaca pembesar. */
+function empty() {
+  const frames = 180;
+  return composition("empty", {
+    w: 400, h: 300, frames,
+    layers: [
+      layer("blob", group([ellipse(280, 210), fill(c.amberPale)]), { p: [200, 152], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(170, 16), fill(c.navy, 8)]), { p: [192, 258] }),
+      layer("dokumen-belakang", group([rect(120, 150, 14), fill(c.surface), stroke(c.line, 2)]), { p: [172, 146], r: -8 }),
+      layer("dokumen", [
+        group([rect(60, 8, 4, [-22, -54]), fill(c.amber)]),
+        group([rect(84, 6, 3, [0, -30]), rect(64, 6, 3, [-10, -14]), rect(84, 6, 3, [0, 2]), rect(52, 6, 3, [-16, 18]), fill(c.slateSoft)]),
+        group([rect(84, 26, 6, [0, 48]), fill(c.surface)]),
+        group([rect(124, 156, 14), fill(c.white), stroke(c.line, 2)]),
+      ], { p: pingPong([196, 150], [196, 143], frames) }),
+      layer("kaca-pembesar", [
+        group([ellipse(58, 58), stroke(c.navy, 9)]),
+        group([ellipse(50, 50), fill(c.white, 55)]),
+        group([rect(12, 42, 6), fill(c.navy)], { p: [35, 35], r: -45 }),
+      ], {
+        p: anim([[0, [262, 194]], [60, [244, 176]], [120, [272, 168]], [180, [262, 194]]], ease.inOut),
+        r: pingPong(0, -8, frames),
+      }),
+      layer("kilau-1", star(c.amber), { p: [108, 92], s: twinkle(0, frames) }),
+      layer("kilau-2", star(c.amberDeep), { p: [306, 96], s: twinkle(50, frames) }),
+      layer("kilau-3", star(c.amber), { p: [322, 232], s: twinkle(95, frames) }),
+    ],
+  });
+}
+
+/* 3. Login hero — balai pemerintahan yang terhubung ke simpul-simpul layanan digital. */
+function loginHero() {
+  const frames = 240;
+  const roof = [240, 150];
+  const nodes = [[80, 120], [400, 110], [70, 310], [410, 318], [240, 58]];
+  return composition("login-hero", {
+    w: 480, h: 420, frames,
+    layers: [
+      layer("orbit", [
+        group([ellipse(360, 360), stroke(c.white, 1.5, { opacity: 10, dash: [4, 10], offset: anim([[0, 0], [frames, -56]], ease.linear) })]),
+        group([ellipse(250, 250), stroke(c.white, 1.5, { opacity: 14, dash: [2, 8], offset: anim([[0, 0], [frames, 40]], ease.linear) })]),
+      ], { p: [240, 210] }),
+      ...nodes.map(([x, y], i) =>
+        layer(`jalur-${i}`, group([
+          path([[roof[0], roof[1]], [x, y]]),
+          stroke(c.amberSoft, 1.5, { opacity: 45, dash: [6, 6], offset: anim([[0, 0], [frames, -48]], ease.linear) }),
+        ])),
+      ),
+      layer("balai", [
+        group([ellipse(14, 14, [0, -64]), fill(c.white)]),
+        group([path([[-70, -52], [0, -84], [70, -52]], true), fill(c.navy, 25)]),
+        group([path([[-112, -46], [0, -100], [112, -46]], true), fill(c.amber)]),
+        group([rect(196, 12, 3, [0, -38]), fill(c.amber)]),
+        group([-72, -36, 0, 36, 72].map((x) => rect(14, 78, 3, [x, 6])).concat(fill(c.white, 85))),
+        group([rect(190, 10, 3, [0, 50]), fill(c.white, 65)]),
+        group([rect(220, 14, 4, [0, 62]), fill(c.white, 90)]),
+      ], { p: [240, 250] }),
+      ...nodes.flatMap(([x, y], i) => {
+        const start = i * 40;
+        return [
+          layer(`halo-${i}`, group([ellipse(36, 36), fill(c.amber)]), {
+            p: [x, y],
+            s: anim([[0, [60, 60]], [start, [60, 60]], [start + 60, [150, 150]], [frames, [150, 150]]]),
+            o: anim([[0, 0], [start, 55], [start + 60, 0], [frames, 0]]),
+          }),
+          layer(`simpul-${i}`, [group([ellipse(8, 8), fill(c.navy)]), group([ellipse(18, 18), fill(i % 2 ? c.white : c.amber)])], { p: [x, y] }),
+        ];
+      }),
+      layer("kartu-data", [
+        group([rect(50, 6, 3, [-12, -14]), fill(c.amber)]),
+        group([rect(64, 5, 2.5, [-5, 0]), rect(40, 5, 2.5, [-17, 12]), fill(c.white, 40)]),
+        group([rect(92, 58, 10), fill(c.navySoft), stroke(c.white, 1, { opacity: 14 })]),
+      ], { p: pingPong([92, 240], [92, 230], frames) }),
+      layer("kartu-grafik", [
+        group([rect(10, 18, 2, [-16, 7]), fill(c.amberSoft)]),
+        group([rect(10, 30, 2, [0, 1]), fill(c.amber)]),
+        group([rect(10, 24, 2, [16, 4]), fill(c.white, 60)]),
+        group([rect(70, 58, 10), fill(c.navySoft), stroke(c.white, 1, { opacity: 14 })]),
+      ], { p: pingPong([398, 238], [398, 248], frames, 0) }),
+    ],
+  });
+}
+
+/* 4. Not found — pin peta yang mendarat di rute putus-putus. */
+function notFound() {
+  const frames = 150;
+  return composition("not-found", {
+    w: 400, h: 300, frames,
+    layers: [
+      layer("bayangan", group([ellipse(160, 14), fill(c.navy, 7)]), { p: [200, 262] }),
+      layer("peta", [
+        group([path([[80, 100], [160, 85], [160, 235], [80, 250]], true), fill(c.white), stroke(c.line, 2)]),
+        group([path([[160, 85], [240, 100], [240, 250], [160, 235]], true), fill(c.amberPale), stroke(c.line, 2)]),
+        group([path([[240, 100], [320, 85], [320, 235], [240, 250]], true), fill(c.white), stroke(c.line, 2)]),
+      ]),
+      layer("rute", group([
+        curve([[110, 216, 0, 0, 22, -22], [178, 182, -26, 6, 26, -6], [256, 146, -20, 10, 0, 0]]),
+        stroke(c.navySoft, 3, { dash: [7, 7], offset: anim([[0, 0], [frames, -56]], ease.linear) }),
+      ])),
+      layer("titik-awal", group([ellipse(12, 12), fill(c.navy)]), { p: [110, 216] }),
+      layer("bayangan-pin", group([ellipse(30, 8), fill(c.navy, 18)]), {
+        p: [258, 146],
+        s: anim([[0, [100, 100]], [24, [55, 55]], [48, [100, 100]], [64, [80, 80]], [80, [100, 100]], [frames, [100, 100]]], ease.inOut),
+      }),
+      layer("pin", [
+        group([ellipse(14, 14, [0, -38]), fill(c.white)]),
+        group([ellipse(40, 40, [0, -38]), path([[-17, -29], [17, -29], [0, 0]], true), fill(c.amber)]),
+      ], {
+        p: anim([[0, [258, 144]], [24, [258, 112]], [48, [258, 144]], [64, [258, 133]], [80, [258, 144]], [frames, [258, 144]]], ease.inOut),
+        s: anim([[0, [100, 100]], [46, [100, 100]], [50, [112, 88]], [58, [100, 100]], [78, [100, 100]], [81, [106, 94]], [87, [100, 100]], [frames, [100, 100]]]),
+      }),
+      layer("kilau", star(c.amber), { p: [318, 72], s: twinkle(20, frames) }),
+    ],
+  });
+}
+
+/* 5. Error — steker yang gagal tersambung ke stopkontak. */
+function error() {
+  const frames = 150;
+  const flash = anim([[0, 0], [34, 0], [36, 100], [44, 0], [50, 0], [52, 100], [60, 0], [frames, 0]], ease.linear);
+  return composition("error", {
+    w: 400, h: 300, frames,
+    layers: [
+      layer("bayangan", group([ellipse(220, 14), fill(c.navy, 7)]), { p: [200, 226] }),
+      layer("soket", [
+        group([rect(4, 9, 2, [-14, -7]), rect(4, 9, 2, [-14, 7]), fill(c.white, 55)]),
+        group([rect(44, 36, 9), fill(c.navySoft)]),
+        group([curve([[20, 0, 0, 0, 60, 0], [200, -48, -60, 10, 0, 0]]), stroke(c.navySoft, 6)]),
+      ], { p: [246, 150] }),
+      layer("steker", [
+        group([rect(18, 5, 2, [30, -7]), rect(18, 5, 2, [30, 7]), fill(c.slate)]),
+        group([rect(44, 36, 9), fill(c.navy)]),
+        group([curve([[-200, 50, 0, 0, 80, 0], [-20, 0, -60, 0, 0, 0]]), stroke(c.navy, 6)]),
+      ], { p: anim([[0, [160, 150]], [36, [184, 150]], [44, [176, 150]], [52, [184, 150]], [80, [160, 150]], [frames, [160, 150]]], ease.inOut) }),
+      layer("percikan", group([
+        path([[0, -10], [0, -22]]), path([[8, -8], [16, -16]]), path([[8, 8], [16, 16]]), path([[0, 10], [0, 22]]),
+        stroke(c.amber, 3),
+      ]), { p: [224, 150], o: flash, s: anim([[0, [70, 70]], [34, [70, 70]], [42, [120, 120]], [50, [70, 70]], [58, [120, 120]], [frames, [70, 70]]], ease.linear) }),
+      layer("peringatan", [
+        group([rect(4, 13, 2, [0, -3]), ellipse(5, 5, [0, 9]), fill(c.navy)]),
+        group([ellipse(38, 38), fill(c.amberSoft)]),
+      ], { p: [204, 82], s: pingPong([100, 100], [110, 110], frames) }),
+    ],
+  });
+}
+
+/* 6. Building — papan rancangan dengan grafik yang sedang disusun (modul dalam pengembangan). */
+function building() {
+  const frames = 180;
+  const bars = [[-92, 40, c.amberSoft], [-62, 70, c.amber], [-32, 55, c.amberSoft], [-2, 95, c.amber]];
+  const grid = [];
+  for (let x = -90; x <= 90; x += 30) grid.push(path([[x, -50], [x, 68]]));
+  for (let y = -40; y <= 60; y += 25) grid.push(path([[-108, y], [108, y]]));
+  return composition("building", {
+    w: 400, h: 300, frames,
+    layers: [
+      layer("bayangan", group([ellipse(230, 14), fill(c.navy, 7)]), { p: [200, 252] }),
+      layer("papan", [
+        ...bars.map(([x, h, color], i) => {
+          const t = 10 + i * 8;
+          return group([rect(20, h, 4, [0, -h / 2]), fill(color)], {
+            p: [x, 60],
+            s: anim([[0, [100, 0]], [t, [100, 0]], [t + 26, [100, 100], ease.back], [150, [100, 100]], [168, [100, 0]], [frames, [100, 0]]]),
+          });
+        }),
+        group([
+          path([[30, 30], [52, 0], [74, 14], [100, -36]]),
+          trim(0, anim([[0, 0], [40, 0], [100, 100], [150, 100], [166, 0], [frames, 0]], ease.inOut)),
+          stroke(c.navy, 3.5),
+        ]),
+        group([rect(70, 8, 4, [-68, -64]), fill(c.navy, 80)]),
+        group([rect(30, 8, 4, [86, -64]), fill(c.amber)]),
+        group([...grid, stroke(c.line, 1)]),
+        group([rect(240, 170, 14), fill(c.white), stroke(c.line, 2)]),
+      ], { p: [194, 150] }),
+      layer("roda-gigi", [
+        group([ellipse(10, 10), fill(c.white)]),
+        group([ellipse(28, 28), fill(c.amber)]),
+        group([ellipse(44, 44), stroke(c.amber, 10, { dash: [7, 6.82] })]),
+      ], { p: [318, 76], r: anim([[0, 0], [frames, 360]], ease.linear) }),
+      layer("roda-gigi-kecil", [
+        group([ellipse(14, 14), fill(c.navySoft)]),
+        group([ellipse(26, 26), stroke(c.navySoft, 7, { dash: [5, 5.2] })]),
+      ], { p: [350, 112], r: anim([[0, 0], [frames, -360]], ease.linear) }),
+    ],
+  });
+}
+
+/* 7. Success — lingkaran dan centang yang tergambar, diikuti konfeti (diputar sekali). */
+function success() {
+  const frames = 90;
+  const confetti = Array.from({ length: 8 }, (_, i) => {
+    const a = (i * Math.PI) / 4 + Math.PI / 8;
+    const at = (d) => [100 + Math.cos(a) * d, 100 + Math.sin(a) * d];
+    return layer(`konfeti-${i}`, group([ellipse(8, 8), fill([c.amber, c.success, c.navySoft][i % 3])]), {
+      p: anim([[0, at(46)], [30, at(46)], [70, at(84)], [frames, at(84)]]),
+      o: anim([[0, 0], [30, 0], [34, 100], [70, 0], [frames, 0]], ease.linear),
+    });
+  });
+  return composition("success", {
+    w: 200, h: 200, frames,
+    layers: [
+      layer("latar", group([ellipse(120, 120), fill(c.success, 12)]), {
+        p: [100, 100],
+        s: anim([[0, [0, 0]], [18, [115, 115], ease.back], [28, [100, 100]], [frames, [100, 100]]]),
+      }),
+      layer("cincin", group([ellipse(96, 96), trim(0, anim([[0, 0], [6, 0], [36, 100], [frames, 100]], ease.inOut)), stroke(c.success, 6)]), { p: [100, 100], r: -90 }),
+      layer("centang", group([path([[-22, 2], [-6, 18], [24, -14]]), trim(0, anim([[0, 0], [26, 0], [50, 100], [frames, 100]], ease.inOut)), stroke(c.success, 8)]), { p: [100, 100] }),
+      ...confetti,
+    ],
+  });
+}
+
+const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success };
+for (const [name, build] of Object.entries(builds)) {
+  const json = JSON.stringify(build());
+  writeFileSync(join(out, `${name}.json`), json);
+  console.log(`${name}.json  ${(json.length / 1024).toFixed(1)} KB`);
+}

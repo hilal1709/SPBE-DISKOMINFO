@@ -1,1 +1,5 @@
-import { CmsPage } from "@/components/cms-page"; export default function Page(){return <CmsPage title="Layanan Saya" description="Daftar usulan layanan yang dikelola oleh pengguna aktif."/>}
+import { CmsPlaceholder } from "@/components/cms/cms-placeholder";
+
+export default function Page() {
+  return <CmsPlaceholder title="Layanan Saya" description="Daftar usulan layanan yang dikelola oleh pengguna aktif." />;
+}

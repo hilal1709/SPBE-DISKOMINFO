@@ -1,3 +1,103 @@
 "use client";
-import { useState } from "react"; import { useRouter } from "next/navigation";
-export default function Login(){const r=useRouter(),[error,setError]=useState("");async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const res=await fetch("/api/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:f.get("email"),password:f.get("password")})});if(res.ok)r.push("/cms");else setError("Email atau kata sandi tidak valid")};return <main className="grid min-h-screen place-items-center bg-[#eef4fb] p-5"><form onSubmit={submit} className="card w-full max-w-md p-8"><div className="grid size-12 place-items-center rounded-xl bg-blue-600 text-xl font-bold text-white">G</div><h1 className="mt-6 text-2xl font-bold">Masuk ke CMS SPBE</h1><p className="mt-2 text-sm text-slate-500">Gunakan akun yang dibuat oleh Superadmin.</p>{error&&<p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}<label className="mt-6 block"><span className="label">Email</span><input className="field mt-1" name="email" type="email" defaultValue="admin@gresikkab.go.id" required/></label><label className="mt-4 block"><span className="label">Kata sandi</span><input className="field mt-1" name="password" type="password" defaultValue="admin123" required/></label><button className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-3 font-bold text-white">Masuk ke CMS</button><p className="mt-4 text-xs text-slate-400">Demo: admin@gresikkab.go.id / admin123</p></form></main>}
+import Link from "next/link";
+import { useActionState, useRef, useState } from "react";
+import { Alert02Icon, ArrowLeft01Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
+import { login } from "@/app/actions/auth";
+import { Icon } from "@/components/icon";
+import { Illustration } from "@/components/illustrations/illustration";
+import { Brand } from "@/components/layout/brand";
+import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
+import { Reveal } from "@/components/motion/reveal";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+
+export default function Login() {
+  const [error, formAction, pending] = useActionState(login, undefined);
+  const [showPassword, setShowPassword] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+
+  // Getar singkat saat login gagal — umpan balik yang terasa tanpa perlu membaca pesan.
+  useGSAP(() => {
+    if (!error) return;
+    const mm = gsap.matchMedia();
+    mm.add(MOTION_OK, () => {
+      gsap.fromTo(form.current, { x: 0 }, { keyframes: { x: [0, -8, 7, -5, 3, 0] }, duration: 0.45, ease: "power1.out" });
+    });
+  }, { dependencies: [error] });
+
+  return (
+    <main className="grid min-h-svh lg:grid-cols-[1.05fr_1fr]">
+      <section className="relative hidden overflow-hidden bg-panel text-panel-foreground lg:flex lg:flex-col">
+        <div aria-hidden className="absolute -top-40 -left-40 size-[520px] rounded-full bg-primary/15 blur-3xl" />
+        <Reveal className="relative flex flex-1 flex-col p-10">
+          <div data-reveal>
+            <Brand tone="dark" />
+          </div>
+          <Illustration name="login-hero" className="mx-auto my-auto w-full max-w-md" />
+          <div data-reveal>
+            <h2 className="max-w-md text-3xl leading-tight font-bold text-balance text-white">Satu peta arsitektur untuk layanan digital Gresik.</h2>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-panel-muted">
+              Proses bisnis, layanan, data, aplikasi, dan infrastruktur seluruh Perangkat Daerah terhubung dalam satu sistem.
+            </p>
+          </div>
+        </Reveal>
+      </section>
+
+      <section className="flex flex-col p-6 sm:p-10">
+        <Button asChild variant="ghost" className="group -ml-2 self-start text-muted-foreground">
+          <Link href="/">
+            <Icon icon={ArrowLeft01Icon} size={16} className="transition-transform duration-300 group-hover:-translate-x-0.5" />
+            Kembali ke portal
+          </Link>
+        </Button>
+
+        <Reveal className="m-auto w-full max-w-sm py-10">
+          <div data-reveal className="lg:hidden">
+            <Brand />
+          </div>
+          <div data-reveal className="mt-8 lg:mt-0">
+            <p className="eyebrow">CMS SPBE</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">Masuk ke akun Anda</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Gunakan akun yang dibuat oleh Superadmin.</p>
+          </div>
+
+          <form ref={form} action={formAction} className="mt-8" data-reveal>
+            <FieldGroup className="gap-5">
+              {error && (
+                <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-1">
+                  <Icon icon={Alert02Icon} />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Field>
+                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <Input id="email" name="email" type="email" autoComplete="username" defaultValue="admin@gresikkab.go.id" required />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="password">Kata sandi</FieldLabel>
+                <InputGroup>
+                  <InputGroupInput id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" defaultValue="admin123" required />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton size="icon-xs" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}>
+                      <Icon icon={showPassword ? ViewOffSlashIcon : ViewIcon} size={16} />
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+              <Button type="submit" size="lg" loading={pending} className="w-full">
+                {pending ? "Memeriksa akun" : "Masuk ke CMS"}
+              </Button>
+            </FieldGroup>
+          </form>
+
+          <p data-reveal className="mt-6 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+            Akun demo: <b className="text-foreground">admin@gresikkab.go.id</b> / <b className="text-foreground">admin123</b>
+          </p>
+        </Reveal>
+      </section>
+    </main>
+  );
+}

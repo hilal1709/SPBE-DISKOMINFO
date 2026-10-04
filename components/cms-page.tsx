@@ -1,5 +1,0 @@
-"use client";
-import Link from "next/link";
-import { ArrowLeft, ClipboardList, FilePlus2 } from "lucide-react";
-import { CmsShell } from "./cms-shell";
-export function CmsPage({title,description}:{title:string;description:string}){return <CmsShell><main className="min-h-screen p-6 lg:p-10"><Link href="/cms" className="inline-flex items-center gap-2 text-sm font-bold text-[#9a6300]"><ArrowLeft size={16}/>Kembali ke Beranda CMS</Link><section className="card mx-auto mt-6 max-w-4xl p-7"><div className="flex items-start gap-4"><div className="grid size-11 place-items-center rounded-lg bg-[#fff5d9] text-[#9a6300]"><ClipboardList/></div><div><h1 className="text-2xl font-bold">{title}</h1><p className="mt-2 text-sm text-slate-500">{description}</p></div></div><div className="mt-8 rounded-lg border border-dashed border-slate-300 p-8 text-center"><FilePlus2 className="mx-auto text-[#b87500]"/><p className="mt-3 font-semibold">Modul CMS siap diisi</p><p className="mt-1 text-sm text-slate-500">Gunakan data demo sebagai referensi sambil melanjutkan pengisian data operasional.</p></div></section></main></CmsShell>}

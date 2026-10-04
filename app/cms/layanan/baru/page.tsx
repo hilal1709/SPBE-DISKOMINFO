@@ -1,3 +1,5 @@
-import { BusinessProcessForm } from "@/components/business-process-form";
-import { CmsShell } from "@/components/cms-shell";
-export default function Page(){return <CmsShell><BusinessProcessForm/></CmsShell>}
+import { BusinessProcessForm } from "@/components/cms/business-process-form";
+
+export default function Page() {
+  return <BusinessProcessForm />;
+}
