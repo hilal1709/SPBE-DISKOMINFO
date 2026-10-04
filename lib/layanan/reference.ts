@@ -1,4 +1,5 @@
-import { makeRabIndex, type RabNode } from "@/lib/probis/rab-index";
+import { makeRabIndex, type RabNode, type RabSet } from "@/lib/probis/rab-index";
+import { samplePeriods } from "@/lib/probis/reference";
 import ralReference from "./ral-reference.json";
 
 /**
@@ -6,6 +7,13 @@ import ralReference from "./ral-reference.json";
  * RAL disimpan sebagai node berbentuk RabNode agar indeksnya memakai makeRabIndex.
  */
 export const sampleRal = makeRabIndex(ralReference as RabNode[]);
+
+/** Kumpulan RAL cadangan (database tidak tersedia): satu versi bawaan untuk semua periode contoh. */
+export const sampleRalSet: RabSet = {
+  versions: [{ id: "bawaan", name: "Perpres 132/2022", nodes: sampleRal.nodes }],
+  periodVersion: Object.fromEntries(samplePeriods.map((p) => [p, "bawaan"])),
+  activeVersion: "bawaan",
+};
 
 export type Target = "masyarakat" | "usaha" | "asn" | "pemerintah";
 export const targetOptions: { value: Target; label: string }[] = [

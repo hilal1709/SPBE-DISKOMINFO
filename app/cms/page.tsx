@@ -1,10 +1,15 @@
 import { CmsHome } from "@/components/cms/cms-home";
 import { can, currentActor } from "@/lib/access";
+import { layananSummary } from "@/lib/layanan/cms-repo";
 import { cmsSummary } from "@/lib/probis/repo";
 
 export default async function CmsPage() {
   const actor = await currentActor();
-  const scope = can.readAll(actor) ? null : actor.opdId ?? "00000000-0000-0000-0000-000000000000";
-  const summary = await cmsSummary(scope);
-  return <CmsHome actor={actor} counts={summary.counts} recent={summary.recent} review={summary.review} />;
+  const scope = can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000");
+  const [probis, layanan] = await Promise.all([cmsSummary(scope), layananSummary(scope)]);
+  // Aktivitas terbaru gabungan probis + layanan.
+  const recent = [...probis.recent.map((a) => ({ ...a, kind: "probis" as const })), ...layanan.recent.map((a) => ({ ...a, kind: "layanan" as const }))]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 8);
+  return <CmsHome actor={actor} probis={probis} layanan={layanan} recent={recent} />;
 }

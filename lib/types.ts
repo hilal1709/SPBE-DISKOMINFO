@@ -59,3 +59,37 @@ export type Layanan = {
   /** Proses bisnis yang dilayani (dependensi ← Proses Bisnis). */
   probis: { id: string; name: string }[];
 };
+
+/** Layanan di CMS (satu baris tabel services beserta referensinya). */
+export type LayananRecord = {
+  id: string;
+  code: string;
+  name: string;
+  tujuan: string;
+  fungsi: string | null;
+  unit: string | null;
+  opdId: string;
+  opdCode: string;
+  opdName: string;
+  period: string;
+  target: Layanan["target"];
+  metode: Layanan["metode"];
+  status: SubmissionStatus;
+  ral1: string | null;
+  ral2: string | null;
+  ral3: string | null;
+  ralL4: string | null;
+  ralL5: string | null;
+  rab2: string | null;
+  manfaat: string | null;
+  ekonomi: string | null;
+  risiko: string | null;
+  mitigasi: string | null;
+  kl: string | null;
+  probis: { id: string; name: string }[];
+  updatedAt: string;
+  /** Data contoh (bisa dihapus massal). */
+  isSample: boolean;
+  /** RAL perlu dipetakan ulang setelah periodenya pindah versi RAL. */
+  ralReview: boolean;
+};

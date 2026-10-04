@@ -1,12 +1,12 @@
 ## SPBE Kabupaten Gresik
 
-Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat ini **Proses Bisnis** sudah lengkap, domain lain menyusul.
+Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat ini **Proses Bisnis** dan **Layanan** sudah lengkap, domain lain menyusul.
 
 ### Menjalankan
 
 1. Salin `.env.example` menjadi `.env.local`, isi `DATABASE_URL` dan `AUTH_SECRET` (wajib untuk `pnpm build && pnpm start`).
 2. `pnpm migrate` — skema dasar (bila database kosong) lalu migrasi di `database/migrations/` (dicatat di tabel `schema_migrations`).
-3. (Opsional) `pnpm seed:contoh` mengisi 3.501 probis contoh (status Tervalidasi, ditandai *contoh*). `pnpm seed:contoh --hapus` menghapusnya; tim Diskominfo juga bisa menghapus dari banner di CMS.
+3. (Opsional) `pnpm seed:contoh` mengisi 3.501 probis contoh dan `pnpm seed:layanan` ±460 layanan contoh (status Tervalidasi, ditandai *contoh*; jalankan probis dulu agar tautan layanan → probis terisi). Tambahkan `--hapus` untuk menghapus; tim Diskominfo juga bisa menghapus keduanya dari banner di CMS.
 4. `pnpm dev`.
 
 `AUTH_REQUIRED=true` mewajibkan login di `/cms`. Akun demo per peran (operator, organisasi, validator, pimpinan `@gresikkab.go.id`) dan kata sandinya ada di `database/migrations/004_opd_and_demo_users.sql` — ganti sebelum produksi.
@@ -22,6 +22,15 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
   - Tiap periode memakai satu versi (*Periode Arsitektur › Versi RAB*). Saat diganti, RAB setiap probis dipetakan otomatis lewat asal-usul node; yang tidak punya padanan ditandai **Perlu pemetaan RAB**. Periode lama tetap menampilkan RAB versinya sendiri.
   - Semua perubahan tercatat di riwayat versi.
   - Opsional: `node scripts/extract-reference.mjs --db --versi "Nama"` membuat versi draf dari template Excel (mis. bila analis mengisi sheet RAB Level 4/5). `lib/probis/rab-reference.json` hanya cadangan bawaan.
+
+### CMS Layanan
+
+- Kolom mengikuti template analis `public/templates/layanan.xlsx` (Domain Arsitektur Layanan): tujuan, fungsi, unit pelaksana, target, metode, RAL L1–L5, urusan (RAB L2), K/L terkait, manfaat, potensi ekonomi, risiko & mitigasi, dan proses bisnis yang dilayani.
+- Target (Masyarakat / Pelaku Usaha / ASN / Pemerintah) dan metode (Elektronik / Hybrid / Tatap muka) berupa pilihan tetap; Elektronik & Hybrid dihitung terdigitalisasi di dashboard `/layanan`.
+- Alur sama dengan probis: Operator OPD → **Verifikasi** Bagian Organisasi → **Validasi** Diskominfo → tayang di `/layanan`. ID otomatis `GSK-LYN <kode RAL L3>.<urutan>`.
+- **Referensi RAL berversi** di *Pengaturan › Referensi RAL* bekerja persis seperti RAB (mesinnya sama: `lib/reference/versioned.ts`). Tiap periode memilih versi RAB dan versi RAL di *Periode Arsitektur*; saat versi RAL diganti, RAL setiap layanan dipetakan otomatis dan yang tak berpadanan ditandai **Perlu pemetaan RAL**.
+- Impor/ekspor memakai kolom template analis (`/cms/layanan/impor`); kolom target/metode teks bebas dibaca otomatis (ditandai bila ditebak), proses bisnis dicocokkan lewat ID atau nama. **Isi dengan AI** memakai Gemini bila `GEMINI_API_KEY` diisi.
+- `pnpm referensi:ral` membuat ulang `lib/layanan/ral-reference.json` dari template analis.
 
 ## Getting Started
 

@@ -47,8 +47,8 @@ const headers: [RegExp, Field][] = [
   [/^periode/, "periode"],
 ];
 
-const normalize = (text: unknown) => String(text ?? "").replace(/[→←]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
-const text = (value: unknown) => {
+export const normalize = (text: unknown) => String(text ?? "").replace(/[→←]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+export const text = (value: unknown) => {
   const v = String(value ?? "").trim();
   return v ? v : null;
 };
@@ -61,7 +61,7 @@ const deepCode = (raw: string | null, rab: RabIndex) => {
   return code && rab.byCode.has(code) ? code : raw;
 };
 
-function matchPd(raw: string | null) {
+export function matchPd(raw: string | null) {
   if (!raw) return null;
   const key = raw.toLowerCase().trim();
   return perangkatDaerah.find((pd) => pd.code.toLowerCase() === key || pd.name.toLowerCase() === key)?.code
@@ -76,15 +76,15 @@ const statusOf = (raw: string | null): ImportRow["probisStatus"] => {
   return "as_is";
 };
 
-/** Cari workbook Proses Bisnis di dalam zip (termasuk zip bertingkat). */
-function findInZip(data: Uint8Array, unsupported: string[], prefix = ""): { name: string; data: Uint8Array } | null {
+/** Cari workbook domain di dalam zip (termasuk zip bertingkat); `pattern` mencocokkan nama berkas. */
+export function findInZip(data: Uint8Array, unsupported: string[], pattern = /proses bisnis/, prefix = ""): { name: string; data: Uint8Array } | null {
   let found: { name: string; data: Uint8Array } | null = null;
   for (const [path, content] of Object.entries(unzipSync(data))) {
     const lower = path.toLowerCase();
     if (lower.endsWith(".zip")) {
-      found ??= findInZip(content, unsupported, `${prefix}${path}/`);
+      found ??= findInZip(content, unsupported, pattern, `${prefix}${path}/`);
     } else if (lower.endsWith(".xlsx")) {
-      if (/proses bisnis/.test(lower) && !/gabungan/.test(lower)) found ??= { name: prefix + path, data: content };
+      if (pattern.test(lower) && !/gabungan/.test(lower)) found ??= { name: prefix + path, data: content };
       else unsupported.push((prefix + path).split("/").pop()!.replace(/\.xlsx$/i, ""));
     }
   }

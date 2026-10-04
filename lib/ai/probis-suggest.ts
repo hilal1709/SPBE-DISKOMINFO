@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { RabIndex } from "@/lib/probis/rab-index";
+import { geminiJson } from "./gemini";
+import { tokens } from "./text";
 import { ikuBySasaran, pdByCode, sasaranBySektor, sasaranStrategis } from "@/lib/probis/reference";
 
 export type SuggestInput = { name: string; opd: string; note?: string };
@@ -12,24 +14,6 @@ export type ProbisSuggestion = {
 };
 
 /* ---------- Heuristik lokal (gratis, tanpa API) ---------- */
-
-const stop = new Set(["dan", "atau", "yang", "di", "ke", "dari", "untuk", "pada", "dalam", "serta", "bidang", "urusan", "kegiatan", "proses", "bisnis", "daerah", "kabupaten", "gresik", "dinas", "badan", "berbasis", "elektronik", "sistem"]);
-
-/** Stemming ringan bahasa Indonesia: buang imbuhan umum agar "pengelolaan" ≈ "kelola". */
-function stem(word: string) {
-  let w = word;
-  if (w.length > 6) w = w.replace(/(kannya|annya|kan|an|nya|i)$/, "");
-  if (w.length > 5) w = w.replace(/^(meng|mem|men|meny|peng|pem|pen|peny|ber|ter|per|di|ke|se|me|pe)/, "");
-  return w;
-}
-
-const tokens = (text: string) =>
-  text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 2 && !stop.has(w))
-    .map(stem);
 
 /** Indeks kata per versi RAB (dibuat sekali per versi). Hanya sub-urusan yang masih berlaku. */
 const cache = new WeakMap<RabIndex, ReturnType<typeof buildIndex>>();
@@ -101,8 +85,6 @@ const geminiResult = z.object({
 
 async function gemini(input: SuggestInput, key: string, rab: RabIndex): Promise<ProbisSuggestion> {
   const { level3 } = indexOf(rab);
-  // Alias "latest" mengikuti model Flash terbaru; Flash-Lite jadi cadangan saat server sibuk.
-  const models = [...new Set([process.env.GEMINI_MODEL || "gemini-flash-latest", "gemini-flash-lite-latest"])];
   const pd = pdByCode.get(input.opd);
   const prompt = [
     "Anda analis arsitektur SPBE Pemerintah Kabupaten Gresik. Lengkapi isian Domain Proses Bisnis berikut dalam bahasa Indonesia baku.",
@@ -123,43 +105,18 @@ async function gemini(input: SuggestInput, key: string, rab: RabIndex): Promise<
     ...level3.map((n) => `${n.code} ${n.name}`),
   ].join("\n");
 
-  const body = JSON.stringify({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.3,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: "OBJECT",
-        properties: {
-          uraian: { type: "STRING" },
-          sasaran: { type: "STRING" },
-          iku: { type: "STRING" },
-          rab: { type: "ARRAY", items: { type: "OBJECT", properties: { code: { type: "STRING" }, reason: { type: "STRING" } }, required: ["code", "reason"] } },
-        },
-        required: ["uraian", "sasaran", "iku", "rab"],
+  const parsed = geminiResult.parse(
+    await geminiJson(key, prompt, {
+      type: "OBJECT",
+      properties: {
+        uraian: { type: "STRING" },
+        sasaran: { type: "STRING" },
+        iku: { type: "STRING" },
+        rab: { type: "ARRAY", items: { type: "OBJECT", properties: { code: { type: "STRING" }, reason: { type: "STRING" } }, required: ["code", "reason"] } },
       },
-    },
-  });
-
-  // Free tier kadang membalas 429/503 (sibuk): coba ulang sekali, lalu pindah ke model cadangan.
-  let response: Response | null = null;
-  const started = Date.now();
-  attempts: for (const model of models) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        body,
-        signal: AbortSignal.timeout(Math.max(3_000, 25_000 - (Date.now() - started))),
-      });
-      if (response.ok || ![429, 500, 503].includes(response.status)) break attempts;
-      await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
-    }
-  }
-  if (!response?.ok) throw new Error(`Gemini ${response?.status}`);
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  const parsed = geminiResult.parse(JSON.parse(text));
+      required: ["uraian", "sasaran", "iku", "rab"],
+    }),
+  );
 
   // Hanya terima kode RAB L3 dan sasaran yang benar-benar ada di referensi.
   const picks = parsed.rab.filter((r) => { const node = rab.byCode.get(r.code); return node?.level === 3 && rab.active(node); }).slice(0, 3);

@@ -99,11 +99,15 @@ components/
   illustrations/ <Illustration name=.../> + data/*.json (hasil generator)
   loader.tsx     Loader bermerek (Lottie "loader", dengan versi SVG+CSS yang tampil sebelum JS termuat)
   blocks/        Pola tingkat aplikasi: StatCard, FilterBar, MultiSelect, Segmented, Treemap, DataTable, DetailDialog,
-                 StatusBadge, HeatTile, PageHeader, EmptyState, DashboardSkeleton, Banner
+                 StatusBadge, HeatTile, PageHeader, EmptyState, DashboardSkeleton, Banner, Gauge,
+                 RefPicker (pemilih RAB/RAL berjenjang; RabPicker = pembungkus RAB)
   layout/        PublicShell, CmsShell, SidebarNav
   dashboards/    Dashboard domain portal publik
   portal/        Halaman portal lain (katalog, pengajuan, verifikasi, …)
-  cms/           Halaman CMS
+  cms/           Halaman CMS. Pola bersama lintas domain: RefManager (referensi berversi RAB/RAL),
+                 ReviewActions + ReviewHistory (aksi & riwayat verifikasi di pop-up detail),
+                 QueueList (antrean verifikasi/validasi), ImportPanel (impor template + pratinjau).
+                 Domain baru cukup membuat pembungkus tipis (lihat cms/layanan/).
 ```
 
 Pola filter & tabel dashboard:

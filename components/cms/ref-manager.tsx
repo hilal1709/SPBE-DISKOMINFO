@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useMemo, useRef, useState, useTransition } from "react";
 import { Add01Icon, ArrowRight01Icon, CheckmarkBadge01Icon, Copy01Icon, Delete02Icon, PencilEdit02Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
-import { addRabNode, createRabVersion, deleteRabNode, deleteRabVersion, publishRabVersion, setRabNodeStatus, updateRabNode } from "@/app/cms/actions";
+import { addRefNode, createRefVersion, deleteRefNode, deleteRefVersion, publishRefVersion, setRefNodeStatus, updateRefNode } from "@/app/cms/actions";
 import { Banner } from "@/components/blocks/banner";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { Icon } from "@/components/icon";
@@ -18,32 +18,41 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { RabChange, RabManagedNode, RabVersionInfo } from "@/lib/probis/rab";
+import type { ManagedNode, RefChange, RefKind, VersionInfo } from "@/lib/reference/versioned";
 import { cn } from "@/lib/utils";
 
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 const ROOT = "__root";
 
-const actionLabel: Record<string, string> = {
+/** Teks per jenis referensi: RAB (dipakai probis) dan RAL (dipakai layanan). */
+const kinds = {
+  rab: { ref: "RAB", unit: "probis", Unit: "Probis", root: "Sektor (L1)", rootTitle: "Tambah sektor (Level 1)", basePath: "/cms/pengaturan/referensi-rab" },
+  ral: { ref: "RAL", unit: "layanan", Unit: "Layanan", root: "Jenis (L1)", rootTitle: "Tambah jenis layanan (Level 1)", basePath: "/cms/pengaturan/referensi-ral" },
+} as const;
+type KindText = (typeof kinds)[RefKind];
+
+const actionLabel = (t: KindText): Record<string, string> => ({
   buat_versi: "Versi dibuat",
-  tambah: "RAB ditambah",
+  tambah: `${t.ref} ditambah`,
   ubah_nama: "Nama diubah",
   ubah_kode: "Kode diubah",
   pindah_induk: "Induk dipindah",
   nonaktif: "Ditandai tidak berlaku",
-  hapus: "RAB dihapus",
+  hapus: `${t.ref} dihapus`,
   aktifkan: "Diberlakukan lagi",
   terbit: "Versi diterbitkan",
   pakai_periode: "Dipakai periode",
-};
+});
 
-type Editing = { mode: "edit"; node: RabManagedNode } | { mode: "add"; parent: RabManagedNode | null } | null;
+type Editing = { mode: "edit"; node: ManagedNode } | { mode: "add"; parent: ManagedNode | null } | null;
 
 /**
- * Pengelola referensi RAB berversi. Versi draf bebas diubah (kode, nama, induk, status);
+ * Pengelola referensi berversi (RAB atau RAL). Versi draf bebas diubah (kode, nama, induk, status);
  * versi terbit hanya koreksi nama. Versi dipakai periode lewat halaman Periode Arsitektur.
  */
-export function RabManager({ versions, current, nodes, changes }: { versions: RabVersionInfo[]; current: RabVersionInfo; nodes: RabManagedNode[]; changes: RabChange[] }) {
+export function RefManager({ kind, versions, current, nodes, changes }: { kind: RefKind; versions: VersionInfo[]; current: VersionInfo; nodes: ManagedNode[]; changes: RefChange[] }) {
+  const t = kinds[kind];
+  const labels = actionLabel(t);
   const router = useRouter();
   const draft = current.status === "draft";
   const [query, setQuery] = useState("");
@@ -56,7 +65,7 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
   const body = useRef<HTMLTableSectionElement>(null);
 
   const children = useMemo(() => {
-    const map = new Map<string, RabManagedNode[]>();
+    const map = new Map<string, ManagedNode[]>();
     for (const n of nodes) map.set(n.parentId ?? ROOT, [...(map.get(n.parentId ?? ROOT) ?? []), n]);
     return map;
   }, [nodes]);
@@ -69,7 +78,7 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
     const keep = new Set<string>();
     for (const n of nodes) {
       if (!`${n.code} ${n.name}`.toLowerCase().includes(q)) continue;
-      for (let cur: RabManagedNode | undefined = n; cur; cur = cur.parentId ? byId.get(cur.parentId) : undefined) keep.add(cur.id);
+      for (let cur: ManagedNode | undefined = n; cur; cur = cur.parentId ? byId.get(cur.parentId) : undefined) keep.add(cur.id);
     }
     return keep;
   }, [nodes, query]);
@@ -132,7 +141,7 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
                 </div>
               </td>
               <td className="hidden py-2 pr-3 text-[11px] text-muted-foreground sm:table-cell">L{n.level}</td>
-              <td className="py-2 pr-3 text-right text-xs text-muted-foreground tabular-nums">{n.probis || "—"}</td>
+              <td className="py-2 pr-3 text-right text-xs text-muted-foreground tabular-nums">{n.used || "—"}</td>
               <td className="py-1.5 pr-2">
                 <div className="flex justify-end gap-0.5 opacity-60 transition-opacity group-hover/row:opacity-100">
                   <Button variant="ghost" size="icon-xs" aria-label={`Ubah ${n.code}`} onClick={() => setEditing({ mode: "edit", node: n })}>
@@ -155,8 +164,8 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
     <Reveal className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
       <div className="grid min-w-0 gap-5">
         <Card data-reveal className="flex-row flex-wrap items-center gap-3 p-4">
-          <Select value={current.id} onValueChange={(id) => router.push(`/cms/pengaturan/referensi-rab?versi=${id}`)}>
-            <SelectTrigger className="h-auto min-w-64 flex-1 py-2" aria-label="Versi RAB">
+          <Select value={current.id} onValueChange={(id) => router.push(`${t.basePath}?versi=${id}`)}>
+            <SelectTrigger className="h-auto min-w-64 flex-1 py-2" aria-label={`Versi ${t.ref}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -194,7 +203,7 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
 
         {draft ? (
           <Banner variant="warning" label="Draf" dismissible={false}>
-            Ubah kode, nama, induk, atau tandai RAB tidak berlaku di sini. Setelah diterbitkan, pakai versi ini untuk periode di <b>Periode Arsitektur</b>: RAB setiap probis dipetakan otomatis.
+            Ubah kode, nama, induk, atau tandai {t.ref} tidak berlaku di sini. Setelah diterbitkan, pakai versi ini untuk periode di <b>Periode Arsitektur</b>: {t.ref} setiap {t.unit} dipetakan otomatis.
           </Banner>
         ) : (
           <Banner variant="info" label="Terbit" dismissible={false}>
@@ -204,17 +213,17 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
 
         <Card data-reveal className="gap-3">
           <CardHeader className="flex flex-wrap items-center gap-3">
-            <CardTitle className="section-title">Pohon RAB</CardTitle>
+            <CardTitle className="section-title">Pohon {t.ref}</CardTitle>
             <InputGroup className="ml-auto sm:w-72">
               <InputGroupAddon>
                 <Icon icon={Search01Icon} size={16} />
               </InputGroupAddon>
-              <InputGroupInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari kode atau nama" aria-label="Cari RAB" />
+              <InputGroupInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari kode atau nama" aria-label={`Cari ${t.ref}`} />
             </InputGroup>
             {draft && (
               <Button variant="outline" size="sm" onClick={() => setEditing({ mode: "add", parent: null })}>
                 <Icon icon={Add01Icon} size={14} />
-                Sektor (L1)
+                {t.root}
               </Button>
             )}
           </CardHeader>
@@ -225,16 +234,16 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
                   <tr className="border-b">
                     <th className="py-2 pl-2 font-semibold">Kode & nama</th>
                     <th className="hidden py-2 font-semibold sm:table-cell">Level</th>
-                    <th className="py-2 pr-3 text-right font-semibold">Probis</th>
+                    <th className="py-2 pr-3 text-right font-semibold">{t.Unit}</th>
                     <th className="w-16"><span className="sr-only">Aksi</span></th>
                   </tr>
                 </thead>
                 <tbody ref={body}>{rows(ROOT, 0)}</tbody>
               </table>
             ) : (
-              <EmptyState size="sm" title="Versi ini belum berisi RAB" />
+              <EmptyState size="sm" title={`Versi ini belum berisi ${t.ref}`} />
             )}
-            {visible && visible.size === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Tidak ada RAB yang cocok.</p>}
+            {visible && visible.size === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Tidak ada {t.ref} yang cocok.</p>}
           </CardContent>
         </Card>
       </div>
@@ -249,8 +258,8 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
               {changes.map((c) => (
                 <li key={c.id} className="relative text-xs">
                   <span aria-hidden className="absolute top-1 -left-[1.3rem] size-2.5 rounded-full border-2 border-card bg-brand-teal" />
-                  <p className="font-semibold">{actionLabel[c.action] ?? c.action}</p>
-                  <p className="text-muted-foreground">{describe(c)}</p>
+                  <p className="font-semibold">{labels[c.action] ?? c.action}</p>
+                  <p className="text-muted-foreground">{describe(c, t)}</p>
                   <p className="text-[11px] text-muted-foreground">{c.actorName ?? "Sistem"} · {date.format(new Date(c.createdAt))}</p>
                 </li>
               ))}
@@ -266,16 +275,17 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
           editing={editing}
           draft={draft}
           nodes={nodes}
+          text={t}
           pending={pending}
           onClose={() => setEditing(null)}
           onSave={(values) =>
             editing.mode === "edit"
-              ? act(() => updateRabNode(editing.node.id, values), "RAB diperbarui", () => setEditing(null))
-              : act(() => addRabNode(current.id, editing.parent?.id ?? null, values.code!, values.name!), "RAB ditambahkan", () => setEditing(null))
+              ? act(() => updateRefNode(kind, editing.node.id, values), `${t.ref} diperbarui`, () => setEditing(null))
+              : act(() => addRefNode(kind, current.id, editing.parent?.id ?? null, values.code!, values.name!), `${t.ref} ditambahkan`, () => setEditing(null))
           }
-          onDelete={(node) => act(() => deleteRabNode(node.id), `${node.code} dihapus`, () => setEditing(null))}
+          onDelete={(node) => act(() => deleteRefNode(kind, node.id), `${node.code} dihapus`, () => setEditing(null))}
           onStatus={(node) =>
-            act(() => setRabNodeStatus(node.id, node.status === "tidak_berlaku" ? "berlaku" : "tidak_berlaku"), node.status === "tidak_berlaku" ? "RAB diberlakukan lagi" : "RAB ditandai tidak berlaku", () => setEditing(null))
+            act(() => setRefNodeStatus(kind, node.id, node.status === "tidak_berlaku" ? "berlaku" : "tidak_berlaku"), node.status === "tidak_berlaku" ? `${t.ref} diberlakukan lagi` : `${t.ref} ditandai tidak berlaku`, () => setEditing(null))
           }
         />
       )}
@@ -283,12 +293,13 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
       <CopyDialog
         open={copying}
         from={current}
+        text={t}
         pending={pending}
         onClose={() => setCopying(false)}
         onCreate={(name, note) =>
-          act(() => createRabVersion(current.id, name, note), `Versi “${name}” dibuat`, (id) => {
+          act(() => createRefVersion(kind, current.id, name, note), `Versi “${name}” dibuat`, (id) => {
             setCopying(false);
-            router.push(`/cms/pengaturan/referensi-rab?versi=${id}`);
+            router.push(`${t.basePath}?versi=${id}`);
           })
         }
       />
@@ -300,7 +311,7 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
             <DialogDescription>
               {confirm === "publish"
                 ? "Setelah terbit, kode dan induk tidak bisa diubah lagi. Versi lalu bisa dipakai periode di halaman Periode Arsitektur."
-                : "Seluruh RAB di draf ini dihapus. Tindakan ini tidak bisa dibatalkan."}
+                : `Seluruh ${t.ref} di draf ini dihapus. Tindakan ini tidak bisa dibatalkan.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -310,10 +321,10 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
               loading={pending}
               onClick={() =>
                 confirm === "publish"
-                  ? act(() => publishRabVersion(current.id), "Versi diterbitkan", () => setConfirm(null))
-                  : act(() => deleteRabVersion(current.id), "Draf dihapus", () => {
+                  ? act(() => publishRefVersion(kind, current.id), "Versi diterbitkan", () => setConfirm(null))
+                  : act(() => deleteRefVersion(kind, current.id), "Draf dihapus", () => {
                       setConfirm(null);
-                      router.push("/cms/pengaturan/referensi-rab");
+                      router.push(t.basePath);
                     })
               }
             >
@@ -326,7 +337,7 @@ export function RabManager({ versions, current, nodes, changes }: { versions: Ra
   );
 }
 
-function describe(c: RabChange) {
+function describe(c: RefChange, t: KindText) {
   const b = c.before as Record<string, string> | null;
   const a = c.after as Record<string, string> | null;
   switch (c.action) {
@@ -344,7 +355,7 @@ function describe(c: RabChange) {
     case "aktifkan":
       return String(a?.kode ?? "");
     case "pakai_periode":
-      return `Periode ${a?.periode}: ${a?.probis} probis, ${a?.perlu_pemetaan} perlu pemetaan ulang`;
+      return `Periode ${a?.periode}: ${a?.[t.unit]} ${t.unit}, ${a?.perlu_pemetaan} perlu pemetaan ulang`;
     default:
       return a?.nama ? String(a.nama) : "";
   }
@@ -354,6 +365,7 @@ function NodeDialog({
   editing,
   draft,
   nodes,
+  text: t,
   pending,
   onClose,
   onSave,
@@ -362,16 +374,17 @@ function NodeDialog({
 }: {
   editing: NonNullable<Editing>;
   draft: boolean;
-  nodes: RabManagedNode[];
+  nodes: ManagedNode[];
+  text: KindText;
   pending: boolean;
   onClose: () => void;
   onSave: (values: { code?: string; name?: string; parentId?: string | null }) => void;
-  onStatus: (node: RabManagedNode) => void;
-  onDelete: (node: RabManagedNode) => void;
+  onStatus: (node: ManagedNode) => void;
+  onDelete: (node: ManagedNode) => void;
 }) {
   const node = editing.mode === "edit" ? editing.node : null;
   const parent = editing.mode === "add" ? editing.parent : null;
-  const [code, setCode] = useState(node?.code ?? (parent ? `${parent.code}.` : "RAB."));
+  const [code, setCode] = useState(node?.code ?? (parent ? `${parent.code}.` : `${t.ref}.`));
   const [name, setName] = useState(node?.name ?? "");
   const [parentId, setParentId] = useState<string>(node?.parentId ?? ROOT);
 
@@ -393,8 +406,8 @@ function NodeDialog({
   }, [node, nodes]);
 
   const nameOnly = !!node && !draft;
-  // Hanya node baru di draf (tanpa asal versi lain, tanpa turunan, belum dipakai probis) yang boleh dihapus.
-  const deletable = !!node && draft && !node.originCode && node.probis === 0 && !nodes.some((n) => n.parentId === node.id);
+  // Hanya node baru di draf (tanpa asal versi lain, tanpa turunan, belum dipakai) yang boleh dihapus.
+  const deletable = !!node && draft && !node.originCode && node.used === 0 && !nodes.some((n) => n.parentId === node.id);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const save = () =>
     onSave(
@@ -407,9 +420,9 @@ function NodeDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{node ? `Ubah ${node.code}` : parent ? `Tambah turunan ${parent.code}` : "Tambah sektor (Level 1)"}</DialogTitle>
+          <DialogTitle>{node ? `Ubah ${node.code}` : parent ? `Tambah turunan ${parent.code}` : t.rootTitle}</DialogTitle>
           <DialogDescription>
-            {nameOnly ? "Versi terbit: hanya koreksi nama. Buat versi baru untuk mengubah kode atau induk." : "Probis yang memakai RAB ini tetap tertaut; namanya ikut berubah di versi ini."}
+            {nameOnly ? "Versi terbit: hanya koreksi nama. Buat versi baru untuk mengubah kode atau induk." : `${t.Unit} yang memakai ${t.ref} ini tetap tertaut; namanya ikut berubah di versi ini.`}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -437,7 +450,7 @@ function NodeDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <FieldDescription>Memindah induk mengubah level RAB ini dan turunannya. {node.probis > 0 && `Dipakai ${node.probis} probis.`}</FieldDescription>
+              <FieldDescription>Memindah induk mengubah level {t.ref} ini dan turunannya. {node.used > 0 && `Dipakai ${node.used} ${t.unit}.`}</FieldDescription>
             </Field>
           )}
         </div>
@@ -472,7 +485,7 @@ function NodeDialog({
   );
 }
 
-function CopyDialog({ open, from, pending, onClose, onCreate }: { open: boolean; from: RabVersionInfo; pending: boolean; onClose: () => void; onCreate: (name: string, note: string) => void }) {
+function CopyDialog({ open, from, text: t, pending, onClose, onCreate }: { open: boolean; from: VersionInfo; text: KindText; pending: boolean; onClose: () => void; onCreate: (name: string, note: string) => void }) {
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   return (
@@ -480,7 +493,7 @@ function CopyDialog({ open, from, pending, onClose, onCreate }: { open: boolean;
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Versi baru dari “{from.name}”</DialogTitle>
-          <DialogDescription>Seluruh RAB disalin sebagai draf. Setiap RAB mengingat asalnya, sehingga probis bisa dipetakan otomatis saat periode memakai versi baru.</DialogDescription>
+          <DialogDescription>Seluruh {t.ref} disalin sebagai draf. Setiap {t.ref} mengingat asalnya, sehingga {t.unit} bisa dipetakan otomatis saat periode memakai versi baru.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <Field>

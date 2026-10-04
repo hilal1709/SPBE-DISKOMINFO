@@ -23,7 +23,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { allLayanan } from "@/lib/layanan/generate";
 import { activeFilterCount, countBy, emptyFilter, filterFromParams, filterLayanan, filterToParams, ralOptions, ralTree, sanitizeFilter, type LayananFilter } from "@/lib/layanan/query";
-import { RAL_PUBLIK, isDigital, metodeLabel, metodeOptions, sampleRal, targetLabel, targetOptions, type Metode, type Target } from "@/lib/layanan/reference";
+import { useRalSet } from "@/components/layanan/ral-context";
+import { RAL_PUBLIK, isDigital, metodeLabel, metodeOptions, targetLabel, targetOptions, type Metode, type Target } from "@/lib/layanan/reference";
+import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, sampleRab, type PeriodOptions } from "@/lib/probis/reference";
 import type { Layanan } from "@/lib/types";
 
@@ -32,15 +34,13 @@ const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
-const ral = sampleRal;
-const ralLabel = ral.label;
 const ralLevels = ["", "Jenis", "Urusan", "Sub-urusan"];
 const metodeTone: Record<Metode, string> = { elektronik: "bg-brand-teal", hybrid: "bg-brand-sky", tatap_muka: "bg-brand-charcoal/70" };
 
 type RalKey = "ral1" | "ral2" | "ral3";
 
 /** RAL bertingkat: buang pilihan turunan yang tidak lagi berada di bawah induk terpilih. */
-function withRal(current: LayananFilter, patch: Partial<Pick<LayananFilter, RalKey>>) {
+function withRal(current: LayananFilter, patch: Partial<Pick<LayananFilter, RalKey>>, ral: RabIndex) {
   const next = { ...current, ...patch };
   for (const [key, level] of [["ral2", "level2"], ["ral3", "level3"]] as const) {
     const allowed = new Set(ralOptions(next, ral)[level].map((n) => n.code));
@@ -61,12 +61,14 @@ export function ServiceDashboard({
   periods: PeriodOptions;
 }) {
   const params = useSearchParams();
+  const rals = useRalSet();
   const all = useMemo(() => data ?? allLayanan(), [data]);
   const [filter, setFilterState] = useState<LayananFilter>(() => {
     const parsed = filterFromParams(new URLSearchParams(params.toString()), activePeriod);
+    const ral = rals.forPeriod(periods.includes(parsed.period) ? parsed.period : activePeriod);
     const valid = { periods, defaultPeriod: activePeriod, pd: new Set([...pdByCode.keys(), ...all.map((l) => l.pd)]), target: new Set(Object.keys(targetLabel)), metode: new Set(Object.keys(metodeLabel)), ral };
     // RAL turunan yang tidak berada di bawah induk terpilih juga dibuang.
-    return withRal(sanitizeFilter(parsed, valid), {});
+    return withRal(sanitizeFilter(parsed, valid), {}, ral);
   });
   const [selected, setSelected] = useState<Layanan | null>(null);
   /** Filter terbaru, untuk aksi tertunda (animasi chip, Urungkan di toast). */
@@ -80,7 +82,7 @@ export function ServiceDashboard({
     const query = filterToParams(value, activePeriod).toString();
     window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
   };
-  const setRal = (patch: Partial<Pick<LayananFilter, RalKey>>) => setFilter((current) => withRal(current, patch));
+  const setRal = (patch: Partial<Pick<LayananFilter, RalKey>>) => setFilter((current) => withRal(current, patch, rals.forPeriod(current.period)));
 
   /** Klik petak/baris: filter langsung diterapkan, toast menawarkan Urungkan. */
   const clickFilter = (label: string, apply: (current: LayananFilter) => LayananFilter, adding: boolean) => {
@@ -95,8 +97,11 @@ export function ServiceDashboard({
   const withoutPd = useMemo(() => filterLayanan(all, { ...filter, pd: [] }), [all, filter]);
   const withoutTargetMetode = useMemo(() => filterLayanan(all, { ...filter, target: [], metode: [] }), [all, filter]);
 
+  /** Referensi RAL mengikuti versi milik periode yang dipilih. */
+  const ral = useMemo(() => rals.forPeriod(filter.period), [rals, filter.period]);
+  const ralLabel = ral.label;
   const options = ralOptions(filter, ral);
-  const tree = useMemo(() => ralTree(rows, ral), [rows]);
+  const tree = useMemo(() => ralTree(rows, ral), [rows, ral]);
   const jenis = countBy(rows, "ral1");
   const metode = countBy(rows, "metode");
   const digital = rows.filter((l) => isDigital(l.metode)).length;
@@ -244,7 +249,7 @@ export function ServiceDashboard({
               <CardTitle className="section-title">Urusan layanan (RAL 2)</CardTitle>
             </CardHeader>
             <CardContent>
-              <Treemap items={urusan} selected={filter.ral2} onToggle={(code) => clickFilter(ralLabel(code), (c) => withRal(c, { ral2: toggle(c.ral2, code) }), !filter.ral2.includes(code))} className="h-[22rem] sm:h-[26rem]" />
+              <Treemap items={urusan} selected={filter.ral2} onToggle={(code) => clickFilter(ralLabel(code), (c) => withRal(c, { ral2: toggle(c.ral2, code) }, ral), !filter.ral2.includes(code))} className="h-[22rem] sm:h-[26rem]" />
             </CardContent>
           </Card>
 

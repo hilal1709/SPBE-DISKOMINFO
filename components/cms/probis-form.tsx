@@ -48,7 +48,7 @@ const fromRecord = (r: ProbisRecord | null, lockedOpd: string | null, activePeri
 });
 
 /** Sorot sebentar kolom yang baru diisi (oleh AI atau otomatis). */
-function flash(el: Element | null) {
+export function flash(el: Element | null) {
   if (!el) return;
   gsap.matchMedia().add(MOTION_OK, () => {
     gsap.fromTo(el, { backgroundColor: "color-mix(in oklab, var(--brand-yellow) 45%, transparent)" }, { backgroundColor: "transparent", duration: 1.4, ease: "power2.out", clearProps: "backgroundColor" });
@@ -374,7 +374,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
   );
 }
 
-function SuggestItem({ label, text, onApply }: { label: string; text: string; onApply: () => void }) {
+export function SuggestItem({ label, text, onApply }: { label: string; text: string; onApply: () => void }) {
   return (
     <div data-suggest className="group/s grid gap-1 rounded-xl bg-muted/60 p-3 text-sm">
       <div className="flex items-center justify-between gap-2">
@@ -391,16 +391,16 @@ function SuggestItem({ label, text, onApply }: { label: string; text: string; on
 const NONE = "__none";
 
 /**
- * RAB Level 4/5: dropdown dari referensi bila sudah tersedia di bawah induknya,
+ * Referensi Level 4/5 (RAB atau RAL): dropdown dari referensi bila sudah tersedia di bawah induknya,
  * selain itu isian teks bebas (referensi L4/L5 di template masih kosong).
  */
-function DeepRabField({ rab, level, parent, value, error, onChange }: { rab: RabIndex; level: 4 | 5; parent: string; value: string; error?: string; onChange: (value: string) => void }) {
+export function DeepRabField({ rab, level, parent, value, error, onChange, refLabel = "RAB" }: { rab: RabIndex; level: 4 | 5; parent: string; value: string; error?: string; onChange: (value: string) => void; refLabel?: string }) {
   const options = rab.children(parent, true);
-  const id = `rabL${level}`;
+  const id = `${refLabel.toLowerCase()}L${level}`;
   return (
     <Field data-field={id} data-invalid={!!error || undefined} className="rounded-lg">
       <FieldLabel htmlFor={id}>
-        RAB Level {level} <span className="font-normal text-muted-foreground">(opsional)</span>
+        {refLabel} Level {level} <span className="font-normal text-muted-foreground">(opsional)</span>
       </FieldLabel>
       {options.length ? (
         <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? "" : v)}>
@@ -417,7 +417,7 @@ function DeepRabField({ rab, level, parent, value, error, onChange }: { rab: Rab
           </SelectContent>
         </Select>
       ) : (
-        <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={level === 4 ? "Teks bebas (referensi L4 belum ada)" : "RAB.xx.xx.xx.xx.nn"} />
+        <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={level === 4 ? "Teks bebas (referensi L4 belum ada)" : `${refLabel}.xx.xx.xx.xx.nn`} />
       )}
       <FieldError>{error}</FieldError>
     </Field>

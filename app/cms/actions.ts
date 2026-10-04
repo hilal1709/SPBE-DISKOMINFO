@@ -1,23 +1,19 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { fail, refresh, type ActionResult } from "@/lib/cms/result";
 import { suggestProbis as suggest, type ProbisSuggestion } from "@/lib/ai/probis-suggest";
 import { can, currentActor, stageOf } from "@/lib/access";
 import * as periods from "@/lib/probis/periods";
 import { readUpload, validateRows, type ImportResult, type ImportRow } from "@/lib/probis/import";
 import * as repo from "@/lib/probis/repo";
+import * as layananRepo from "@/lib/layanan/cms-repo";
 import * as rabRepo from "@/lib/probis/rab";
+import * as ralRepo from "@/lib/layanan/ral";
+import type { RefKind, VersionedRef } from "@/lib/reference/versioned";
 import type { RabStatus } from "@/lib/probis/rab-index";
 import { makeProbisInput, type ProbisInput } from "@/lib/probis/schema";
 import type { SubmissionStatus } from "@/lib/types";
 
-export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string; fields?: Record<string, string> };
-
-const fail = (error: unknown): { ok: false; error: string } => ({ ok: false, error: error instanceof Error ? error.message : "Terjadi kesalahan." });
-
-function refresh() {
-  revalidatePath("/cms", "layout");
-  revalidatePath("/");
-}
+export type { ActionResult } from "@/lib/cms/result";
 
 /** Operator hanya boleh menyimpan untuk OPD-nya sendiri. */
 async function assertOpd(opdCode: string) {
@@ -222,7 +218,8 @@ export async function clearSamples(): Promise<ActionResult<{ removed: number }>>
   try {
     const actor = await currentActor();
     if (!can.managePeriods(actor)) throw new Error("Hanya tim Diskominfo yang dapat menghapus data contoh.");
-    const removed = await repo.clearSamples();
+    // Layanan contoh dihapus dulu: tautannya ke probis contoh ikut terlepas.
+    const removed = (await layananRepo.clearSamples()) + (await repo.clearSamples());
     refresh();
     return { ok: true, data: { removed } };
   } catch (error) {
@@ -230,18 +227,21 @@ export async function clearSamples(): Promise<ActionResult<{ removed: number }>>
   }
 }
 
-/* ---------- Referensi RAB berversi ---------- */
+/* ---------- Referensi berversi (RAB untuk probis, RAL untuk layanan) ---------- */
 
-async function rabAdmin() {
+const refs = { rab: rabRepo.rab, ral: ralRepo.ral } satisfies Record<RefKind, VersionedRef>;
+
+async function refAdmin(kind: RefKind) {
   const actor = await currentActor();
-  if (!can.manageReference(actor)) throw new Error("Hanya pengelola referensi arsitektur yang dapat mengubah RAB.");
+  if (!can.manageReference(actor)) throw new Error(`Hanya pengelola referensi arsitektur yang dapat mengubah ${refs[kind].label}.`);
   return actor;
 }
 
-const run = async <T,>(task: (actor: Awaited<ReturnType<typeof rabAdmin>>) => Promise<T>): Promise<ActionResult<T>> => {
+const run = async <T,>(kind: RefKind, task: (ref: VersionedRef, actor: Awaited<ReturnType<typeof refAdmin>>) => Promise<T>): Promise<ActionResult<T>> => {
   try {
-    const actor = await rabAdmin();
-    const data = await task(actor);
+    if (!(kind in refs)) throw new Error("Jenis referensi tidak dikenal.");
+    const actor = await refAdmin(kind);
+    const data = await task(refs[kind], actor);
     refresh();
     return { ok: true, data };
   } catch (error) {
@@ -249,35 +249,35 @@ const run = async <T,>(task: (actor: Awaited<ReturnType<typeof rabAdmin>>) => Pr
   }
 };
 
-export async function createRabVersion(fromId: string, name: string, note?: string) {
-  return run((actor) => rabRepo.createVersion(fromId, name, note ?? null, actor));
+export async function createRefVersion(kind: RefKind, fromId: string, name: string, note?: string) {
+  return run(kind, (ref, actor) => ref.createVersion(fromId, name, note ?? null, actor));
 }
 
-export async function updateRabNode(id: string, patch: { code?: string; name?: string; parentId?: string | null }) {
-  return run((actor) => rabRepo.updateNode(id, patch, actor));
+export async function updateRefNode(kind: RefKind, id: string, patch: { code?: string; name?: string; parentId?: string | null }) {
+  return run(kind, (ref, actor) => ref.updateNode(id, patch, actor));
 }
 
-export async function addRabNode(versionId: string, parentId: string | null, code: string, name: string) {
-  return run((actor) => rabRepo.addNode(versionId, parentId, code, name, actor));
+export async function addRefNode(kind: RefKind, versionId: string, parentId: string | null, code: string, name: string) {
+  return run(kind, (ref, actor) => ref.addNode(versionId, parentId, code, name, actor));
 }
 
-export async function deleteRabNode(id: string) {
-  return run((actor) => rabRepo.deleteNode(id, actor));
+export async function deleteRefNode(kind: RefKind, id: string) {
+  return run(kind, (ref, actor) => ref.deleteNode(id, actor));
 }
 
-export async function setRabNodeStatus(id: string, status: RabStatus) {
-  return run((actor) => rabRepo.setNodeStatus(id, status, actor));
+export async function setRefNodeStatus(kind: RefKind, id: string, status: RabStatus) {
+  return run(kind, (ref, actor) => ref.setNodeStatus(id, status, actor));
 }
 
-export async function publishRabVersion(id: string) {
-  return run((actor) => rabRepo.publishVersion(id, actor));
+export async function publishRefVersion(kind: RefKind, id: string) {
+  return run(kind, (ref, actor) => ref.publishVersion(id, actor));
 }
 
-export async function deleteRabVersion(id: string) {
-  return run(() => rabRepo.deleteVersion(id));
+export async function deleteRefVersion(kind: RefKind, id: string) {
+  return run(kind, (ref) => ref.deleteVersion(id));
 }
 
-/** Pakai versi RAB lain untuk satu periode; RAB tiap probis dipetakan ulang otomatis. */
-export async function setPeriodRabVersion(periodId: string, versionId: string) {
-  return run((actor) => rabRepo.remapPeriod(periodId, versionId, actor));
+/** Pakai versi referensi lain untuk satu periode; RAB tiap probis / RAL tiap layanan dipetakan ulang otomatis. */
+export async function setPeriodRefVersion(kind: RefKind, periodId: string, versionId: string) {
+  return run(kind, (ref, actor) => ref.remapPeriod(periodId, versionId, actor));
 }

@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 const fmt = new Intl.NumberFormat("id-ID");
 
 /** Pemberitahuan data contoh aktif; tim Diskominfo dapat menghapusnya sebelum data asli diimpor. */
-export function SampleBanner({ count, canClear }: { count: number; canClear: boolean }) {
+export function SampleBanner({ count, probis, layanan, canClear }: { count: number; probis: number; layanan: number; canClear: boolean }) {
   const [confirm, setConfirm] = useState(false);
   const [pending, start] = useTransition();
   const clear = () =>
     start(async () => {
       const result = await clearSamples();
       if (!result.ok) return void toast.error(result.error);
-      toast.success("Data contoh dihapus", { description: `${fmt.format(result.data.removed)} probis contoh dihapus.` });
+      toast.success("Data contoh dihapus", { description: `${fmt.format(result.data.removed)} data contoh dihapus.` });
     });
 
   return (
@@ -31,7 +31,7 @@ export function SampleBanner({ count, canClear }: { count: number; canClear: boo
         )
       }
     >
-      {fmt.format(count)} probis contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
+      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`].filter(Boolean).join(" dan ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
     </Banner>
   );
 }

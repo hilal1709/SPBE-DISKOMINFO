@@ -2,7 +2,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
-import { createPeriod, deletePeriod, setActivePeriod, setPeriodRabVersion } from "@/app/cms/actions";
+import { createPeriod, deletePeriod, setActivePeriod, setPeriodRefVersion } from "@/app/cms/actions";
 import { Icon } from "@/components/icon";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Reveal } from "@/components/motion/reveal";
@@ -14,12 +14,32 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Period } from "@/lib/probis/periods";
+import type { RefKind } from "@/lib/reference/versioned";
 import { cn } from "@/lib/utils";
 
 const fmt = new Intl.NumberFormat("id-ID");
 
-/** Kelola periode arsitektur: tambah (2–5 tahun), jadikan aktif, hapus periode kosong. */
-export function PeriodManager({ periods, min, max, versions }: { periods: Period[]; min: number; max: number; /** Versi RAB terbit yang bisa dipakai periode. */ versions: { id: string; name: string }[] }) {
+type Version = { id: string; name: string };
+
+/** Referensi per periode: RAB untuk proses bisnis, RAL untuk layanan. */
+const refs = {
+  rab: { ref: "RAB", unit: "probis", list: "Daftar Probis", current: (p: Period) => p.versionId, used: (p: Period) => p.count },
+  ral: { ref: "RAL", unit: "layanan", list: "Daftar Layanan", current: (p: Period) => p.ralVersionId, used: (p: Period) => p.services },
+} as const;
+
+/** Kelola periode arsitektur: tambah (2–5 tahun), jadikan aktif, pilih versi RAB & RAL, hapus periode kosong. */
+export function PeriodManager({
+  periods,
+  min,
+  max,
+  versions,
+}: {
+  periods: Period[];
+  min: number;
+  max: number;
+  /** Versi terbit yang bisa dipakai periode, per jenis referensi. */
+  versions: Record<RefKind, Version[]>;
+}) {
   const last = periods.at(-1);
   const [start, setStart] = useState(String((last?.end ?? new Date().getFullYear() - 1) + 1));
   const [end, setEnd] = useState(String(Number(start) + 4));
@@ -59,23 +79,24 @@ export function PeriodManager({ periods, min, max, versions }: { periods: Period
       toast.success(`Periode aktif: ${p.name}`, { description: "Form dan dashboard kini memakai periode ini secara bawaan." });
     });
 
-  /** Pakai versi RAB lain: RAB setiap probis periode ini dipetakan ulang otomatis. */
-  const [switching, setSwitching] = useState<{ period: Period; versionId: string } | null>(null);
-  const changeVersion = (p: Period, versionId: string) => {
-    if (versionId === p.versionId) return;
-    if (p.count > 0) return setSwitching({ period: p, versionId });
-    applyVersion(p, versionId);
+  /** Pakai versi lain: RAB setiap probis / RAL setiap layanan periode ini dipetakan ulang otomatis. */
+  const [switching, setSwitching] = useState<{ kind: RefKind; period: Period; versionId: string } | null>(null);
+  const changeVersion = (kind: RefKind, p: Period, versionId: string) => {
+    if (versionId === refs[kind].current(p)) return;
+    if (refs[kind].used(p) > 0) return setSwitching({ kind, period: p, versionId });
+    applyVersion(kind, p, versionId);
   };
-  const applyVersion = (p: Period, versionId: string) => {
-    const target = versions.find((v) => v.id === versionId);
+  const applyVersion = (kind: RefKind, p: Period, versionId: string) => {
+    const target = versions[kind].find((v) => v.id === versionId);
     if (!target) return;
+    const r = refs[kind];
     setSwitching(null);
     start_(async () => {
-      const result = await setPeriodRabVersion(p.id, versionId);
+      const result = await setPeriodRefVersion(kind, p.id, versionId);
       if (!result.ok) return void toast.error(result.error);
       const { mapped, review } = result.data;
-      toast.success(`Periode ${p.name} memakai ${target.name}`, {
-        description: review ? `${fmt.format(mapped)} probis dipetakan otomatis, ${fmt.format(review)} perlu dipetakan ulang (lihat Daftar Probis).` : `${fmt.format(mapped)} probis dipetakan otomatis.`,
+      toast.success(`Periode ${p.name} memakai ${r.ref} ${target.name}`, {
+        description: review ? `${fmt.format(mapped)} ${r.unit} dipetakan otomatis, ${fmt.format(review)} perlu dipetakan ulang (lihat ${r.list}).` : `${fmt.format(mapped)} ${r.unit} dipetakan otomatis.`,
       });
     });
   };
@@ -95,29 +116,33 @@ export function PeriodManager({ periods, min, max, versions }: { periods: Period
           {periods.map((p) => (
             <li key={p.id} data-period={p.name} className={cn("flex flex-wrap items-center gap-4 px-5 py-4 transition-colors", p.active && "bg-brand-teal/10")}>
               <div className="grid min-w-0 flex-1 gap-0.5">
-                <p className="flex items-center gap-2 text-lg font-bold tabular-nums">
+                <p className="flex items-center gap-2 text-lg font-bold whitespace-nowrap tabular-nums">
                   {p.name}
                   {p.active && (
                     <Badge variant="success">Aktif</Badge>
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {p.end - p.start + 1} tahun · {fmt.format(p.count)} proses bisnis
+                  {p.end - p.start + 1} tahun · {fmt.format(p.count)} proses bisnis · {fmt.format(p.services)} layanan
                 </p>
               </div>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                Versi RAB
-                <Select value={p.versionId ?? undefined} onValueChange={(v) => changeVersion(p, v)} disabled={pending}>
-                  <SelectTrigger className="h-8 min-w-44 text-xs" aria-label={`Versi RAB periode ${p.name}`}>
-                    <SelectValue placeholder="Pilih versi" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {versions.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
+              <div className="grid gap-1.5">
+                {(Object.keys(refs) as RefKind[]).map((kind) => (
+                  <label key={kind} className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                    Versi {refs[kind].ref}
+                    <Select value={refs[kind].current(p) ?? undefined} onValueChange={(v) => changeVersion(kind, p, v)} disabled={pending}>
+                      <SelectTrigger className="h-8 w-44 text-xs" aria-label={`Versi ${refs[kind].ref} periode ${p.name}`}>
+                        <SelectValue placeholder="Pilih versi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {versions[kind].map((v) => (
+                          <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                ))}
+              </div>
               {!p.active && (
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" disabled={pending} onClick={() => activate(p)}>
@@ -126,7 +151,7 @@ export function PeriodManager({ periods, min, max, versions }: { periods: Period
                   <Button
                     variant={confirm === p.id ? "destructive" : "ghost"}
                     size="sm"
-                    disabled={pending || p.count > 0}
+                    disabled={pending || p.count > 0 || p.services > 0}
                     onClick={() => (confirm === p.id ? remove(p) : setConfirm(p.id))}
                     onBlur={() => setConfirm(null)}
                   >
@@ -178,15 +203,20 @@ export function PeriodManager({ periods, min, max, versions }: { periods: Period
       <Dialog open={!!switching} onOpenChange={(o) => !o && setSwitching(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Ganti versi RAB periode {switching?.period.name}?</DialogTitle>
-            <DialogDescription>
-              RAB {fmt.format(switching?.period.count ?? 0)} probis dipetakan ulang ke “{versions.find((v) => v.id === switching?.versionId)?.name}” mengikuti asal-usul tiap RAB.
-              Probis yang RAB-nya tidak punya padanan ditandai “Perlu pemetaan RAB”.
-            </DialogDescription>
+            <DialogTitle>
+              Ganti versi {switching && refs[switching.kind].ref} periode {switching?.period.name}?
+            </DialogTitle>
+            {switching && (
+              <DialogDescription>
+                {refs[switching.kind].ref} {fmt.format(refs[switching.kind].used(switching.period))} {refs[switching.kind].unit} dipetakan ulang ke “
+                {versions[switching.kind].find((v) => v.id === switching.versionId)?.name}” mengikuti asal-usul tiap {refs[switching.kind].ref}. Yang tidak punya padanan ditandai “Perlu pemetaan{" "}
+                {refs[switching.kind].ref}”.
+              </DialogDescription>
+            )}
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSwitching(null)}>Batal</Button>
-            <Button loading={pending} onClick={() => switching && applyVersion(switching.period, switching.versionId)}>Ganti & petakan</Button>
+            <Button loading={pending} onClick={() => switching && applyVersion(switching.kind, switching.period, switching.versionId)}>Ganti & petakan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -10,7 +10,9 @@
     "illustrations": "node scripts/lottie/build.mjs",
     "seed:contoh": "tsx scripts/seed-sample-probis.mts",
     "migrate": "node database/migrate.mjs",
-    "referensi": "node scripts/extract-reference.mjs"
+    "referensi": "node scripts/extract-reference.mjs",
+    "seed:layanan": "tsx scripts/seed-sample-layanan.mts",
+    "referensi:ral": "node scripts/extract-ral.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

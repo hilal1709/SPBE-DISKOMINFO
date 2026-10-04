@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Add01Icon, ArrowRight01Icon, FileImportIcon } from "@hugeicons/core-free-icons";
 import { EmptyState } from "@/components/blocks/empty-state";
+import { Segmented } from "@/components/blocks/segmented";
 import { StatCard } from "@/components/blocks/stat-card";
 import { ReviewBadge } from "@/components/cms/review-badge";
 import { Icon } from "@/components/icon";
@@ -13,13 +14,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { can, type Actor } from "@/lib/permissions";
 import type { SubmissionStatus } from "@/lib/types";
 
-type Activity = { id: string; probisId: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string };
+type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" };
+type Summary = { counts: Partial<Record<SubmissionStatus, number>>; /** Perlu pemetaan ulang referensi (RAB/RAL). */ review: number };
+type Domain = "probis" | "layanan";
+
+/** Teks & tautan per domain. */
+const domains = {
+  probis: { noun: "probis", total: "Total proses bisnis", ref: "RAB", list: "/cms/proses-bisnis", base: "/cms/proses-bisnis" },
+  layanan: { noun: "layanan", total: "Total layanan", ref: "RAL", list: "/cms/layanan", base: "/cms/layanan" },
+} as const;
+
+/** Tindakan tertunda untuk satu domain, urut prioritas. */
+function steps(actor: Actor, domain: Domain, { counts, review }: Summary) {
+  const d = domains[domain];
+  const list: { text: string; href: string; label: string }[] = [];
+  if (review > 0 && can.create(actor)) list.push({ text: `${review} ${d.noun} perlu dipetakan ulang karena versi ${d.ref} periodenya berganti.`, href: d.list, label: "Petakan ulang" });
+  if (can.verify(actor) && counts.submitted) list.push({ text: `${counts.submitted} ajuan ${d.noun} OPD menunggu verifikasi tim Bagian Organisasi.`, href: `${d.base}/verifikasi`, label: "Buka verifikasi" });
+  if (can.validate(actor) && counts.verified) list.push({ text: `${counts.verified} ${d.noun} terverifikasi menunggu validasi tim Diskominfo.`, href: `${d.base}/validasi`, label: "Buka validasi" });
+  if (can.create(actor) && counts.rejected) list.push({ text: `${counts.rejected} ${d.noun} dikembalikan dan perlu diperbaiki.`, href: d.list, label: "Perbaiki" });
+  if (can.create(actor) && counts.draft) list.push({ text: `${counts.draft} draf ${d.noun} belum diajukan.`, href: d.list, label: "Lihat draf" });
+  return list;
+}
 
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
-/** Beranda CMS: ringkasan status probis dalam cakupan pengguna, tindakan berikutnya, dan aktivitas terbaru. */
-export function CmsHome({ actor, counts, recent, review = 0 }: { actor: Actor; counts: Partial<Record<SubmissionStatus, number>>; recent: Activity[]; /** Probis yang RAB-nya perlu dipetakan ulang. */ review?: number }) {
+/** Beranda CMS: ringkasan status per domain dalam cakupan pengguna, tindakan berikutnya, dan aktivitas terbaru. */
+export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; probis: Summary; layanan: Summary; recent: Activity[] }) {
   const timeline = useRef<HTMLOListElement>(null);
+  const [domain, setDomain] = useState<Domain>("probis");
+  const counts = (domain === "probis" ? probis : layanan).counts;
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
 
   useGSAP(
@@ -31,25 +54,23 @@ export function CmsHome({ actor, counts, recent, review = 0 }: { actor: Actor; c
     { scope: timeline },
   );
 
-  const toVerify = can.verify(actor) ? counts.submitted ?? 0 : 0;
-  const toValidate = can.validate(actor) ? counts.verified ?? 0 : 0;
-  const next =
-    review > 0 && can.create(actor)
-      ? { text: `${review} probis perlu dipetakan ulang karena versi RAB periodenya berganti.`, href: "/cms/proses-bisnis", label: "Petakan ulang" }
-      : toVerify > 0
-      ? { text: `${toVerify} ajuan OPD menunggu verifikasi tim Bagian Organisasi.`, href: "/cms/proses-bisnis/verifikasi", label: "Buka verifikasi" }
-      : toValidate > 0
-        ? { text: `${toValidate} probis terverifikasi menunggu validasi tim Diskominfo.`, href: "/cms/proses-bisnis/validasi", label: "Buka validasi" }
-        : (counts.rejected ?? 0) > 0 && can.create(actor)
-        ? { text: `${counts.rejected} proses bisnis dikembalikan dan perlu diperbaiki.`, href: "/cms/proses-bisnis", label: "Perbaiki" }
-        : (counts.draft ?? 0) > 0 && can.create(actor)
-          ? { text: `${counts.draft} draf belum diajukan.`, href: "/cms/proses-bisnis", label: "Lihat draf" }
-          : null;
+  // Maksimal tiga tindakan terpenting dari kedua domain.
+  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan)].slice(0, 3);
 
   return (
     <Reveal className="grid gap-5">
+      <Segmented
+        label="Domain ringkasan"
+        className="w-fit"
+        value={domain}
+        onChange={setDomain}
+        options={[
+          { value: "probis", label: "Proses bisnis" },
+          { value: "layanan", label: "Layanan" },
+        ]}
+      />
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard tone="teal" label="Total proses bisnis" value={total} />
+        <StatCard tone="teal" label={domains[domain].total} value={total} />
         <StatCard tone="orange" label="Menunggu verifikasi" value={counts.submitted ?? 0} hint="tim Bagian Organisasi" />
         <StatCard tone="yellow" label="Menunggu validasi" value={counts.verified ?? 0} hint="tim Diskominfo" />
         <StatCard tone="amber" label="Tervalidasi" value={counts.approved ?? 0} hint="tayang di portal publik" />
@@ -62,23 +83,27 @@ export function CmsHome({ actor, counts, recent, review = 0 }: { actor: Actor; c
             <CardTitle className="section-title">Langkah berikutnya</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
-            {next ? (
-              <div className="flex flex-wrap items-center gap-3 rounded-xl bg-accent p-4 text-accent-foreground">
-                <p className="flex-1 text-sm font-medium">{next.text}</p>
-                <Button asChild size="sm">
-                  <Link href={next.href}>
-                    {next.label}
-                    <Icon icon={ArrowRight01Icon} size={14} />
-                  </Link>
-                </Button>
-              </div>
+            {next.length ? (
+              next.map((step) => (
+                <div key={step.href + step.label} className="flex flex-wrap items-center gap-3 rounded-xl bg-accent p-4 text-accent-foreground">
+                  <p className="flex-1 text-sm font-medium">{step.text}</p>
+                  <Button asChild size="sm">
+                    <Link href={step.href}>
+                      {step.label}
+                      <Icon icon={ArrowRight01Icon} size={14} />
+                    </Link>
+                  </Button>
+                </div>
+              ))
             ) : (
               <p className="text-sm text-muted-foreground">Tidak ada tindakan yang tertunda.</p>
             )}
             {can.create(actor) && (
               <div className="grid gap-3 sm:grid-cols-2">
                 <QuickLink href="/cms/proses-bisnis/baru" icon={Add01Icon} title="Tambah probis" text="Isi form dengan bantuan AI" />
-                {can.import(actor) && <QuickLink href="/cms/impor" icon={FileImportIcon} title="Impor template" text="Unggah xlsx / zip arsitektur" />}
+                <QuickLink href="/cms/layanan/baru" icon={Add01Icon} title="Tambah layanan" text="Isi form dengan bantuan AI" />
+                {can.import(actor) && <QuickLink href="/cms/impor" icon={FileImportIcon} title="Impor probis" text="Unggah xlsx / zip arsitektur" />}
+                {can.import(actor) && <QuickLink href="/cms/layanan/impor" icon={FileImportIcon} title="Impor layanan" text="Unggah template analis" />}
               </div>
             )}
           </CardContent>
@@ -97,6 +122,7 @@ export function CmsHome({ actor, counts, recent, review = 0 }: { actor: Actor; c
                     <p className="flex flex-wrap items-center gap-2">
                       <ReviewBadge status={a.toStatus} />
                       <span className="truncate font-medium">{a.name}</span>
+                      {a.kind === "layanan" && <span className="text-[11px] text-muted-foreground">layanan</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {a.actorName ?? "Sistem"} · {date.format(new Date(a.createdAt))}

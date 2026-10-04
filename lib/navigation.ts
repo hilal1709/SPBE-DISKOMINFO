@@ -18,7 +18,7 @@ export type NavItem = {
   /** Penjelasan singkat fungsi menu (tampil di bawah label & di header halaman). */
   description?: string;
   /** Kunci angka lencana (mis. jumlah antrean). */
-  badgeKey?: "submitted" | "verified";
+  badgeKey?: "submitted" | "verified" | "layananSubmitted" | "layananVerified";
 };
 
 /** Menu besar berisi sub-menu. */
@@ -45,7 +45,7 @@ export const portalSections: Record<string, string> = {
 
 const soon = (slug: string, label: string, icon: IconSvgElement, description: string): NavItem => ({ href: `/cms/segera/${slug}`, label, icon, section: label, soon: true, description });
 
-/** Menu CMS dikelompokkan per modul. Modul dibangun bertahap (notulen): Proses Bisnis lebih dulu. */
+/** Menu CMS dikelompokkan per modul. Modul dibangun bertahap (notulen): Proses Bisnis, lalu Layanan. */
 export const cmsNav: NavEntry[] = [
   { href: "/cms", label: "Beranda", icon: DashboardSquare01Icon, section: "Beranda CMS", description: "Ringkasan tugas dan aktivitas terbaru Anda" },
   {
@@ -60,10 +60,20 @@ export const cmsNav: NavEntry[] = [
     ],
   },
   {
+    label: "Layanan",
+    icon: CustomerService01Icon,
+    children: [
+      { href: "/cms/layanan", label: "Daftar Layanan", icon: ListViewIcon, section: "Daftar Layanan", description: "Lihat dan kelola seluruh layanan" },
+      { href: "/cms/layanan/baru", label: "Tambah Layanan", icon: TaskAdd01Icon, section: "Tambah Layanan", description: "Isi layanan baru, dibantu AI", roles: ["operator_opd", "admin", "superadmin"] },
+      { href: "/cms/layanan/verifikasi", label: "Verifikasi", icon: CheckListIcon, section: "Verifikasi Layanan", description: "Tim Bagian Organisasi memeriksa ajuan OPD", roles: ["organisasi", "superadmin"], badgeKey: "layananSubmitted" },
+      { href: "/cms/layanan/validasi", label: "Validasi", icon: CheckmarkBadge01Icon, section: "Validasi Layanan", description: "Tim Diskominfo memvalidasi akhir sebelum tayang", roles: ["admin", "superadmin"], badgeKey: "layananVerified" },
+      { href: "/cms/layanan/impor", label: "Impor & Ekspor", icon: FileImportIcon, section: "Impor & Ekspor Layanan", description: "Unggah template analis atau unduh data", roles: ["operator_opd", "organisasi", "admin", "superadmin"] },
+    ],
+  },
+  {
     label: "Domain Arsitektur",
     icon: Layers01Icon,
     children: [
-      soon("layanan", "Layanan", CustomerService01Icon, "Domain arsitektur layanan"),
       soon("data", "Data & Informasi", Database01Icon, "Domain arsitektur data"),
       soon("aplikasi", "Aplikasi", ComputerIcon, "Domain arsitektur aplikasi"),
       soon("infrastruktur", "Infrastruktur", ServerStack01Icon, "Domain arsitektur infrastruktur"),
@@ -83,6 +93,7 @@ export const cmsNav: NavEntry[] = [
     icon: Settings02Icon,
     children: [
       { href: "/cms/pengaturan/referensi-rab", label: "Referensi RAB", icon: Layers01Icon, section: "Referensi RAB", description: "Kelola versi, kode, dan nama RAB", roles: ["admin", "superadmin", "validator_data"] },
+      { href: "/cms/pengaturan/referensi-ral", label: "Referensi RAL", icon: Layers01Icon, section: "Referensi RAL", description: "Kelola versi, kode, dan nama RAL", roles: ["admin", "superadmin", "validator_data"] },
       { href: "/cms/pengaturan/periode", label: "Periode Arsitektur", icon: Calendar03Icon, section: "Periode Arsitektur", description: "Tambah dan aktifkan periode arsitektur", roles: ["admin", "superadmin"] },
       { ...soon("pengguna", "Pengguna", UserGroupIcon, "Kelola akun dan hak akses"), roles: ["superadmin"] },
     ],
