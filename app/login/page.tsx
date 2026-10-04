@@ -14,6 +14,9 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 
+/** Isian & petunjuk akun demo hanya untuk pengembangan lokal. */
+const DEMO = process.env.NODE_ENV !== "production";
+
 export default function Login() {
   const [error, formAction, pending] = useActionState(login, undefined);
   const [showPassword, setShowPassword] = useState(false);
@@ -74,12 +77,12 @@ export default function Login() {
               )}
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input id="email" name="email" type="email" autoComplete="username" defaultValue="admin@gresikkab.go.id" required />
+                <Input id="email" name="email" type="email" autoComplete="username" defaultValue={DEMO ? "admin@gresikkab.go.id" : undefined} required />
               </Field>
               <Field>
                 <FieldLabel htmlFor="password">Kata sandi</FieldLabel>
                 <InputGroup>
-                  <InputGroupInput id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" defaultValue="admin123" required />
+                  <InputGroupInput id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" defaultValue={DEMO ? "admin123" : undefined} required />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton size="icon-xs" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}>
                       <Icon icon={showPassword ? ViewOffSlashIcon : ViewIcon} size={16} />
@@ -93,9 +96,11 @@ export default function Login() {
             </FieldGroup>
           </form>
 
-          <p data-reveal className="mt-6 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-            Akun demo: <b className="text-foreground">admin@gresikkab.go.id</b> / <b className="text-foreground">admin123</b>
-          </p>
+          {DEMO && (
+            <p data-reveal className="mt-6 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+              Akun demo: <b className="text-foreground">admin@gresikkab.go.id</b> / <b className="text-foreground">admin123</b>
+            </p>
+          )}
         </Reveal>
       </section>
     </main>

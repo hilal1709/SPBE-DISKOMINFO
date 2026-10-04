@@ -44,8 +44,9 @@ async function findUser(email: string) {
         [email],
       );
       return result.rows[0];
-    } catch {
+    } catch (error) {
       databaseUnavailable = true;
+      console.error("[auth] Gagal membaca tabel users. Periksa DATABASE_URL (di Vercel pakai Supabase pooler):", error instanceof Error ? error.message : error);
     }
   }
 
