@@ -12,8 +12,25 @@ export type PdRow = { code: string; name: string; count: number; sektor: [string
 
 const fmt = new Intl.NumberFormat("id-ID");
 
-/** Rekap jumlah probis per Perangkat Daerah. Klik nama untuk memfilter, panah untuk rincian sektor. */
-export function PdRankingCard({ rows, selected, onToggle, label, className }: { rows: PdRow[]; selected: string[]; onToggle: (code: string) => void; /** Label RAB "kode nama" sesuai versi periode. */ label: (code: string) => string; className?: string }) {
+/** Rekap jumlah per Perangkat Daerah. Klik nama untuk memfilter, panah untuk rincian sektor. */
+export function PdRankingCard({
+  rows,
+  selected,
+  onToggle,
+  label,
+  className,
+  title = "Proses bisnis per Perangkat Daerah",
+  unit = "probis",
+}: {
+  rows: PdRow[];
+  selected: string[];
+  onToggle: (code: string) => void;
+  /** Label referensi "kode nama" (RAB sesuai versi periode, atau RAL). */
+  label: (code: string) => string;
+  className?: string;
+  title?: string;
+  unit?: string;
+}) {
   const [open, setOpen] = useState<string | null>(null);
   const list = useRef<HTMLOListElement>(null);
 
@@ -34,7 +51,7 @@ export function PdRankingCard({ rows, selected, onToggle, label, className }: { 
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Proses bisnis per Perangkat Daerah</CardTitle>
+        <CardTitle className="section-title">{title}</CardTitle>
       </CardHeader>
       <CardContent className="max-h-[26rem] overflow-y-auto px-3">
         <ol ref={list} className="grid gap-0.5">
@@ -54,7 +71,7 @@ export function PdRankingCard({ rows, selected, onToggle, label, className }: { 
                       <span className="block h-full rounded-full bg-brand-amber transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${(row.count / max) * 100}%` }} />
                     </span>
                   </button>
-                  <Button variant="ghost" size="icon-xs" aria-expanded={isOpen} aria-label={`Rincian sektor ${row.name}`} onClick={() => setOpen(isOpen ? null : row.code)}>
+                  <Button variant="ghost" size="icon-xs" aria-expanded={isOpen} aria-label={`Rincian ${row.name}`} onClick={() => setOpen(isOpen ? null : row.code)}>
                     <Icon icon={ArrowRight01Icon} size={14} className={cn("transition-transform duration-200", isOpen && "rotate-90")} />
                   </Button>
                 </li>
@@ -74,7 +91,7 @@ export function PdRankingCard({ rows, selected, onToggle, label, className }: { 
         </ol>
       </CardContent>
       <p className="mx-6 flex justify-between border-t pt-3 text-xs font-semibold">
-        {rows.length} Perangkat Daerah <span className="tabular-nums">{fmt.format(total)} probis</span>
+        {rows.length} Perangkat Daerah <span className="tabular-nums">{fmt.format(total)} {unit}</span>
       </p>
     </Card>
   );

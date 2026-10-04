@@ -2,7 +2,7 @@ import type { Probis } from "@/lib/types";
 import { ikuBySasaran, perangkatDaerah, sampleActivePeriod as activePeriod, samplePeriods as periods, sampleRab, sasaranBySektor, sasaranStrategis, type ProbisStatus } from "./reference";
 
 /** PRNG deterministik agar data dummy sama di server dan klien. */
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   return () => {
     seed = (seed + 0x6d2b79f5) | 0;
     let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);

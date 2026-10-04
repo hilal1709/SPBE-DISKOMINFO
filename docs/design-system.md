@@ -54,7 +54,7 @@ Semua token didefinisikan di `app/globals.css` (`:root` dan `.dark`) dan tersedi
 
 **Kontras (WCAG AA):** teks di atas warna palet selalu charcoal (teal 4.6:1, oranye 5.4:1, amber 6.4:1, kuning 8.6:1, biru muda 9.7:1). Jangan pakai teks putih di atas warna palet selain charcoal.
 
-**Tema CMS** (`[data-theme="cms"]` di `globals.css`). Palet CMS: sage `#EAF2E3`, aqua `#61E8E1`, koral `#F25757`, kuning `#F2E863`, emas `#F2CD60`.
+**Tema CMS** (`[data-theme="cms"]` di `globals.css`). Palet CMS: sage `#EAF2E3`, aqua `#61E8E1`, koral `#F25757`, kuning `#F2E863`, emas `#F2CD60`, charcoal `#2D2D2F`. Keenam warna dipakai; contohnya ada di `/design-system#warna`.
 
 Token `--brand-*` dipetakan ulang sehingga komponen yang sama otomatis berganti warna:
 
@@ -65,9 +65,10 @@ Token `--brand-*` dipetakan ulang sehingga komponen yang sama otomatis berganti 
 | `brand-orange` (kartu statistik 2) | `#F08700` | `#F25757` |
 | `brand-yellow` (kartu statistik 3, grafik 1) | `#EFCA08` | `#F2E863` |
 | `brand-amber` (kartu statistik 4, aksen) | `#F49F0A` | `#F2CD60` |
-| `brand-charcoal` (teks, tombol utama) | `#2D2D2F` | `#1B1B1D` |
+| `brand-charcoal` (teks, tombol utama) | `#2D2D2F` | `#2D2D2F` |
+| `on-brand` (teks di atas warna palet) | `#2D2D2F` | `#1B1B1D` |
 
-Di CMS dipakai hampir-hitam `#1B1B1D` agar teks di atas koral tetap lolos AA (5.2:1).
+Teks di atas warna palet (kartu statistik, lencana, petak treemap/heat) memakai `text-on-brand`, bukan `text-brand-charcoal`. Di CMS nilainya hampir-hitam `#1B1B1D`, karena charcoal di atas koral hanya 4.1:1 (AA butuh 4.5); dengan `#1B1B1D` menjadi 5.1:1.
 
 `CmsShell` memasang `data-theme="cms"` di wrapper-nya, dan juga di `<html>` lewat `useEffect`. Ini perlu agar modal, sheet, dan toast (yang dirender di luar shell) ikut bertema CMS. Atribut di `<html>` dilepas lagi saat keluar dari CMS. Grafik membaca token dari elemen `[data-theme]`, jadi otomatis ikut. Halaman login tetap memakai palet portal.
 
@@ -96,7 +97,7 @@ components/
   icon.tsx       <Icon icon={...}/>, pembungkus tunggal Hugeicons
   motion/        GSAP: Reveal, CountUp, Meter, SpotlightCard, PageTransition, gsap.ts
   illustrations/ <Illustration name=.../> + data/*.json (hasil generator)
-  loader.tsx     Loader bermerek (Lottie "loader")
+  loader.tsx     Loader bermerek (Lottie "loader", dengan versi SVG+CSS yang tampil sebelum JS termuat)
   blocks/        Pola tingkat aplikasi: StatCard, FilterBar, MultiSelect, Segmented, Treemap, DataTable, DetailDialog,
                  StatusBadge, HeatTile, PageHeader, EmptyState, DashboardSkeleton, Banner
   layout/        PublicShell, CmsShell, SidebarNav
@@ -202,6 +203,7 @@ Cara menambah atau mengubah ilustrasi:
 | Situasi | Pakai |
 | --- | --- |
 | Pindah route | `loading.tsx` → `<DashboardSkeleton/>` (skeleton + Loader) atau `<Loader/>` |
+| Masuk CMS | `app/cms/layout.tsx` membungkus data sesi dengan `<Suspense fallback={<CmsShellSkeleton/>}>`: kerangka CMS (sidebar, header, skeleton) tampil seketika, bukan layar loading kosong |
 | Tombol async | `<Button loading={pending}>` |
 | Submit form server action | `useActionState` / `useFormStatus` → `loading` |
 | Link navigasi | `PendingHint` di `SidebarNav` (`useLinkStatus`) |

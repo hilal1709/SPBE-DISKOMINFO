@@ -256,6 +256,21 @@ function explore() {
   return composition("explore", {
     w: 240, h: 160, frames,
     layers: [
+      layer("bayangan", group([ellipse(190, 10), fill(c.navy, 8)]), { p: [120, 150] }),
+      layer("papan", group([rect(204, 120, 12), fill(c.white), stroke(c.line, 2)]), { p: [120, 80] }),
+      tile("petak-a", 96, 108, -46, 0, 100, dim),
+      tile("petak-b", 92, 52, 50, -28, 70, dim),
+      tile("petak-c", 44, 52, 26, 28, 45),
+      tile("petak-d", 44, 52, 74, 28, 30, dim),
+      layer("sorot", group([rect(44, 52, 4), stroke(c.charcoal, 3)]), {
+        p: [146, 108],
+        o: anim([[0, 0], [click + 2, 0], [click + 10, 100], [140, 100], [150, 0], [frames, 0]], ease.linear),
+      }),
+      layer("riak", group([ellipse(30, 30), stroke(c.charcoal, 2.5)]), {
+        p: [146, 108],
+        s: anim([[0, [0, 0]], [click, [0, 0]], [click + 30, [180, 180]], [frames, [180, 180]]]),
+        o: anim([[0, 0], [click, 70], [click + 30, 0], [frames, 0]], ease.linear),
+      }),
       layer("kursor", group([
         path([[0, 0], [0, 22], [6, 16], [10, 26], [14, 24], [10, 15], [18, 15]], true),
         fill(c.charcoal),
@@ -264,21 +279,6 @@ function explore() {
         p: anim([[0, [214, 150]], [48, [146, 108]], [140, [146, 108]], [170, [214, 150]], [frames, [214, 150]]], ease.inOut),
         s: anim([[0, [100, 100]], [click - 4, [100, 100]], [click, [82, 82]], [click + 8, [100, 100]], [frames, [100, 100]]]),
       }),
-      layer("riak", group([ellipse(30, 30), stroke(c.charcoal, 2.5)]), {
-        p: [146, 108],
-        s: anim([[0, [0, 0]], [click, [0, 0]], [click + 30, [180, 180]], [frames, [180, 180]]]),
-        o: anim([[0, 0], [click, 70], [click + 30, 0], [frames, 0]], ease.linear),
-      }),
-      layer("sorot", group([rect(44, 52, 4), stroke(c.charcoal, 3)]), {
-        p: [146, 108],
-        o: anim([[0, 0], [click + 2, 0], [click + 10, 100], [140, 100], [150, 0], [frames, 0]], ease.linear),
-      }),
-      tile("petak-a", 96, 108, -46, 0, 100, dim),
-      tile("petak-b", 92, 52, 50, -28, 70, dim),
-      tile("petak-c", 44, 52, 26, 28, 45),
-      tile("petak-d", 44, 52, 74, 28, 30, dim),
-      layer("papan", group([rect(204, 120, 12), fill(c.white), stroke(c.line, 2)]), { p: [120, 80] }),
-      layer("bayangan", group([ellipse(190, 10), fill(c.navy, 8)]), { p: [120, 150] }),
     ],
   });
 }
@@ -290,31 +290,77 @@ function filterEmpty() {
   return composition("filter-empty", {
     w: 400, h: 300, frames,
     layers: [
-      layer("gelembung", [
-        ...[-10, 0, 10].map((x, i) => group([ellipse(6, 6, [x, 0]), fill(c.navy)], { o: anim([[0, 30], [20 + i * 15, 100], [50 + i * 15, 30], [frames, 30]], ease.inOut) })),
-        group([ellipse(46, 34), fill(c.amberSoft)]),
-      ], { p: [300, 86], s: pingPong([100, 100], [106, 106], frames) }),
+      layer("blob", group([ellipse(300, 220), fill(c.amberPale)]), { p: [200, 150], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(170, 14), fill(c.navy, 7)]), { p: [200, 262] }),
+      layer("tetes", group([ellipse(8, 8), fill(c.navySoft, 40)]), {
+        p: anim([[0, [200, 228]], [frames / 2, [200, 236]], [frames, [200, 228]]], ease.inOut),
+        o: pingPong(0, 70, frames),
+      }),
+      layer("corong", [
+        group([ellipse(180, 22, [0, -60]), fill(c.amberPale), stroke(c.navySoft, 3)]),
+        group([path([[-90, -60], [90, -60], [12, 20], [12, 62], [-12, 62], [-12, 20]], true), fill(c.white), stroke(c.navySoft, 3)]),
+      ], { p: [200, 160] }),
       ...dots.map(([x, color, t], i) =>
         layer(`titik-${i}`, group([ellipse(14, 14), fill(color)]), {
           p: anim([[0, [200 + x, 40]], [t, [200 + x, 40]], [t + 44, [200 + x * 0.3, 128], ease.inOut], [frames, [200 + x * 0.3, 128]]]),
           o: anim([[0, 0], [t, 0], [t + 6, 100], [t + 40, 100], [t + 50, 0], [frames, 0]], ease.linear),
         }),
       ),
-      layer("corong", [
-        group([ellipse(180, 22, [0, -60]), fill(c.amberPale), stroke(c.navySoft, 3)]),
-        group([path([[-90, -60], [90, -60], [12, 20], [12, 62], [-12, 62], [-12, 20]], true), fill(c.white), stroke(c.navySoft, 3)]),
-      ], { p: [200, 160] }),
-      layer("tetes", group([ellipse(8, 8), fill(c.navySoft, 40)]), {
-        p: anim([[0, [200, 228]], [frames / 2, [200, 236]], [frames, [200, 228]]], ease.inOut),
-        o: pingPong(0, 70, frames),
-      }),
-      layer("bayangan", group([ellipse(170, 14), fill(c.navy, 7)]), { p: [200, 262] }),
-      layer("blob", group([ellipse(300, 220), fill(c.amberPale)]), { p: [200, 150], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("gelembung", [
+        ...[-10, 0, 10].map((x, i) => group([ellipse(6, 6, [x, 0]), fill(c.navy)], { o: anim([[0, 30], [20 + i * 15, 100], [50 + i * 15, 30], [frames, 30]], ease.inOut) })),
+        group([ellipse(46, 34), fill(c.amberSoft)]),
+      ], { p: [300, 86], s: pingPong([100, 100], [106, 106], frames) }),
     ],
   });
 }
 
-const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty };
+/* 10. Service desk — nomor antrean dari loket berpindah ke ponsel; formulir terisi dan tercentang (digitalisasi layanan). */
+function serviceDesk() {
+  const frames = 180;
+  const loop = (on, off) => anim([[0, 0], [on, 0], [on + 8, 100], [off, 100], [off + 10, 0], [frames, 0]], ease.linear);
+  // Baris formulir tumbuh dari kiri: titik asal grup di tepi kiri baris.
+  const field = (y, w, t) => group([rect(w, 5, 2.5, [w / 2, 0]), fill(c.slateSoft)], {
+    p: [-17, y],
+    s: anim([[0, [0, 100]], [t, [0, 100]], [t + 16, [100, 100]], [150, [100, 100]], [164, [0, 100]], [frames, [0, 100]]]),
+  });
+  return composition("service-desk", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("blob", group([ellipse(220, 140), fill(c.amberPale)]), { p: [120, 80], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(200, 10), fill(c.navy, 8)]), { p: [120, 144] }),
+      layer("loket", [
+        group([rect(30, 9, 3), fill(c.yellow)], { p: [0, -40] }),
+        group([rect(40, 30, 4), fill(c.surface), stroke(c.line, 2)], { p: [0, -12] }),
+        group([rect(96, 10, 3), fill(c.charcoal)], { p: [0, 8] }),
+        group([rect(84, 76, 6), fill(c.white), stroke(c.line, 2)], { p: [0, 0] }),
+      ], { p: [64, 82] }),
+      layer("ponsel", [
+        group([rect(34, 12, 6), fill(c.amber)], { p: [0, 30], o: anim([[0, 100], [84, 100], [92, 0], [150, 0], [158, 100], [frames, 100]], ease.linear) }),
+        group([rect(34, 12, 6), fill(c.teal)], { p: [0, 30] }),
+        field(-14, 34, 56),
+        field(-2, 26, 66),
+        field(10, 30, 76),
+        group([rect(46, 10, 3), fill(c.sky)], { p: [0, -34] }),
+        group([rect(58, 100, 10), fill(c.white), stroke(c.charcoal, 3)]),
+      ], { p: [172, 84] }),
+      layer("jejak", group([curve([[96, 58], [126, 34], [150, 52]]), trim(0, anim([[0, 0], [12, 0], [50, 100], [150, 100], [166, 0], [frames, 0]], ease.inOut)), stroke(c.charcoal, 2, { opacity: 60, dash: [4, 4] })]), {}),
+      layer("tiket", group([rect(22, 14, 3), fill(c.yellow), stroke(c.charcoal, 1.5)]), {
+        p: anim([[0, [70, 66]], [12, [70, 66]], [52, [172, 64], ease.inOut], [frames, [172, 64]]]),
+        s: anim([[0, [100, 100]], [44, [100, 100]], [56, [0, 0]], [frames, [0, 0]]]),
+        o: loop(8, 50),
+      }),
+      layer("centang", [
+        group([path([[-6, 0], [-2, 4], [6, -4]]), trim(0, anim([[0, 0], [96, 0], [112, 100], [150, 100], [160, 0], [frames, 0]], ease.inOut)), stroke(c.white, 3)]),
+        group([ellipse(24, 24), fill(c.teal)]),
+      ], {
+        p: [196, 34],
+        s: anim([[0, [0, 0]], [88, [0, 0]], [100, [100, 100], ease.back], [150, [100, 100]], [162, [0, 0]], [frames, [0, 0]]]),
+      }),
+    ],
+  });
+}
+
+const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty, "service-desk": serviceDesk };
 for (const [name, build] of Object.entries(builds)) {
   const json = JSON.stringify(build());
   writeFileSync(join(out, `${name}.json`), json);

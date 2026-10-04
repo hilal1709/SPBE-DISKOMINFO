@@ -20,6 +20,8 @@
   --brand-amber: #f49f0a;
   --brand-orange: #f08700;
   --brand-charcoal: #2d2d2f;
+  /* Teks di atas warna palet (kartu statistik, badge, petak). */
+  --on-brand: #2d2d2f;
 
   --background: #f5f8fa;
   --foreground: #2d2d2f;
@@ -78,10 +80,10 @@
 }
 
 /*
- * Tema CMS — palet: sage #EAF2E3, aqua #61E8E1, koral #F25757, kuning #F2E863, emas #F2CD60.
+ * Tema CMS — palet: sage #EAF2E3, aqua #61E8E1, koral #F25757, kuning #F2E863, emas #F2CD60, charcoal #2D2D2F.
  * Peran warna tetap sama dengan portal (token --brand-* dipetakan ulang), jadi komponen tidak perlu berubah:
- * teal→aqua, orange→koral, yellow→kuning, amber→emas, sky→sage. Teks di atas warna memakai hampir-hitam
- * #1B1B1D agar koral tetap lolos AA (5.2:1).
+ * teal→aqua, orange→koral, yellow→kuning, amber→emas, sky→sage, charcoal tetap. Hanya teks di atas warna
+ * palet (--on-brand) memakai hampir-hitam #1B1B1D, karena charcoal di atas koral hanya 4.1:1 (AA butuh 4.5).
  */
 [data-theme="cms"] {
   --brand-sky: #eaf2e3;
@@ -89,17 +91,18 @@
   --brand-yellow: #f2e863;
   --brand-amber: #f2cd60;
   --brand-orange: #f25757;
-  --brand-charcoal: #1b1b1d;
+  --brand-charcoal: #2d2d2f;
+  --on-brand: #1b1b1d;
 
   --background: #f6f8f4;
-  --foreground: #1b1b1d;
-  --card-foreground: #1b1b1d;
-  --popover-foreground: #1b1b1d;
-  --primary: #1b1b1d;
+  --foreground: #2d2d2f;
+  --card-foreground: #2d2d2f;
+  --popover-foreground: #2d2d2f;
+  --primary: #2d2d2f;
   --secondary: #eef4e8;
-  --secondary-foreground: #1b1b1d;
+  --secondary-foreground: #2d2d2f;
   --accent: #f1f6ec;
-  --accent-foreground: #1b1b1d;
+  --accent-foreground: #2d2d2f;
   --muted: #eff2ec;
   --muted-foreground: #5c6656;
   --destructive: #c23b3b;
@@ -122,13 +125,13 @@
 
   --sidebar: #eaf2e3;
   --sidebar-foreground: #3c4437;
-  --sidebar-primary: #1b1b1d;
+  --sidebar-primary: #2d2d2f;
   --sidebar-accent: #dce8d2;
-  --sidebar-accent-foreground: #1b1b1d;
+  --sidebar-accent-foreground: #2d2d2f;
   --sidebar-border: #dce8d2;
   --sidebar-ring: #2bbdb6;
 
-  --panel: #1b1b1d;
+  --panel: #2d2d2f;
 }
 
 .dark {
@@ -212,6 +215,7 @@
   --color-brand-amber: var(--brand-amber);
   --color-brand-orange: var(--brand-orange);
   --color-brand-charcoal: var(--brand-charcoal);
+  --color-on-brand: var(--on-brand);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -256,3 +260,18 @@
 @media (prefers-reduced-motion: no-preference) {
   [data-reveal] { opacity: 0; transform: translateY(14px); }
 }
+
+/* Loader SVG (fallback sebelum Lottie siap): satu siklus 1,6 dtk = 96 frame Lottie @60fps. */
+@keyframes loader-bar {
+  0% { opacity: 0; transform: translateY(-12px); }
+  15% { opacity: 1; transform: translateY(0); }
+  62% { opacity: 1; transform: translateY(0); }
+  75%, 100% { opacity: 0; transform: translateY(6px); }
+}
+.loader-bar {
+  animation: loader-bar 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-bar { animation: none; }
+}
+

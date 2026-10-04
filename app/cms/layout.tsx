@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { CmsShell, type CmsUser } from "@/components/layout/cms-shell";
+import { CmsShellSkeleton } from "@/components/layout/cms-shell-skeleton";
 import { SampleBanner } from "@/components/cms/sample-banner";
 import { RabProvider } from "@/components/probis/rab-context";
 import { rabSetSafe } from "@/lib/probis/rab";
@@ -6,7 +8,16 @@ import { can, currentActor } from "@/lib/access";
 import { cmsSummary, opdCodeOf } from "@/lib/probis/repo";
 import { roleLabel } from "@/lib/roles";
 
-export default async function CmsLayout({ children }: { children: React.ReactNode }) {
+/** Kerangka CMS tampil seketika; sesi, ringkasan, dan referensi RAB dimuat di baliknya. */
+export default function CmsLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<CmsShellSkeleton />}>
+      <CmsFrame>{children}</CmsFrame>
+    </Suspense>
+  );
+}
+
+async function CmsFrame({ children }: { children: React.ReactNode }) {
   const actor = await currentActor();
   const scope = can.readAll(actor) ? null : actor.opdId ?? "00000000-0000-0000-0000-000000000000";
   const [opdCode, summary, rabSet] = await Promise.all([

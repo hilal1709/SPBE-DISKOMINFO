@@ -25,6 +25,8 @@ const variants: Record<string, "success" | "warning" | "muted" | "destructive" |
   Tinggi: "destructive",
   Ditolak: "destructive",
   Sedang: "warning",
+  Elektronik: "success",
+  Hybrid: "info",
 };
 
 /** Badge status dengan warna semantik. Terima kode status atau label bebas. */

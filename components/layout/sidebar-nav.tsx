@@ -44,7 +44,7 @@ function ItemLink({ item, nested, active, tone, badges, onNavigate, hover }: Sha
         {nested && item.description && <span className={cn("truncate text-[11px] font-normal", isActive ? "opacity-80" : "text-muted-foreground")}>{item.description}</span>}
       </span>
       {item.soon && <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold text-muted-foreground">Segera</span>}
-      {!!count && <span className={cn("min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold tabular-nums", isActive ? "bg-primary-foreground/20" : "bg-brand-orange text-brand-charcoal")}>{count}</span>}
+      {!!count && <span className={cn("min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold tabular-nums", isActive ? "bg-primary-foreground/20" : "bg-brand-orange text-on-brand")}>{count}</span>}
       <PendingHint />
     </Link>
   );
@@ -93,7 +93,7 @@ function Group({ group, ...shared }: Shared & { group: NavGroup }) {
       >
         <Icon icon={group.icon} size={18} className="shrink-0 opacity-80" />
         <span className="flex-1 truncate">{group.label}</span>
-        {!open && total > 0 && <span className="min-w-5 rounded-full bg-brand-orange px-1.5 text-center text-[11px] font-bold text-brand-charcoal tabular-nums">{total}</span>}
+        {!open && total > 0 && <span className="min-w-5 rounded-full bg-brand-orange px-1.5 text-center text-[11px] font-bold text-on-brand tabular-nums">{total}</span>}
         <Icon icon={ArrowDown01Icon} size={14} className={cn("shrink-0 opacity-60 transition-transform duration-300", open && "rotate-180")} />
       </button>
       {open && (

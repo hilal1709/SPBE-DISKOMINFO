@@ -131,7 +131,7 @@ export function Treemap({ items, selected = [], onToggle, className }: { items: 
             onFocus={() => setHover(item)}
             onBlur={() => setHover(null)}
             className={cn(
-              "absolute flex flex-col justify-between overflow-hidden border-2 border-card p-2 text-left text-brand-charcoal",
+              "absolute flex flex-col justify-between overflow-hidden border-2 border-card p-2 text-left text-on-brand",
               "transition-[left,top,width,height,opacity,filter] duration-500 ease-(--ease-out) hover:brightness-110 active:brightness-95 motion-reduce:transition-none",
               "focus-visible:z-10 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
               active && "z-10 ring-3 ring-brand-charcoal ring-inset",

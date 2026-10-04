@@ -44,7 +44,7 @@ export function HeatTile({
       onClick={onClick}
       aria-pressed={onClick ? !!active : undefined}
       className={cn(
-        "flex min-h-20 min-w-0 flex-col justify-between overflow-hidden rounded-xl p-3 text-left text-brand-charcoal transition-[transform,opacity,box-shadow] duration-300 ease-(--ease-out) hover:-translate-y-0.5 hover:scale-[1.02]",
+        "flex min-h-20 min-w-0 flex-col justify-between overflow-hidden rounded-xl p-3 text-left text-on-brand transition-[transform,opacity,box-shadow] duration-300 ease-(--ease-out) hover:-translate-y-0.5 hover:scale-[1.02]",
         onClick && "cursor-pointer focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
         active && "ring-3 ring-brand-charcoal",
         dimmed && "opacity-45 hover:opacity-100",

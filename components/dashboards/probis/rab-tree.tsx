@@ -9,11 +9,32 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import type { RabTreeNode } from "@/lib/probis/query";
 import { cn } from "@/lib/utils";
 
-const levelLabel = ["", "Sektor", "Urusan", "Sub-urusan"];
+const rabLevels = ["", "Sektor", "Urusan", "Sub-urusan"];
 
-/** Rekap RAB berjenjang L1 → L2 → L3 dengan expand/collapse. */
-export function RabTreeCard({ tree, total, className }: { tree: RabTreeNode[]; total: number; className?: string }) {
-  const [open, setOpen] = useState<Set<string>>(new Set());
+/** Rekap referensi berjenjang (RAB atau RAL) L1 → L2 → L3 dengan expand/collapse. */
+export function RabTreeCard({
+  tree,
+  total,
+  className,
+  title = "Rekap RAB",
+  reference = "RAB",
+  levelLabel = rabLevels,
+  expandLabel = "Buka sektor",
+  defaultExpanded = false,
+}: {
+  tree: RabTreeNode[];
+  total: number;
+  className?: string;
+  title?: string;
+  /** Nama referensi di kepala tabel. */
+  reference?: string;
+  /** Nama tiap level (indeks = level). */
+  levelLabel?: string[];
+  expandLabel?: string;
+  /** Level 1 langsung terbuka (cocok bila jumlah L1 sedikit, mis. RAL). */
+  defaultExpanded?: boolean;
+}) {
+  const [open, setOpen] = useState<Set<string>>(() => new Set(defaultExpanded ? tree.map((n) => n.code) : []));
   /** Node yang baru dibuka; anak-anaknya dianimasikan masuk. */
   const [opened, setOpened] = useState<string[]>([]);
   const body = useRef<HTMLTableSectionElement>(null);
@@ -82,7 +103,7 @@ export function RabTreeCard({ tree, total, className }: { tree: RabTreeNode[]; t
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Rekap RAB</CardTitle>
+        <CardTitle className="section-title">{title}</CardTitle>
         <CardAction>
           <Button
             variant="ghost"
@@ -92,7 +113,7 @@ export function RabTreeCard({ tree, total, className }: { tree: RabTreeNode[]; t
               setOpened(expanded ? [] : allL1);
             }}
           >
-            {expanded ? "Tutup semua" : "Buka sektor"}
+            {expanded ? "Tutup semua" : expandLabel}
           </Button>
         </CardAction>
       </CardHeader>
@@ -100,7 +121,7 @@ export function RabTreeCard({ tree, total, className }: { tree: RabTreeNode[]; t
         <table className="w-full text-left">
           <thead className="sticky top-0 z-10 bg-card text-[11px] tracking-wide text-muted-foreground uppercase">
             <tr className="border-b">
-              <th className="py-2 pl-2 font-semibold">Kode & nama RAB</th>
+              <th className="py-2 pl-2 font-semibold">Kode & nama {reference}</th>
               <th className="hidden py-2 font-semibold sm:table-cell">Level</th>
               <th className="py-2 pr-3 text-right font-semibold">Jumlah</th>
             </tr>

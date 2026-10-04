@@ -22,6 +22,7 @@ const catalog = {
   success: { load: () => import("./data/success.json"), ratio: "1", still: 89 },
   explore: { load: () => import("./data/explore.json"), ratio: "3 / 2", still: 90 },
   "filter-empty": { load: () => import("./data/filter-empty.json"), ratio: "4 / 3", still: 100 },
+  "service-desk": { load: () => import("./data/service-desk.json"), ratio: "3 / 2", still: 120 },
 } as const;
 
 export type IllustrationName = keyof typeof catalog;
@@ -33,9 +34,11 @@ type Props = {
   label?: string;
   loop?: boolean;
   className?: string;
+  /** Tampil sejak HTML server sampai animasi Lottie siap (mis. versi CSS untuk loader). */
+  fallback?: React.ReactNode;
 };
 
-export function Illustration({ name, label, loop = true, className }: Props) {
+export function Illustration({ name, label, loop = true, className, fallback }: Props) {
   const [data, setData] = useState<object | null>(null);
   const lottie = useRef<LottieHandle>(null);
   const reduced = useReducedMotion();
@@ -55,6 +58,7 @@ export function Illustration({ name, label, loop = true, className }: Props) {
       className={cn("relative", className)}
       style={{ aspectRatio: entry.ratio }}
     >
+      {!data && fallback}
       {data && (
         <Lottie
           lottieRef={lottie}

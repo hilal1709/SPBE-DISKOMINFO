@@ -32,3 +32,30 @@ export type ProbisRecord = {
   rabReview: boolean;
 };
 export type ProbisReview = { id: string; actorName: string | null; fromStatus: SubmissionStatus | null; toStatus: SubmissionStatus; note: string | null; createdAt: string };
+
+/** Layanan di dashboard publik (kolom mengikuti template "Domain Arsitektur Layanan.xlsx"). */
+export type Layanan = {
+  id: string;
+  name: string;
+  tujuan: string;
+  fungsi: string;
+  /** Kode Perangkat Daerah. */
+  pd: string;
+  unit: string;
+  target: "masyarakat" | "usaha" | "asn" | "pemerintah";
+  metode: "elektronik" | "hybrid" | "tatap_muka";
+  period: string;
+  ral1: string;
+  ral2: string;
+  ral3: string;
+  /** Urusan pemerintahan (RAB L2). */
+  rab2: string | null;
+  manfaat: string | null;
+  ekonomi: string | null;
+  risiko: string | null;
+  mitigasi: string | null;
+  /** Kementerian/Lembaga terkait. */
+  kl: string | null;
+  /** Proses bisnis yang dilayani (dependensi ← Proses Bisnis). */
+  probis: { id: string; name: string }[];
+};

@@ -41,7 +41,7 @@ export function StatCard({
   const solid = tone !== "plain";
   return (
     <SpotlightCard
-      className={cn("gap-1 px-5 py-5", tones[tone], solid && "text-brand-charcoal", className)}
+      className={cn("gap-1 px-5 py-5", tones[tone], solid && "text-on-brand", className)}
       style={solid ? ({ "--spot-color": "rgb(255 255 255 / 0.32)" } as React.CSSProperties) : undefined}
       data-reveal
     >

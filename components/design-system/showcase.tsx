@@ -37,6 +37,16 @@ const brand = [
   ["brand-charcoal", "#2D2D2F", "Teks, tombol utama, nav aktif"],
 ] as const;
 
+/** Palet CMS — token --brand-* yang sama, dipetakan ulang di [data-theme="cms"]. */
+const cmsBrand = [
+  ["brand-sky", "Sage", "#EAF2E3", "Sidebar, permukaan lembut"],
+  ["brand-teal", "Aqua", "#61E8E1", "Kartu statistik 1, sukses, fokus"],
+  ["brand-orange", "Koral", "#F25757", "Kartu statistik 2, lencana antrean"],
+  ["brand-yellow", "Kuning", "#F2E863", "Kartu statistik 3, seri grafik 1"],
+  ["brand-amber", "Emas", "#F2CD60", "Kartu statistik 4, aksen judul"],
+  ["brand-charcoal", "Charcoal", "#2D2D2F", "Teks, tombol utama, nav aktif"],
+] as const;
+
 const semantic = [
   ["background", "Latar halaman"],
   ["card", "Kartu"],
@@ -87,7 +97,8 @@ export function DesignSystemShowcase() {
           </div>
         </Section>
 
-        <Section id="warna" title="Palet" description="Palet Diskominfo. Distribusi: ±60% netral, ±15% biru muda, ±10% charcoal, ±15% aksen hangat & teal.">
+        <Section id="warna" title="Palet" description="Portal memakai palet Diskominfo, CMS memakai paletnya sendiri lewat token yang sama. Distribusi: ±60% netral, ±15% warna lembut, ±10% charcoal, ±15% aksen.">
+          <p className="eyebrow">Portal publik — Diskominfo</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {brand.map(([token, hex, usage]) => (
               <div key={token} className="overflow-hidden rounded-2xl bg-card shadow-card ring-1 ring-border">
@@ -98,6 +109,31 @@ export function DesignSystemShowcase() {
                 </div>
               </div>
             ))}
+          </div>
+          <div data-theme="cms" className="grid gap-4 rounded-2xl bg-background p-4 ring-1 ring-border">
+            <p className="eyebrow">CMS — <code className="font-mono normal-case">[data-theme=&quot;cms&quot;]</code></p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {cmsBrand.map(([token, name, hex, usage]) => (
+                <div key={token} className="overflow-hidden rounded-2xl bg-card shadow-card ring-1 ring-border">
+                  <div className="h-20" style={{ background: `var(--${token})` }} />
+                  <div className="p-3">
+                    <p className="text-xs font-semibold">
+                      {name} <span className="font-mono">{hex}</span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{usage}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard tone="teal" label="Total proses bisnis" value={1845} />
+              <StatCard tone="orange" label="Menunggu verifikasi" value={42} />
+              <StatCard tone="yellow" label="Menunggu validasi" value={17} />
+              <StatCard tone="amber" label="Tervalidasi" value={1786} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Teks di atas warna palet memakai <code className="font-mono">text-on-brand</code>: charcoal di portal, hampir-hitam <code className="font-mono">#1B1B1D</code> di CMS karena charcoal di atas koral hanya 4.1:1.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {semantic.map(([token, usage]) => (
