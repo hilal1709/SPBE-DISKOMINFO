@@ -23,9 +23,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { allData } from "@/lib/data/generate";
-import { categorical, colorByRoot } from "@/lib/palette";
+import { categorical, colorByCount } from "@/lib/palette";
 import { activeFilterCount, countBy, emptyFilter, filterData, filterFromParams, filterToParams, radOptions, radTree, sanitizeFilter, type DataFilter } from "@/lib/data/query";
-import { jenisLabel, jenisOptions, sampleRad, sifatLabel, sifatOptions, validitasOptions, type Jenis, type Sifat } from "@/lib/data/reference";
+import { jenisLabel, jenisOptions, sifatLabel, sifatOptions, validitasOptions, type Jenis, type Sifat } from "@/lib/data/reference";
+import { useRadSet } from "@/components/data/rad-context";
+import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { DataInfo } from "@/lib/types";
 
@@ -35,19 +37,13 @@ const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
-const rad = sampleRad;
-const radLabel = rad.label;
 const radLevels = ["", "Data pokok", "Data tematik", "Topik"];
-/** Warna rincian sifat, sama dengan grafik Jenis × sifat. */
-const sifatTone: Record<Sifat, string> = { terbuka: "bg-brand-teal", terbatas: "bg-brand-yellow", tertutup: "bg-brand-orange" };
-/** Satu warna per data tematik (RAD 2), dipakai sama di treemap dan ranking wali data. */
-const tematikColor = colorByRoot(rad.level(2).map((n) => n.code));
 const interopLabel = (d: DataInfo) => (d.interoperabel ? "Interoperabel" : "Belum");
 
 type RadKey = "rad1" | "rad2" | "rad3";
 
 /** RAD bertingkat: buang pilihan turunan yang tidak lagi berada di bawah induk terpilih. */
-function withRad(current: DataFilter, patch: Partial<Pick<DataFilter, RadKey>>) {
+function withRad(current: DataFilter, patch: Partial<Pick<DataFilter, RadKey>>, rad: RabIndex) {
   const next = { ...current, ...patch };
   for (const [key, level] of [["rad2", "level2"], ["rad3", "level3"]] as const) {
     const allowed = new Set(radOptions(next, rad)[level].map((n) => n.code));
@@ -68,9 +64,11 @@ export function DataDashboard({
   periods: PeriodOptions;
 }) {
   const params = useSearchParams();
+  const rads = useRadSet();
   const all = useMemo(() => data ?? allData(), [data]);
   const [filter, setFilterState] = useState<DataFilter>(() => {
     const parsed = filterFromParams(new URLSearchParams(params.toString()), activePeriod);
+    const rad = rads.forPeriod(periods.includes(parsed.period) ? parsed.period : activePeriod);
     const valid = {
       periods,
       defaultPeriod: activePeriod,
@@ -80,7 +78,8 @@ export function DataDashboard({
       validitas: new Set(validitasOptions),
       rad,
     };
-    return withRad(sanitizeFilter(parsed, valid), {});
+    // RAD turunan yang tidak berada di bawah induk terpilih juga dibuang.
+    return withRad(sanitizeFilter(parsed, valid), {}, rad);
   });
   const [selected, setSelected] = useState<DataInfo | null>(null);
   /** Filter terbaru, untuk aksi tertunda (animasi chip, Urungkan di toast). */
@@ -94,7 +93,10 @@ export function DataDashboard({
     const query = filterToParams(value, activePeriod).toString();
     window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
   };
-  const setRad = (patch: Partial<Pick<DataFilter, RadKey>>) => setFilter((current) => withRad(current, patch));
+  const setRad = (patch: Partial<Pick<DataFilter, RadKey>>) => setFilter((current) => withRad(current, patch, rads.forPeriod(current.period)));
+  /** Referensi RAD mengikuti versi milik periode yang dipilih. */
+  const rad = useMemo(() => rads.forPeriod(filter.period), [rads, filter.period]);
+  const radLabel = rad.label;
 
   /** Klik batang/petak/baris: filter langsung diterapkan, toast menawarkan Urungkan. */
   const clickFilter = (label: string, apply: (current: DataFilter) => DataFilter, adding: boolean) => {
@@ -111,7 +113,9 @@ export function DataDashboard({
   const withoutValiditas = useMemo(() => filterData(all, { ...filter, validitas: [] }), [all, filter]);
 
   const options = radOptions(filter, rad);
-  const tree = useMemo(() => radTree(rows, rad), [rows]);
+  const tree = useMemo(() => radTree(rows, rad), [rows, rad]);
+  /** Satu warna per data tematik (RAD 2), dipakai sama di rekap, treemap, dan ranking wali data. */
+  const tematikColor = useMemo(() => colorByCount(all, (d) => d.rad2), [all]);
   const sifat = countBy(rows, "sifat");
   const interop = rows.filter((d) => d.interoperabel).length;
   const realtime = rows.filter((d) => d.validitas === "Realtime").length;
@@ -185,52 +189,27 @@ export function DataDashboard({
         </Card>
       ) : (
         <>
-          <section className="grid gap-5 *:min-w-0 lg:grid-cols-2 xl:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2 xl:col-span-1 xl:grid-cols-1 xl:grid-rows-2">
-              <StatCard
-                className="justify-center"
-                tone="sky"
-                label="Jumlah data"
-                value={rows.length}
-                footer={
-                  <div className="mt-2 grid gap-1.5">
-                    <div className="flex h-2 overflow-hidden rounded-full bg-brand-charcoal/10" aria-hidden>
-                      {sifatOptions.map((s) => (
-                        <span key={s.value} className={`${sifatTone[s.value]} h-full transition-[width] duration-700 ease-(--ease-out)`} style={{ width: `${((sifat.get(s.value) ?? 0) / total) * 100}%` }} />
-                      ))}
-                    </div>
-                    <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs font-medium">
-                      {sifatOptions.map((s) => (
-                        <span key={s.value} className="inline-flex items-center gap-1.5">
-                          <span className={`size-2 rounded-full ${sifatTone[s.value]}`} />
-                          {s.label} <b className="tabular-nums">{fmt.format(sifat.get(s.value) ?? 0)}</b>
-                        </span>
-                      ))}
-                    </p>
-                  </div>
-                }
-              />
-              <StatCard className="justify-center" tone="amber" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
-            </div>
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard tone="teal" label="Jumlah data" value={rows.length} hint={`${tree.length} data pokok RAD`} />
+            <StatCard tone="orange" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+            <StatCard tone="yellow" label="Data terbuka" value={sifat.get("terbuka") ?? 0} hint={`${pct(sifat.get("terbuka") ?? 0, rows.length)} dari seluruh data`} />
+            <StatCard tone="amber" label="Produsen lintas PD" value={lintas} hint="produsen berbeda dari wali" />
+          </section>
 
+          <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
             <Card data-reveal className="gap-3">
               <CardHeader>
                 <CardTitle className="section-title">Interoperabilitas data</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-center gap-5">
                 <Gauge value={(interop / total) * 100} label="Persentase data interoperabel" caption={`${fmt.format(interop)} dari ${fmt.format(rows.length)} data`} />
-                <dl className="grid grid-cols-2 gap-2 text-center">
-                  {[
-                    { label: "Diperbarui realtime", value: realtime, tone: "bg-brand-yellow" },
-                    { label: "Produsen lintas PD", value: lintas, tone: "bg-brand-orange" },
-                  ].map((s) => (
-                    <div key={s.label} className={`${s.tone} rounded-lg px-2 py-2 text-on-brand`}>
-                      <dt className="text-xs font-medium">{s.label}</dt>
-                      <dd className="font-semibold tabular-nums">
-                        {fmt.format(s.value)} <span className="text-xs font-normal opacity-80">({pct(s.value, rows.length)})</span>
-                      </dd>
-                    </div>
-                  ))}
+                <dl className="grid gap-2 text-center">
+                  <div className="rounded-lg bg-brand-sky px-2 py-2 text-on-brand">
+                    <dt className="text-xs font-medium">Diperbarui realtime</dt>
+                    <dd className="font-semibold tabular-nums">
+                      {fmt.format(realtime)} <span className="text-xs font-normal opacity-80">({pct(realtime, rows.length)})</span>
+                    </dd>
+                  </div>
                 </dl>
               </CardContent>
             </Card>
@@ -277,13 +256,13 @@ export function DataDashboard({
           </section>
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.15fr_1fr]">
-            <RabTreeCard tree={tree} total={rows.length} title="Peta referensi data (RAD)" reference="RAD" levelLabel={radLevels} expandLabel="Buka data pokok" />
+            <RabTreeCard tree={tree} total={rows.length} colorOf={tematikColor} colorLevel={2} title="Peta referensi data (RAD)" reference="RAD" levelLabel={radLevels} expandLabel="Buka data pokok" />
             <Card data-reveal className="gap-3">
               <CardHeader>
                 <CardTitle className="section-title">Data tematik (RAD 2)</CardTitle>
               </CardHeader>
               <CardContent className="flex-1">
-                <Treemap items={tematik} colorOf={(item) => tematikColor(item.code)} selected={filter.rad2} onToggle={(code) => clickFilter(radLabel(code), (c) => withRad(c, { rad2: toggle(c.rad2, code) }), !filter.rad2.includes(code))} className="h-[22rem] sm:h-[26rem]" />
+                <Treemap items={tematik} colorOf={(item) => tematikColor(item.code)} selected={filter.rad2} onToggle={(code) => clickFilter(radLabel(code), (c) => withRad(c, { rad2: toggle(c.rad2, code) }, rad), !filter.rad2.includes(code))} className="h-[22rem] sm:h-[26rem]" />
               </CardContent>
             </Card>
           </section>

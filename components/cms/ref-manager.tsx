@@ -28,6 +28,7 @@ const ROOT = "__root";
 const kinds = {
   rab: { ref: "RAB", unit: "probis", Unit: "Probis", root: "Sektor (L1)", rootTitle: "Tambah sektor (Level 1)", basePath: "/cms/pengaturan/referensi-rab" },
   ral: { ref: "RAL", unit: "layanan", Unit: "Layanan", root: "Jenis (L1)", rootTitle: "Tambah jenis layanan (Level 1)", basePath: "/cms/pengaturan/referensi-ral" },
+  rad: { ref: "RAD", unit: "data", Unit: "Data", root: "Data pokok (L1)", rootTitle: "Tambah data pokok (Level 1)", basePath: "/cms/pengaturan/referensi-rad" },
 } as const;
 type KindText = (typeof kinds)[RefKind];
 

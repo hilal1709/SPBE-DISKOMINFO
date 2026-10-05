@@ -10,7 +10,7 @@ import { makeRabIndex, type RabIndex, type RabLevel, type RabNode, type RabSet, 
  * draf lalu diterbitkan, sehingga periode lama tidak ikut berubah.
  */
 
-export type RefKind = "rab" | "ral";
+export type RefKind = "rab" | "ral" | "rad";
 
 type Config = {
   /** "RAB" / "RAL" — juga awalan kode. */
@@ -28,6 +28,8 @@ type Config = {
    * `<col>_l4`, `<col>_l5` (teks bebas L4/L5), dan `<col>_review` (perlu pemetaan ulang).
    */
   usage: { table: string; col: string; unit: string };
+  /** Level node yang boleh dipakai sebagai `<col>_id`. Bawaan L3; RAD juga menerima L2 yang tidak memiliki turunan. */
+  leafLevels?: number[];
 };
 
 export type VersionInfo = {
@@ -81,6 +83,7 @@ export function refResolver(set: RabSet) {
 export function makeVersionedRef(cfg: Config) {
   const { label: L, refTable: R, versionTable: V, changeTable: C, periodColumn: P } = cfg;
   const U = cfg.usage;
+  const leafLevels = cfg.leafLevels ?? [3];
   const CODE = new RegExp(`^${L}(\\.\\d{2}){1,5}$`);
   const usedBy = (alias: string) => `${alias}.${U.col}_id = r.id or ${alias}.${U.col}4_id = r.id or ${alias}.${U.col}5_id = r.id`;
   const NODE_SELECT = `select r.id, r.code, r.name, r.level, p.code as parent, r.status, r.version_id from ${R} r left join ${R} p on p.id = r.parent_id`;
@@ -376,6 +379,7 @@ export function makeVersionedRef(cfg: Config) {
       if (period.version === versionId) return { total: 0, mapped: 0, review: 0 };
 
       const target = new Map((await client.query(`select id, code, level, status, parent_id from ${R} where version_id = $1`, [versionId])).rows.map((r) => [r.id as string, r]));
+      const parents = new Set([...target.values()].map((r) => r.parent_id as string | null).filter(Boolean));
       // Garis keturunan: pasangan (node, leluhur) mengikuti origin_id.
       const lineage = (
         await client.query(
@@ -398,7 +402,7 @@ export function makeVersionedRef(cfg: Config) {
       const updates = rows.map((p) => {
         const n3 = map(p.l3);
         const t3 = n3 ? target.get(n3) : undefined;
-        const ok3 = !!t3 && t3.level === 3 && t3.status === "berlaku";
+        const ok3 = !!t3 && t3.status === "berlaku" && (t3.level === 3 || (leafLevels.includes(t3.level) && !parents.has(n3)));
         const n4 = map(p.l4id);
         const t4 = n4 ? target.get(n4) : undefined;
         const ok4 = !p.l4id || (!!t4 && t4.level === 4 && t4.parent_id === n3 && t4.status === "berlaku");

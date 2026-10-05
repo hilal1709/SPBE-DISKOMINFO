@@ -13,7 +13,8 @@
     "referensi": "node scripts/extract-reference.mjs",
     "seed:layanan": "tsx scripts/seed-sample-layanan.mts",
     "referensi:ral": "node scripts/extract-ral.mjs",
-    "referensi:rad": "node scripts/extract-rad.mjs"
+    "referensi:rad": "node scripts/extract-rad.mjs",
+    "seed:data": "tsx scripts/seed-sample-data.mts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

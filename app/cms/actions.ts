@@ -5,6 +5,8 @@ import { can, currentActor, stageOf } from "@/lib/access";
 import * as periods from "@/lib/probis/periods";
 import { readUpload, validateRows, type ImportResult, type ImportRow } from "@/lib/probis/import";
 import * as repo from "@/lib/probis/repo";
+import * as dataRepo from "@/lib/data/cms-repo";
+import * as radRepo from "@/lib/data/rad";
 import * as layananRepo from "@/lib/layanan/cms-repo";
 import * as rabRepo from "@/lib/probis/rab";
 import * as ralRepo from "@/lib/layanan/ral";
@@ -218,8 +220,8 @@ export async function clearSamples(): Promise<ActionResult<{ removed: number }>>
   try {
     const actor = await currentActor();
     if (!can.managePeriods(actor)) throw new Error("Hanya tim Diskominfo yang dapat menghapus data contoh.");
-    // Layanan contoh dihapus dulu: tautannya ke probis contoh ikut terlepas.
-    const removed = (await layananRepo.clearSamples()) + (await repo.clearSamples());
+    // Data & layanan contoh dihapus dulu: tautannya ke probis contoh ikut terlepas.
+    const removed = (await dataRepo.clearSamples()) + (await layananRepo.clearSamples()) + (await repo.clearSamples());
     refresh();
     return { ok: true, data: { removed } };
   } catch (error) {
@@ -227,9 +229,9 @@ export async function clearSamples(): Promise<ActionResult<{ removed: number }>>
   }
 }
 
-/* ---------- Referensi berversi (RAB untuk probis, RAL untuk layanan) ---------- */
+/* ---------- Referensi berversi (RAB untuk probis, RAL untuk layanan, RAD untuk data) ---------- */
 
-const refs = { rab: rabRepo.rab, ral: ralRepo.ral } satisfies Record<RefKind, VersionedRef>;
+const refs = { rab: rabRepo.rab, ral: ralRepo.ral, rad: radRepo.rad } satisfies Record<RefKind, VersionedRef>;
 
 async function refAdmin(kind: RefKind) {
   const actor = await currentActor();

@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { allLayanan } from "@/lib/layanan/generate";
 import { activeFilterCount, countBy, emptyFilter, filterFromParams, filterLayanan, filterToParams, ralOptions, ralTree, sanitizeFilter, type LayananFilter } from "@/lib/layanan/query";
-import { colorByRoot } from "@/lib/palette";
+import { colorByCount } from "@/lib/palette";
 import { useRalSet } from "@/components/layanan/ral-context";
 import { RAL_PUBLIK, isDigital, metodeLabel, metodeOptions, targetLabel, targetOptions, type Metode, type Target } from "@/lib/layanan/reference";
 import type { RabIndex } from "@/lib/probis/rab-index";
@@ -104,7 +104,7 @@ export function ServiceDashboard({
   const options = ralOptions(filter, ral);
   const tree = useMemo(() => ralTree(rows, ral), [rows, ral]);
   /** Satu warna per urusan (RAL 2), dipakai sama di treemap dan ranking. */
-  const urusanColor = useMemo(() => colorByRoot(ral.level(2).map((n) => n.code)), [ral]);
+  const urusanColor = useMemo(() => colorByCount(all, (l) => l.ral2), [all]);
   const jenis = countBy(rows, "ral1");
   const metode = countBy(rows, "metode");
   const digital = rows.filter((l) => isDigital(l.metode)).length;
@@ -172,34 +172,14 @@ export function ServiceDashboard({
         </Card>
       ) : (
         <>
-          <section className="grid gap-5 *:min-w-0 lg:grid-cols-2 xl:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2 xl:col-span-1 xl:grid-cols-1 xl:grid-rows-2">
-              <StatCard
-                className="justify-center"
-                tone="teal"
-                label="Jumlah layanan"
-                value={rows.length}
-                footer={
-                  <div className="mt-2 grid gap-1.5">
-                    <div className="flex h-2 overflow-hidden rounded-full bg-brand-charcoal/10" aria-hidden>
-                      <span className="h-full bg-white transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${(publik / total) * 100}%` }} />
-                    </div>
-                    <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs font-medium">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="size-2 rounded-full bg-white" />
-                        Publik <b className="tabular-nums">{fmt.format(publik)}</b>
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="size-2 rounded-full bg-brand-charcoal/30" />
-                        Administrasi pemerintahan <b className="tabular-nums">{fmt.format(rows.length - publik)}</b>
-                      </span>
-                    </p>
-                  </div>
-                }
-              />
-              <StatCard className="justify-center" tone="orange" label="Perangkat Daerah pemilik layanan" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
-            </div>
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard tone="teal" label="Jumlah layanan" value={rows.length} hint={`${fmt.format(rows.length - publik)} administrasi pemerintahan`} />
+            <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+            <StatCard tone="yellow" label="Terdigitalisasi" value={digital} hint="elektronik + hybrid" />
+            <StatCard tone="amber" label="Layanan publik" value={publik} />
+          </section>
 
+          <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
             <Card data-reveal className="gap-3">
               <CardHeader>
                 <CardTitle className="section-title">Digitalisasi layanan</CardTitle>
@@ -236,7 +216,7 @@ export function ServiceDashboard({
           </section>
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.15fr_1fr]">
-            <RabTreeCard tree={tree} total={rows.length} title="Peta referensi layanan (RAL)" reference="RAL" levelLabel={ralLevels} expandLabel="Buka jenis" defaultExpanded />
+            <RabTreeCard tree={tree} total={rows.length} colorOf={urusanColor} colorLevel={2} title="Peta referensi layanan (RAL)" reference="RAL" levelLabel={ralLevels} expandLabel="Buka jenis" defaultExpanded />
             <PdRankingCard
               title="Layanan per Perangkat Daerah"
               unit="layanan"

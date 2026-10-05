@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 const fmt = new Intl.NumberFormat("id-ID");
 
 /** Pemberitahuan data contoh aktif; tim Diskominfo dapat menghapusnya sebelum data asli diimpor. */
-export function SampleBanner({ count, probis, layanan, canClear }: { count: number; probis: number; layanan: number; canClear: boolean }) {
+export function SampleBanner({ count, probis, layanan, data = 0, canClear }: { count: number; probis: number; layanan: number; data?: number; canClear: boolean }) {
   const [confirm, setConfirm] = useState(false);
   const [pending, start] = useTransition();
   const clear = () =>
@@ -31,7 +31,7 @@ export function SampleBanner({ count, probis, layanan, canClear }: { count: numb
         )
       }
     >
-      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`].filter(Boolean).join(" dan ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
+      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`, data && `${fmt.format(data)} data`].filter(Boolean).join(", ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
     </Banner>
   );
 }

@@ -6,6 +6,16 @@ export type Actor = { id: string | null; name: string; role: Role; opdId: string
 /** Tahap pemeriksaan: verifikasi (Bagian Organisasi) lalu validasi (Diskominfo). */
 export type ReviewStage = "verifikasi" | "validasi";
 
+/**
+ * Domain arsitektur yang diperiksa. Bagian Organisasi memverifikasi Probis & Layanan; domain Data diverifikasi
+ * Diskominfo (Admin Verifikator Referensi Arsitektur & Domain Data) — notulen 1 Juli 2026 & Detailing Requirement.
+ */
+export type ReviewDomain = "probis" | "layanan" | "data";
+
+/** Nama tim pemeriksa per domain dan tahap (untuk teks antrean & beranda). */
+export const reviewTeam = (stage: ReviewStage, domain: ReviewDomain = "probis") =>
+  stage === "validasi" ? "Diskominfo" : domain === "data" ? "Verifikator Data Diskominfo" : "Bagian Organisasi";
+
 const editable = new Set(["draft", "rejected"]);
 const diskominfoAdmins: Role[] = ["admin", "superadmin"];
 
@@ -21,7 +31,7 @@ export const can = {
     a.role === "superadmin" ||
     (editable.has(r.status) && (a.role === "admin" || (a.role === "operator_opd" && !!a.opdId && a.opdId === r.opdId))),
   /** Tim verifikasi: diajukan → terverifikasi / dikembalikan. */
-  verify: (a: Actor) => a.role === "organisasi" || a.role === "superadmin",
+  verify: (a: Actor, domain: ReviewDomain = "probis") => a.role === (domain === "data" ? "validator_data" : "organisasi") || a.role === "superadmin",
   /** Tim validasi: terverifikasi → tervalidasi (tayang di portal) / dikembalikan. */
   validate: (a: Actor) => diskominfoAdmins.includes(a.role),
   import: (a: Actor) => a.role === "operator_opd" || diskominfoAdmins.includes(a.role),
@@ -32,7 +42,7 @@ export const can = {
   /** Operator wajib memilih OPD-nya sendiri; peran lain bebas memilih. */
   lockedOpd: (a: Actor) => (a.role === "operator_opd" ? a.opdId : null),
   /** Boleh bertindak pada tahap ini? */
-  review: (a: Actor, stage: ReviewStage) => (stage === "verifikasi" ? can.verify(a) : can.validate(a)),
+  review: (a: Actor, stage: ReviewStage, domain: ReviewDomain = "probis") => (stage === "verifikasi" ? can.verify(a, domain) : can.validate(a)),
 };
 
 /** Status yang antre di tiap tahap. */

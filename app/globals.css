@@ -58,13 +58,14 @@
   --chart-4: #00a6a6;
   --chart-5: #bbdef0;
 
-  --sidebar: #e8f3f9;
-  --sidebar-foreground: #3b444d;
+  /* Sidebar memakai biru muda palet apa adanya, seperti sidebar sage di referensi. */
+  --sidebar: #bbdef0;
+  --sidebar-foreground: #2d2d2f;
   --sidebar-primary: #2d2d2f;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgb(187 222 240 / 0.75);
+  --sidebar-accent: rgb(255 255 255 / 0.5);
   --sidebar-accent-foreground: #2d2d2f;
-  --sidebar-border: #d3e6f0;
+  --sidebar-border: rgb(45 45 47 / 0.12);
   --sidebar-ring: #00a6a6;
 
   /* Panel gelap (panel login). */

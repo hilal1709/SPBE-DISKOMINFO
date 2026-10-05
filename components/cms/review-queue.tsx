@@ -9,7 +9,7 @@ import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Reveal } from "@/components/motion/reveal";
 import { useRabSet } from "@/components/probis/rab-context";
 import { Card } from "@/components/ui/card";
-import type { Actor, ReviewStage } from "@/lib/permissions";
+import { reviewTeam, type Actor, type ReviewDomain, type ReviewStage } from "@/lib/permissions";
 import type { ProbisRecord, SubmissionStatus } from "@/lib/types";
 
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
@@ -17,18 +17,19 @@ const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
 type QueueItem = { id: string; name: string; status: SubmissionStatus; opdName: string; updatedAt: string };
 
 /** Teks antrean per tahap; `noun` = "probis" / "layanan". */
-const copy = (stage: ReviewStage, noun: string) =>
+const copy = (stage: ReviewStage, noun: string, domain: ReviewDomain) =>
   stage === "verifikasi"
-    ? { empty: `Tidak ada ajuan ${noun} OPD yang menunggu verifikasi.`, waiting: `ajuan ${noun} OPD menunggu verifikasi tim Bagian Organisasi.` }
+    ? { empty: `Tidak ada ajuan ${noun} OPD yang menunggu verifikasi.`, waiting: `ajuan ${noun} OPD menunggu verifikasi tim ${reviewTeam(stage, domain)}.` }
     : { empty: `Tidak ada ${noun} terverifikasi yang menunggu validasi.`, waiting: `${noun} terverifikasi menunggu validasi akhir tim Diskominfo.` };
 
-/** Daftar antrean satu tahap pemeriksaan (generik untuk probis & layanan). Klik kartu untuk membuka detail. */
+/** Daftar antrean satu tahap pemeriksaan (generik untuk probis, layanan, dan data). Klik kartu untuk membuka detail. */
 export function QueueList<T extends QueueItem>({
   rows,
   stage,
   noun,
   describe,
   renderDetail,
+  domain = "probis",
 }: {
   rows: T[];
   stage: ReviewStage;
@@ -36,10 +37,11 @@ export function QueueList<T extends QueueItem>({
   /** Baris kedua kartu, mis. "OPD · RAB L3". */
   describe: (row: T) => string;
   renderDetail: (row: T, close: () => void) => React.ReactNode;
+  domain?: ReviewDomain;
 }) {
   const [selected, setSelected] = useState<T | null>(null);
   const list = useRef<HTMLUListElement>(null);
-  const text = copy(stage, noun);
+  const text = copy(stage, noun, domain);
 
   useGSAP(
     () => {

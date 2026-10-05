@@ -23,6 +23,7 @@ export function RabTreeCard({
   expandLabel = "Buka sektor",
   defaultExpanded = false,
   colorOf,
+  colorLevel = 1,
 }: {
   tree: RabTreeNode[];
   total: number;
@@ -37,6 +38,8 @@ export function RabTreeCard({
   defaultExpanded?: boolean;
   /** Token warna per kode level 1; anak-anaknya mewarisi. Bawaan bergiliran sesuai urutan. */
   colorOf?: (code: string) => string;
+  /** Level yang diberi warna kategori; level di atasnya charcoal, di bawahnya mewarisi. */
+  colorLevel?: number;
 }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(defaultExpanded ? tree.map((n) => n.code) : []));
   /** Node yang baru dibuka; anak-anaknya dianimasikan masuk. */
@@ -70,7 +73,7 @@ export function RabTreeCard({
   const renderRows = (nodes: RabTreeNode[], inherited?: string): React.ReactNode =>
     nodes.map((node, i) => {
       const isOpen = open.has(node.code);
-      const color = inherited ?? colorOf?.(node.code) ?? categoryColor(i);
+      const color = node.level < colorLevel ? "--brand-charcoal" : node.level === colorLevel ? (colorOf?.(node.code) ?? categoryColor(i)) : inherited!;
       const share = total ? (node.count / total) * 100 : 0;
       return (
         <Fragment key={node.code}>
@@ -85,16 +88,16 @@ export function RabTreeCard({
                   <span className="w-6 shrink-0" />
                 )}
                 <div className="min-w-0">
-                  {node.level === 1 && <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full" style={{ background: `var(${color})` }} />}
+                  {node.level === colorLevel && <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full" style={{ background: `var(${color})` }} />}
                   <span className="mr-1.5 text-[11px] font-medium whitespace-nowrap text-muted-foreground tabular-nums">{node.code}</span>
                   <span className={cn("text-xs", node.level > 1 && "font-normal")}>{node.name}</span>
                 </div>
               </div>
             </td>
             <td className="hidden py-2 pr-3 text-[11px] text-muted-foreground sm:table-cell">{levelLabel[node.level]}</td>
-            <td className="w-28 py-2 pr-3">
+            <td className="w-32 py-2 pr-3">
               <div className="flex items-center justify-end gap-2">
-                <span className="h-1.5 w-12 overflow-hidden rounded-full bg-muted" aria-hidden>
+                <span className="h-2 w-16 overflow-hidden rounded-full bg-muted" aria-hidden>
                   <span className="block h-full rounded-full transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${Math.max(share, 2)}%`, background: `var(${color})` }} />
                 </span>
                 <b className="w-10 text-right text-xs tabular-nums"><CountUp instant value={node.count} /></b>

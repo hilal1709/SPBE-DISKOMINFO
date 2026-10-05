@@ -12,9 +12,9 @@ import { Icon } from "@/components/icon";
 import { useRalSet } from "@/components/layanan/ral-context";
 import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
+import { StatusTabs } from "@/components/cms/status-tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { metodeLabel, metodeOptions, targetLabel, targetOptions } from "@/lib/layanan/reference";
 import { can, type Actor } from "@/lib/permissions";
 import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
@@ -67,7 +67,7 @@ export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; 
       <Card data-reveal>
         <EmptyState title="Belum ada layanan" description="Tambahkan satu per satu dengan bantuan AI, atau impor template Domain Arsitektur Layanan.">
           {can.create(actor) && (
-            <Button asChild>
+            <Button asChild variant="teal">
               <Link href="/cms/layanan/baru">
                 <Icon icon={Add01Icon} size={16} />
                 Tambah layanan
@@ -86,18 +86,7 @@ export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; 
 
   return (
     <Reveal className="grid gap-4">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} data-reveal>
-        <TabsList className="h-auto flex-wrap">
-          {tabs
-            .filter((t) => t.value !== "review" || counts.get("review"))
-            .map((t) => (
-              <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
-                {t.label}
-                <span className="rounded-full bg-muted px-1.5 text-[10px] tabular-nums">{counts.get(t.value) ?? 0}</span>
-              </TabsTrigger>
-            ))}
-        </TabsList>
-      </Tabs>
+      <StatusTabs value={tab} onChange={setTab} counts={counts} tabs={tabs.filter((t) => t.value !== "review" || counts.get("review"))} />
 
       <FilterBar
         filters={[
@@ -128,7 +117,7 @@ export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; 
               </Button>
             )}
             {can.create(actor) && (
-              <Button asChild>
+              <Button asChild variant="teal">
                 <Link href="/cms/layanan/baru">
                   <Icon icon={Add01Icon} size={16} />
                   Tambah

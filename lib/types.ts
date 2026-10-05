@@ -88,6 +88,43 @@ export type DataInfo = {
   layanan: { id: string; name: string }[];
 };
 
+/** Data & informasi di CMS (satu baris tabel datasets beserta referensinya). */
+export type DataRecord = {
+  id: string;
+  code: string;
+  name: string;
+  uraian: string;
+  tujuan: string;
+  /** Wali data (Perangkat Daerah pemilik isian). */
+  opdId: string;
+  opdCode: string;
+  opdName: string;
+  /** Produsen data: kode PD, atau nama instansi lain. */
+  produsen: string | null;
+  output: string | null;
+  input: string | null;
+  sifat: DataInfo["sifat"];
+  jenis: DataInfo["jenis"];
+  validitas: string;
+  interoperabel: boolean;
+  period: string;
+  status: SubmissionStatus;
+  rad1: string | null;
+  rad2: string | null;
+  /** Null bila RAD L2 tidak memiliki turunan. */
+  rad3: string | null;
+  radL4: string | null;
+  radL5: string | null;
+  /** Dependensi Keamanan SPBE (teks) per kunci securityFields. */
+  security: Partial<Record<string, string[]>>;
+  probis: { id: string; name: string }[];
+  layanan: { id: string; name: string }[];
+  updatedAt: string;
+  isSample: boolean;
+  /** RAD perlu dipetakan ulang setelah periodenya pindah versi RAD. */
+  radReview: boolean;
+};
+
 /** Layanan di CMS (satu baris tabel services beserta referensinya). */
 export type LayananRecord = {
   id: string;

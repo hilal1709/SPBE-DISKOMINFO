@@ -39,3 +39,19 @@ const orphans = list.filter((n) => n.parent && !nodes.has(n.parent));
 if (orphans.length) throw new Error(`Induk tidak ditemukan: ${orphans.map((n) => n.code).join(", ")}`);
 writeFileSync(join(root, "lib/data/rad-reference.json"), JSON.stringify(list));
 console.log(`RAD L1/L2/L3: ${[1, 2, 3].map((l) => list.filter((n) => n.level === l).length).join("/")}`);
+
+// --sql: cetak INSERT per level untuk migrasi (versi RAD pertama).
+if (process.argv.includes("--sql")) {
+  const q = (s) => `'${s.replace(/'/g, "''")}'`;
+  const version = "(SELECT id FROM rad_versions ORDER BY created_at LIMIT 1)";
+  for (const level of [1, 2, 3]) {
+    const values = list.filter((n) => n.level === level).map((n) => `(${q(n.code)},${q(n.name)},${n.parent ? q(n.parent) : "NULL"})`);
+    console.log(`INSERT INTO rad_references (code, name, level, parent_id, version_id)
+SELECT v.code, v.name, ${level}, p.id, ${version} FROM (VALUES
+${values.join(",\n")}
+) AS v(code, name, parent)
+LEFT JOIN rad_references p ON p.code = v.parent AND p.version_id = ${version}
+WHERE NOT EXISTS (SELECT 1 FROM rad_references r WHERE r.code = v.code);
+`);
+  }
+}

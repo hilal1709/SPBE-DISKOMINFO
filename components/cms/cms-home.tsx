@@ -11,17 +11,18 @@ import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { can, type Actor } from "@/lib/permissions";
+import { can, reviewTeam, type Actor } from "@/lib/permissions";
 import type { SubmissionStatus } from "@/lib/types";
 
-type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" };
+type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" | "data" };
 type Summary = { counts: Partial<Record<SubmissionStatus, number>>; /** Perlu pemetaan ulang referensi (RAB/RAL). */ review: number };
-type Domain = "probis" | "layanan";
+type Domain = "probis" | "layanan" | "data";
 
 /** Teks & tautan per domain. */
 const domains = {
   probis: { noun: "probis", total: "Total proses bisnis", ref: "RAB", list: "/cms/proses-bisnis", base: "/cms/proses-bisnis" },
   layanan: { noun: "layanan", total: "Total layanan", ref: "RAL", list: "/cms/layanan", base: "/cms/layanan" },
+  data: { noun: "data", total: "Total data", ref: "RAD", list: "/cms/data", base: "/cms/data" },
 } as const;
 
 /** Tindakan tertunda untuk satu domain, urut prioritas. */
@@ -29,7 +30,7 @@ function steps(actor: Actor, domain: Domain, { counts, review }: Summary) {
   const d = domains[domain];
   const list: { text: string; href: string; label: string }[] = [];
   if (review > 0 && can.create(actor)) list.push({ text: `${review} ${d.noun} perlu dipetakan ulang karena versi ${d.ref} periodenya berganti.`, href: d.list, label: "Petakan ulang" });
-  if (can.verify(actor) && counts.submitted) list.push({ text: `${counts.submitted} ajuan ${d.noun} OPD menunggu verifikasi tim Bagian Organisasi.`, href: `${d.base}/verifikasi`, label: "Buka verifikasi" });
+  if (can.verify(actor, domain) && counts.submitted) list.push({ text: `${counts.submitted} ajuan ${d.noun} OPD menunggu verifikasi tim ${reviewTeam("verifikasi", domain)}.`, href: `${d.base}/verifikasi`, label: "Buka verifikasi" });
   if (can.validate(actor) && counts.verified) list.push({ text: `${counts.verified} ${d.noun} terverifikasi menunggu validasi tim Diskominfo.`, href: `${d.base}/validasi`, label: "Buka validasi" });
   if (can.create(actor) && counts.rejected) list.push({ text: `${counts.rejected} ${d.noun} dikembalikan dan perlu diperbaiki.`, href: d.list, label: "Perbaiki" });
   if (can.create(actor) && counts.draft) list.push({ text: `${counts.draft} draf ${d.noun} belum diajukan.`, href: d.list, label: "Lihat draf" });
@@ -49,10 +50,10 @@ const dotTone: Record<SubmissionStatus, string> = {
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
 /** Beranda CMS: ringkasan status per domain dalam cakupan pengguna, tindakan berikutnya, dan aktivitas terbaru. */
-export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; probis: Summary; layanan: Summary; recent: Activity[] }) {
+export function CmsHome({ actor, probis, layanan, data, recent }: { actor: Actor; probis: Summary; layanan: Summary; data: Summary; recent: Activity[] }) {
   const timeline = useRef<HTMLOListElement>(null);
   const [domain, setDomain] = useState<Domain>("probis");
-  const counts = (domain === "probis" ? probis : layanan).counts;
+  const counts = { probis, layanan, data }[domain].counts;
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
 
   useGSAP(
@@ -64,8 +65,8 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
     { scope: timeline },
   );
 
-  // Maksimal tiga tindakan terpenting dari kedua domain.
-  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan)].slice(0, 3);
+  // Maksimal tiga tindakan terpenting dari semua domain.
+  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan), ...steps(actor, "data", data)].slice(0, 3);
 
   return (
     <Reveal className="grid gap-5">
@@ -77,11 +78,12 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
         options={[
           { value: "probis", label: "Proses bisnis" },
           { value: "layanan", label: "Layanan" },
+          { value: "data", label: "Data" },
         ]}
       />
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard tone="teal" label={domains[domain].total} value={total} />
-        <StatCard tone="orange" label="Menunggu verifikasi" value={counts.submitted ?? 0} hint="tim Bagian Organisasi" />
+        <StatCard tone="orange" label="Menunggu verifikasi" value={counts.submitted ?? 0} hint={`tim ${reviewTeam("verifikasi", domain)}`} />
         <StatCard tone="yellow" label="Menunggu validasi" value={counts.verified ?? 0} hint="tim Diskominfo" />
         <StatCard tone="amber" label="Tervalidasi" value={counts.approved ?? 0} hint="tayang di portal publik" />
         <StatCard tone="sky" label="Draf & dikembalikan" value={(counts.draft ?? 0) + (counts.rejected ?? 0)} hint="perlu dilengkapi OPD" />
@@ -113,7 +115,9 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
                 <QuickLink tone="bg-brand-orange" href="/cms/proses-bisnis/baru" icon={Add01Icon} title="Tambah probis" text="Isi form dengan bantuan AI" />
                 <QuickLink tone="bg-brand-teal" href="/cms/layanan/baru" icon={Add01Icon} title="Tambah layanan" text="Isi form dengan bantuan AI" />
                 {can.import(actor) && <QuickLink tone="bg-brand-yellow" href="/cms/impor" icon={FileImportIcon} title="Impor probis" text="Unggah xlsx / zip arsitektur" />}
+                <QuickLink tone="bg-brand-sky" href="/cms/data/baru" icon={Add01Icon} title="Tambah data" text="Isi form dengan bantuan AI" />
                 {can.import(actor) && <QuickLink tone="bg-brand-amber" href="/cms/layanan/impor" icon={FileImportIcon} title="Impor layanan" text="Unggah template analis" />}
+                {can.import(actor) && <QuickLink tone="bg-brand-orange" href="/cms/data/impor" icon={FileImportIcon} title="Impor data" text="Unggah template atau zip arsitektur" />}
               </div>
             )}
           </CardContent>
@@ -132,7 +136,7 @@ export function CmsHome({ actor, probis, layanan, recent }: { actor: Actor; prob
                     <p className="flex flex-wrap items-center gap-2">
                       <ReviewBadge status={a.toStatus} />
                       <span className="truncate font-medium">{a.name}</span>
-                      {a.kind === "layanan" && <span className="text-[11px] text-muted-foreground">layanan</span>}
+                      {a.kind && a.kind !== "probis" && <span className="text-[11px] text-muted-foreground">{a.kind}</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {a.actorName ?? "Sistem"} · {date.format(new Date(a.createdAt))}

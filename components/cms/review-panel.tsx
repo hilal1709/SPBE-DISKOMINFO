@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/cms/result";
-import { can, stageOf, type Actor } from "@/lib/permissions";
+import { can, stageOf, type Actor, type ReviewDomain } from "@/lib/permissions";
 import { reviewLabel } from "@/lib/probis/reference";
 import type { ProbisReview, SubmissionStatus } from "@/lib/types";
 
@@ -71,6 +71,7 @@ export function ReviewActions({
   onReview,
   onDelete,
   onDone,
+  domain = "probis",
 }: {
   record: { id: string; name: string; status: SubmissionStatus; opdId: string };
   actor: Actor;
@@ -80,6 +81,8 @@ export function ReviewActions({
   onReview: (id: string, decision: Decision, note?: string) => Promise<ActionResult<{ status: SubmissionStatus }>>;
   onDelete: (id: string) => Promise<ActionResult>;
   onDone: () => void;
+  /** Menentukan tim verifikasi (Data: Verifikator Data Diskominfo). */
+  domain?: ReviewDomain;
 }) {
   const [note, setNote] = useState("");
   const [rejecting, setRejecting] = useState(false);
@@ -87,7 +90,7 @@ export function ReviewActions({
   const [pending, start] = useTransition();
   const editable = can.edit(actor, record);
   const stage = stageOf(record.status);
-  const awaiting = !!stage && can.review(actor, stage);
+  const awaiting = !!stage && can.review(actor, stage, domain);
 
   const act = (decision: Decision) =>
     start(async () => {

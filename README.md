@@ -32,11 +32,15 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 - Impor/ekspor memakai kolom template analis (`/cms/layanan/impor`); kolom target/metode teks bebas dibaca otomatis (ditandai bila ditebak), proses bisnis dicocokkan lewat ID atau nama. **Isi dengan AI** memakai Gemini bila `GEMINI_API_KEY` diisi.
 - `pnpm referensi:ral` membuat ulang `lib/layanan/ral-reference.json` dari template analis.
 
-### Domain Data
+### CMS Data
 
-- Dashboard `/data` mengikuti kolom template analis `public/templates/data.xlsx` (Domain Arsitektur Data dan Informasi): uraian, tujuan, produsen & wali data, informasi terkait, sifat (Terbuka/Terbatas/Tertutup), jenis, validitas (frekuensi pemutakhiran), interoperabilitas, RAD L1–L3, serta dependensi proses bisnis dan layanan.
-- Sementara memakai data contoh (`lib/data/generate.ts`, diturunkan dari layanan contoh) sampai modul CMS Data tersedia.
-- `pnpm referensi:rad` membuat ulang `lib/data/rad-reference.json` dari template analis.
+- Kolom mengikuti template analis `public/templates/data.xlsx` (Domain Arsitektur Data dan Informasi): uraian, tujuan, produsen & wali data, informasi terkait (output/input), RAD L1–L4, sifat (Terbuka/Terbatas/Tertutup), jenis, validitas (frekuensi pemutakhiran), interoperabilitas, ← proses bisnis, → layanan, dan 7 dependensi Keamanan SPBE (teks, ditautkan saat modul Keamanan tersedia).
+- Alur: Operator OPD → **Verifikasi** Verifikator Data Diskominfo (peran `validator_data`, sesuai Detailing Requirement & notulen) → **Validasi** Diskominfo → tayang di `/data`. Probis adalah master: data wajib ditautkan ke minimal satu proses bisnis. ID otomatis `GSK-DAT <kode RAD>.<urutan>`.
+- **Referensi RAD berversi** di *Pengaturan › Referensi RAD* (mesin sama dengan RAB/RAL). Tiap periode memilih versi RAD di *Periode Arsitektur*; RAD Level 2 tanpa turunan (mis. RAD.10.04) boleh dipakai langsung.
+- Impor/ekspor di `/cms/data/impor`: unggah template Data atau zip paket arsitektur semua domain (berkas Data dibaca, domain lain dilewati).
+- Dashboard `/data` membaca data tervalidasi; bila kosong memakai data contoh (`lib/data/generate.ts`). `pnpm seed:data` mengisi data contoh ke database (`--hapus` untuk menghapus).
+- `pnpm referensi:rad` membuat ulang `lib/data/rad-reference.json` dari template analis (`--sql` mencetak INSERT untuk migrasi).
+- Akun demo Verifikator Data: `walidata@gresikkab.go.id` (kata sandi sama dengan akun demo lain).
 
 ## Getting Started
 

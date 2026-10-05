@@ -18,7 +18,7 @@ export type NavItem = {
   /** Penjelasan singkat fungsi menu (tampil di bawah label & di header halaman). */
   description?: string;
   /** Kunci angka lencana (mis. jumlah antrean). */
-  badgeKey?: "submitted" | "verified" | "layananSubmitted" | "layananVerified";
+  badgeKey?: "submitted" | "verified" | "layananSubmitted" | "layananVerified" | "dataSubmitted" | "dataVerified";
 };
 
 /** Menu besar berisi sub-menu. */
@@ -71,10 +71,20 @@ export const cmsNav: NavEntry[] = [
     ],
   },
   {
+    label: "Data",
+    icon: Database01Icon,
+    children: [
+      { href: "/cms/data", label: "Daftar Data", icon: ListViewIcon, section: "Daftar Data", description: "Lihat dan kelola seluruh data & informasi" },
+      { href: "/cms/data/baru", label: "Tambah Data", icon: TaskAdd01Icon, section: "Tambah Data", description: "Isi data baru, dibantu AI", roles: ["operator_opd", "admin", "superadmin"] },
+      { href: "/cms/data/verifikasi", label: "Verifikasi", icon: CheckListIcon, section: "Verifikasi Data", description: "Verifikator Data Diskominfo memeriksa ajuan OPD", roles: ["validator_data", "superadmin"], badgeKey: "dataSubmitted" },
+      { href: "/cms/data/validasi", label: "Validasi", icon: CheckmarkBadge01Icon, section: "Validasi Data", description: "Tim Diskominfo memvalidasi akhir sebelum tayang", roles: ["admin", "superadmin"], badgeKey: "dataVerified" },
+      { href: "/cms/data/impor", label: "Impor & Ekspor", icon: FileImportIcon, section: "Impor & Ekspor Data", description: "Unggah template analis atau zip arsitektur", roles: ["operator_opd", "admin", "superadmin"] },
+    ],
+  },
+  {
     label: "Domain Arsitektur",
     icon: Layers01Icon,
     children: [
-      soon("data", "Data & Informasi", Database01Icon, "Domain arsitektur data"),
       soon("aplikasi", "Aplikasi", ComputerIcon, "Domain arsitektur aplikasi"),
       soon("infrastruktur", "Infrastruktur", ServerStack01Icon, "Domain arsitektur infrastruktur"),
       soon("keamanan", "Keamanan", ShieldKeyIcon, "Domain arsitektur keamanan"),
@@ -94,6 +104,7 @@ export const cmsNav: NavEntry[] = [
     children: [
       { href: "/cms/pengaturan/referensi-rab", label: "Referensi RAB", icon: Layers01Icon, section: "Referensi RAB", description: "Kelola versi, kode, dan nama RAB", roles: ["admin", "superadmin", "validator_data"] },
       { href: "/cms/pengaturan/referensi-ral", label: "Referensi RAL", icon: Layers01Icon, section: "Referensi RAL", description: "Kelola versi, kode, dan nama RAL", roles: ["admin", "superadmin", "validator_data"] },
+      { href: "/cms/pengaturan/referensi-rad", label: "Referensi RAD", icon: Layers01Icon, section: "Referensi RAD", description: "Kelola versi, kode, dan nama RAD", roles: ["admin", "superadmin", "validator_data"] },
       { href: "/cms/pengaturan/periode", label: "Periode Arsitektur", icon: Calendar03Icon, section: "Periode Arsitektur", description: "Tambah dan aktifkan periode arsitektur", roles: ["admin", "superadmin"] },
       { ...soon("pengguna", "Pengguna", UserGroupIcon, "Kelola akun dan hak akses"), roles: ["superadmin"] },
     ],

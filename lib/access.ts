@@ -11,4 +11,4 @@ export async function currentActor(): Promise<Actor> {
   return { id: null, name: "Admin Diskominfo", role: "superadmin", opdId: null, demo: true };
 }
 
-export { can, stageOf, stageStatus, type Actor, type ReviewStage } from "@/lib/permissions";
+export { can, reviewTeam, stageOf, stageStatus, type Actor, type ReviewDomain, type ReviewStage } from "@/lib/permissions";

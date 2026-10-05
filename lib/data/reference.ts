@@ -1,4 +1,5 @@
-import { makeRabIndex, type RabNode } from "@/lib/probis/rab-index";
+import { makeRabIndex, type RabNode, type RabSet } from "@/lib/probis/rab-index";
+import { samplePeriods } from "@/lib/probis/reference";
 import type { DataInfo } from "@/lib/types";
 import radReference from "./rad-reference.json";
 
@@ -7,6 +8,19 @@ import radReference from "./rad-reference.json";
  * RAD disimpan sebagai node berbentuk RabNode agar indeksnya memakai makeRabIndex.
  */
 export const sampleRad = makeRabIndex(radReference as RabNode[]);
+
+/** Kumpulan RAD cadangan (database tidak tersedia): satu versi bawaan untuk semua periode contoh. */
+export const sampleRadSet: RabSet = {
+  versions: [{ id: "bawaan", name: "Perpres 132/2022", nodes: sampleRad.nodes }],
+  periodVersion: Object.fromEntries(samplePeriods.map((p) => [p, "bawaan"])),
+  activeVersion: "bawaan",
+};
+
+/** RAD yang boleh dipilih sebagai klasifikasi data: Level 3, atau Level 2 yang tidak memiliki turunan. */
+export const isRadLeaf = (rad: { byCode: Map<string, RabNode>; children: (code: string) => RabNode[] }, code: string | null | undefined) => {
+  const node = code ? rad.byCode.get(code) : undefined;
+  return !!node && (node.level === 3 || (node.level === 2 && !rad.children(node.code).length));
+};
 
 export type Sifat = DataInfo["sifat"];
 export const sifatOptions: { value: Sifat; label: string }[] = [
@@ -48,3 +62,16 @@ export function radForRal2(ral2: string, ralName: string | undefined) {
   const name = ralName?.toLowerCase();
   return sampleRad.level(2).find((n) => bare(n.name) === name)?.code ?? ralFallback[ral2];
 }
+
+/** Dependensi Keamanan SPBE di template (urutan kolom). Diisi teks sampai modul Keamanan tersedia. */
+export const securityFields = [
+  { key: "standar", label: "Standar Teknis dan Prosedur Keamanan SPBE" },
+  { key: "audit", label: "Audit Keamanan SPBE" },
+  { key: "kerentanan", label: "Identifikasi Kerentanan Keamanan SPBE" },
+  { key: "kelaikan", label: "Kelaikan Keamanan SPBE" },
+  { key: "edukasi", label: "Edukasi Kesadaran Keamanan SPBE" },
+  { key: "insiden", label: "Penanganan Insiden Keamanan SPBE" },
+  { key: "peningkatan", label: "Peningkatan Keamanan SPBE" },
+] as const;
+export type SecurityKey = (typeof securityFields)[number]["key"];
+export type Security = Partial<Record<SecurityKey, string[]>>;

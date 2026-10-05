@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AiMagicIcon, ArrowDown01Icon, Cancel01Icon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
+import { AiMagicIcon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { listProbisOptions, saveLayanan, suggestLayanan } from "@/app/cms/layanan/actions";
 import { Banner } from "@/components/blocks/banner";
 import { RefPicker, type RefLabels } from "@/components/blocks/ref-picker";
 import { Segmented } from "@/components/blocks/segmented";
+import { LinkPicker } from "@/components/cms/link-picker";
 import { DeepRabField, SuggestItem, flash } from "@/components/cms/probis-form";
 import { ReviewBadge } from "@/components/cms/review-badge";
 import { Icon } from "@/components/icon";
@@ -19,11 +20,9 @@ import { useRab } from "@/components/probis/rab-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { LayananSuggestion } from "@/lib/ai/layanan-suggest";
@@ -360,7 +359,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
           </CardHeader>
           <CardContent>
             <Field data-field="probis" data-invalid={!!errors.probis || undefined} className="rounded-lg">
-              <ProbisLinks options={probisOptions} values={values.probis} loading={loadingProbis} disabled={!values.opd} onChange={(v) => set("probis", v)} />
+              <LinkPicker noun="proses bisnis" disabledText="Pilih Perangkat Daerah dulu" options={probisOptions} values={values.probis} loading={loadingProbis} disabled={!values.opd} onChange={(v) => set("probis", v)} />
               <FieldError>{errors.probis}</FieldError>
             </Field>
           </CardContent>
@@ -451,53 +450,5 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
         </DialogContent>
       </Dialog>
     </Reveal>
-  );
-}
-
-/** Pilih beberapa proses bisnis (cari kode/nama) dan tampilkan sebagai chip yang bisa dilepas. */
-function ProbisLinks({ options, values, loading, disabled, onChange }: { options: ProbisOption[]; values: string[]; loading: boolean; disabled: boolean; onChange: (values: string[]) => void }) {
-  const [open, setOpen] = useState(false);
-  const name = (code: string) => options.find((o) => o.code === code)?.name;
-  const toggle = (code: string) => onChange(values.includes(code) ? values.filter((v) => v !== code) : [...values, code]);
-  return (
-    <div className="grid gap-3">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" role="combobox" aria-expanded={open} disabled={disabled} className="group/pb h-auto min-h-10 w-full justify-between gap-2 py-2 font-normal">
-            <span className="text-muted-foreground">{disabled ? "Pilih Perangkat Daerah dulu" : loading ? "Memuat proses bisnis…" : options.length ? "Cari dan pilih proses bisnis" : "Belum ada proses bisnis untuk OPD & periode ini"}</span>
-            <Icon icon={ArrowDown01Icon} size={16} className="shrink-0 text-muted-foreground transition-transform duration-300 group-data-[state=open]/pb:rotate-180" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-80 p-0">
-          <Command>
-            <CommandInput placeholder="Cari kode atau nama proses bisnis…" />
-            <CommandList className="max-h-80">
-              <CommandEmpty>Tidak ditemukan.</CommandEmpty>
-              <CommandGroup>
-                {options.map((o) => (
-                  <CommandItem key={o.code} value={`${o.code} ${o.name}`} data-checked={values.includes(o.code)} onSelect={() => toggle(o.code)}>
-                    <span className="w-32 shrink-0 text-xs text-muted-foreground tabular-nums">{o.code}</span>
-                    <span className="line-clamp-2">{o.name}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      {values.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5">
-          {values.map((code) => (
-            <li key={code} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-teal/15 py-1 pr-1 pl-3 text-xs">
-              <span className="text-muted-foreground tabular-nums">{code}</span>
-              <span className="truncate font-medium">{name(code) ?? ""}</span>
-              <Button type="button" variant="ghost" size="icon-xs" aria-label={`Lepas ${code}`} onClick={() => toggle(code)} className="size-5 rounded-full">
-                <Icon icon={Cancel01Icon} size={11} />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }

@@ -27,6 +27,7 @@ export function RefPicker({
   onChange,
   invalid,
   id,
+  leafL2 = false,
 }: {
   /** Indeks referensi versi milik periode isian. */
   index: RabIndex;
@@ -35,8 +36,13 @@ export function RefPicker({
   onChange: (code: string | null) => void;
   invalid?: boolean;
   id?: string;
+  /** Level 2 yang tidak memiliki turunan juga boleh dipilih (RAD). */
+  leafL2?: boolean;
 }) {
-  const chain = rab.chain(value);
+  const picked = value ? rab.byCode.get(value) : undefined;
+  // Nilai bisa L3, atau L2 tanpa turunan (leafL2): jalur L1 → nilai dibentuk dari induknya.
+  const chain = picked?.level === 2 ? { l1: rab.byCode.get(picked.parent ?? ""), l2: picked, l3: undefined } : rab.chain(value);
+  const path = [chain.l1, chain.l2, chain.l3].filter((n): n is RabNode => !!n);
   // Isian baru hanya dari referensi yang masih berlaku.
   const level1 = rab.level(1, true);
   const childrenOf = (code: string) => rab.children(code, true);
@@ -76,7 +82,10 @@ export function RefPicker({
     if (value && next && chain.l2?.code !== next) onChange(null);
   };
 
-  const groups = (l2 ? [rab.byCode.get(l2)!] : l1 ? childrenOf(l1) : rab.level(2, true)).filter(Boolean).map((g) => ({ group: g, items: childrenOf(g.code) }));
+  const groups = (l2 ? [rab.byCode.get(l2)!] : l1 ? childrenOf(l1) : rab.level(2, true)).filter(Boolean).map((g) => {
+    const items = childrenOf(g.code);
+    return { group: g, items: items.length || !leafL2 ? items : [g] };
+  }).filter((g) => g.items.length);
   const level2 = l1 ? childrenOf(l1) : rab.level(2, true);
 
   return (
@@ -118,11 +127,11 @@ export function RefPicker({
             className={cn("group/rab h-auto min-h-10 w-full justify-between gap-2 py-2 text-left font-normal whitespace-normal", invalid && "border-destructive")}
           >
             <span className={cn("min-w-0", !value && "text-muted-foreground")}>
-              {chain.l3 ? (
+              {picked ? (
                 <>
-                  <span className="mr-1.5 text-xs text-muted-foreground tabular-nums">{chain.l3.code}</span>
-                  <span className="font-medium">{chain.l3.name}</span>
-                  {!rab.active(chain.l3) && <Badge variant="destructive" className="ml-2">tidak berlaku</Badge>}
+                  <span className="mr-1.5 text-xs text-muted-foreground tabular-nums">{picked.code}</span>
+                  <span className="font-medium">{picked.name}</span>
+                  {!rab.active(picked) && <Badge variant="destructive" className="ml-2">tidak berlaku</Badge>}
                 </>
               ) : (
                 `Pilih ${t.ref} Level 3 — Level 1 & 2 terisi otomatis`
@@ -159,14 +168,14 @@ export function RefPicker({
         </PopoverContent>
       </Popover>
 
-      {chain.l3 && (
+      {picked && (
         <div ref={crumbs} className="flex flex-wrap items-center gap-1.5 text-xs" aria-label={`Hierarki ${t.ref} terpilih`}>
-          {[chain.l1, chain.l2, chain.l3].map((node, i) => (
-            <span key={node!.code} data-crumb className="inline-flex items-center gap-1.5">
+          {path.map((node, i) => (
+            <span key={node.code} data-crumb className="inline-flex items-center gap-1.5">
               {i > 0 && <Icon icon={ArrowRight01Icon} size={12} className="text-muted-foreground" />}
-              <span className={cn("rounded-full px-2.5 py-1", i === 2 ? "bg-brand-teal/15 font-semibold text-foreground" : "bg-muted text-muted-foreground")}>
+              <span className={cn("rounded-full px-2.5 py-1", i === path.length - 1 ? "bg-brand-teal/15 font-semibold text-foreground" : "bg-muted text-muted-foreground")}>
                 <span className="mr-1 tabular-nums opacity-70">L{i + 1}</span>
-                {node!.name}
+                {node.name}
               </span>
             </span>
           ))}

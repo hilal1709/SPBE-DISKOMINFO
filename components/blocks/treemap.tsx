@@ -55,7 +55,7 @@ function squarify(values: number[], width: number, height: number): Rect[] {
 }
 
 /** Warna kategori (token palet) dipekatkan sesuai intensitas 0–1. */
-const shade = (color: string, t: number) => `color-mix(in oklab, var(${color}) ${Math.round(55 + t * 45)}%, var(--card))`;
+const shade = (color: string, t: number) => `color-mix(in oklab, var(${color}) ${Math.round(82 + t * 18)}%, var(--card))`;
 
 /**
  * Treemap interaktif: ukuran petak sebanding nilai, klik petak untuk memfilter.
