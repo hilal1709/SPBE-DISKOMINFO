@@ -7,6 +7,7 @@ import { ReviewActions, ReviewHistory } from "@/components/cms/review-panel";
 import { QueueList } from "@/components/cms/review-queue";
 import { useRad, useRadSet } from "@/components/data/rad-context";
 import { Badge } from "@/components/ui/badge";
+import { useSecurityRefs } from "@/components/keamanan/security-context";
 import { jenisLabel, securityFields, sifatLabel } from "@/lib/data/reference";
 import type { Actor, ReviewStage } from "@/lib/permissions";
 import { pdByCode } from "@/lib/probis/reference";
@@ -39,6 +40,7 @@ export function DataDetail({ record, actor, onClose }: { record: DataRecord; act
     return `${index.text(code)}${node && !index.active(node) ? " (tidak berlaku)" : ""}`;
   };
   const security = securityFields.filter((f) => record.security[f.key]?.length);
+  const sec = useSecurityRefs();
 
   return (
     <DetailDialog
@@ -94,7 +96,7 @@ export function DataDetail({ record, actor, onClose }: { record: DataRecord; act
         <DetailSection title="Keamanan SPBE">
           <div className="grid gap-2 sm:grid-cols-2">
             {security.map((f) => (
-              <DetailField key={f.key} label={f.label} value={record.security[f.key]!.join("; ")} />
+              <DetailField key={f.key} label={f.label} value={record.security[f.key]!.map((v) => sec.label(v, f.key, record.period)).join("; ")} />
             ))}
           </div>
         </DetailSection>

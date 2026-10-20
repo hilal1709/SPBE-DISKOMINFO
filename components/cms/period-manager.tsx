@@ -21,15 +21,16 @@ const fmt = new Intl.NumberFormat("id-ID");
 
 type Version = { id: string; name: string };
 
-/** Referensi per periode: RAB untuk proses bisnis, RAL untuk layanan, RAD untuk data, RAA untuk aplikasi. */
+/** Referensi per periode: RAB untuk proses bisnis, RAL untuk layanan, RAD untuk data, RAA untuk aplikasi, RAI untuk infrastruktur. */
 const refs = {
   rab: { ref: "RAB", unit: "probis", list: "Daftar Probis", current: (p: Period) => p.versionId, used: (p: Period) => p.count },
   ral: { ref: "RAL", unit: "layanan", list: "Daftar Layanan", current: (p: Period) => p.ralVersionId, used: (p: Period) => p.services },
   rad: { ref: "RAD", unit: "data", list: "Daftar Data", current: (p: Period) => p.radVersionId, used: (p: Period) => p.datasets },
   raa: { ref: "RAA", unit: "aplikasi", list: "Daftar Aplikasi", current: (p: Period) => p.raaVersionId, used: (p: Period) => p.applications },
+  rai: { ref: "RAI", unit: "infrastruktur", list: "Daftar Komponen", current: (p: Period) => p.raiVersionId, used: (p: Period) => p.infrastructures },
 } as const;
 
-/** Kelola periode arsitektur: tambah (2–5 tahun), jadikan aktif, pilih versi RAB, RAL, RAD & RAA, hapus periode kosong. */
+/** Kelola periode arsitektur: tambah (2–5 tahun), jadikan aktif, pilih versi RAB, RAL, RAD, RAA & RAI, hapus periode kosong. */
 export function PeriodManager({
   periods,
   min,
@@ -125,7 +126,7 @@ export function PeriodManager({
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {p.end - p.start + 1} tahun · {fmt.format(p.count)} proses bisnis · {fmt.format(p.services)} layanan · {fmt.format(p.datasets)} data · {fmt.format(p.applications)} aplikasi
+                  {p.end - p.start + 1} tahun · {fmt.format(p.count)} proses bisnis · {fmt.format(p.services)} layanan · {fmt.format(p.datasets)} data · {fmt.format(p.applications)} aplikasi · {fmt.format(p.infrastructures)} infrastruktur
                 </p>
               </div>
               <div className="grid gap-1.5">
@@ -153,7 +154,7 @@ export function PeriodManager({
                   <Button
                     variant={confirm === p.id ? "destructive" : "ghost"}
                     size="sm"
-                    disabled={pending || p.count > 0 || p.services > 0 || p.datasets > 0 || p.applications > 0}
+                    disabled={pending || p.count > 0 || p.services > 0 || p.datasets > 0 || p.applications > 0 || p.infrastructures > 0}
                     onClick={() => (confirm === p.id ? remove(p) : setConfirm(p.id))}
                     onBlur={() => setConfirm(null)}
                   >

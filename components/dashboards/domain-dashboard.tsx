@@ -11,15 +11,12 @@ import { Reveal } from "@/components/motion/reveal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { opdList } from "@/lib/demo-data";
 
-export type DomainKey = "domain-infrastruktur" | "aplikasi-usulan" | "peta-rencana" | "infrastruktur";
+export type DomainKey = "peta-rencana";
 
 type DomainConfig = { title: string; metric: string; count: number; cols: string[]; rows: string[][] };
 
 const cfg: Record<DomainKey, DomainConfig> = {
-  "domain-infrastruktur": { title: "Domain Infrastruktur", metric: "Komponen infrastruktur", count: 164, cols: ["ID", "Status", "Komponen", "Lokasi", "Jenis", "Kapasitas"], rows: [["INF-001", "Disetujui", "Server Aplikasi", "Data Center", "Server", "64 Core"], ["INF-002", "Disetujui", "Jaringan OPD", "Kabupaten Gresik", "Jaringan", "10 Gbps"]] },
-  "aplikasi-usulan": { title: "Aplikasi Usulan", metric: "Usulan disetujui", count: 27, cols: ["ID", "Status", "Usulan", "OPD", "Prioritas", "Target"], rows: [["USL-001", "Disetujui", "Sistem Pengaduan", "Diskominfo", "Tinggi", "2026"], ["USL-002", "Disetujui", "Monitoring Stunting", "Dinas Kesehatan", "Tinggi", "2026"]] },
   "peta-rencana": { title: "Peta Rencana", metric: "Program 2025–2029", count: 86, cols: ["ID", "Status", "Program", "Domain", "Tahun", "Capaian"], rows: [["PRN-001", "Disetujui", "Integrasi Layanan Digital", "Aplikasi", "2026", "Berjalan"], ["PRN-002", "Disetujui", "Penguatan Data Center", "Infrastruktur", "2027", "Belum Mulai"]] },
-  infrastruktur: { title: "Infrastruktur Aset", metric: "Total aset", count: 572, cols: ["ID", "Status", "Aset", "Lokasi", "Kategori", "Kapasitas"], rows: [["AST-001", "Disetujui", "Rack Server", "Data Center", "Perangkat", "42U"], ["AST-002", "Disetujui", "UPS Data Center", "Data Center", "Kelistrikan", "80 KVA"]] },
 };
 
 const badgeColumns = new Set(["Status", "Integrasi", "Prioritas", "Capaian"]);

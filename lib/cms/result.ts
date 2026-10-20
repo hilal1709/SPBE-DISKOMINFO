@@ -12,4 +12,6 @@ export function refresh() {
   revalidatePath("/layanan");
   revalidatePath("/data");
   revalidatePath("/aplikasi");
+  revalidatePath("/infrastruktur");
+  revalidatePath("/keamanan");
 }

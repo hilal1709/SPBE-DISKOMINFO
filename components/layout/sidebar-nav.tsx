@@ -2,7 +2,7 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
-import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, LockIcon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { activeItem, flattenNav, isGroup, type NavEntry, type NavGroup, type NavItem } from "@/lib/navigation";
@@ -18,9 +18,9 @@ function PendingHint() {
   );
 }
 
-type Shared = { active: NavItem | undefined; tone: "light" | "dark"; badges?: NavBadges; onNavigate?: () => void; hover: (el: HTMLElement | null) => void };
+type Shared = { active: NavItem | undefined; tone: "light" | "dark"; badges?: NavBadges; onNavigate?: () => void; hover: (el: HTMLElement | null) => void; signedIn?: boolean };
 
-function ItemLink({ item, nested, active, tone, badges, onNavigate, hover }: Shared & { item: NavItem; nested?: boolean }) {
+function ItemLink({ item, nested, active, tone, badges, onNavigate, hover, signedIn }: Shared & { item: NavItem; nested?: boolean }) {
   const isActive = item === active;
   const count = item.badgeKey ? badges?.[item.badgeKey] : undefined;
   return (
@@ -44,6 +44,12 @@ function ItemLink({ item, nested, active, tone, badges, onNavigate, hover }: Sha
         {nested && item.description && <span className={cn("truncate text-[11px] font-normal", isActive ? "opacity-80" : "text-muted-foreground")}>{item.description}</span>}
       </span>
       {item.soon && <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold text-muted-foreground">Segera</span>}
+      {item.locked && !signedIn && (
+        <>
+          <Icon icon={LockIcon} size={14} className="shrink-0 opacity-70" />
+          <span className="sr-only">(perlu login)</span>
+        </>
+      )}
       {!!count && <span className={cn("min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold tabular-nums", isActive ? "bg-primary-foreground/20" : "bg-brand-orange text-on-brand")}>{count}</span>}
       <PendingHint />
     </Link>
@@ -112,7 +118,20 @@ function Group({ group, ...shared }: Shared & { group: NavGroup }) {
  * Mendukung menu besar (grup) berisi sub-menu dengan keterangan singkat.
  * `tone="dark"` untuk panel navy CMS.
  */
-export function SidebarNav({ items, tone = "light", badges, onNavigate }: { items: NavEntry[]; tone?: "light" | "dark"; badges?: NavBadges; onNavigate?: () => void }) {
+export function SidebarNav({
+  items,
+  tone = "light",
+  badges,
+  onNavigate,
+  signedIn,
+}: {
+  items: NavEntry[];
+  tone?: "light" | "dark";
+  badges?: NavBadges;
+  onNavigate?: () => void;
+  /** Status login pengunjung portal (menu `locked` bergembok bila belum masuk). */
+  signedIn?: boolean;
+}) {
   const pathname = usePathname();
   const active = activeItem(flattenNav(items), pathname);
   const nav = useRef<HTMLElement>(null);
@@ -124,7 +143,7 @@ export function SidebarNav({ items, tone = "light", badges, onNavigate }: { item
     const origin = nav.current.getBoundingClientRect();
     gsap.to(highlight.current, { x: box.left - origin.left, y: box.top - origin.top, width: box.width, height: box.height, opacity: 1, duration: first ? 0 : 0.35, ease: "power3.out" });
   };
-  const shared: Shared = { active, tone, badges, onNavigate, hover };
+  const shared: Shared = { active, tone, badges, onNavigate, hover, signedIn };
 
   return (
     <nav ref={nav} aria-label="Navigasi utama" className="relative grid gap-1" onPointerLeave={() => hover(null)}>

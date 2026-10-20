@@ -5,12 +5,12 @@ import { getDb } from "@/lib/db";
 import { makeRabIndex, type RabIndex, type RabLevel, type RabNode, type RabSet, type RabStatus } from "@/lib/probis/rab-index";
 
 /**
- * Referensi berversi (server saja) — dipakai RAB (proses bisnis), RAL (layanan), RAD (data), dan RAA (aplikasi).
+ * Referensi berversi (server saja) — dipakai RAB (proses bisnis), RAL (layanan), RAD (data), RAA (aplikasi), dan RAI (infrastruktur).
  * Tiap periode arsitektur memakai satu versi; perubahan nama, kode, induk, atau status dilakukan pada versi
  * draf lalu diterbitkan, sehingga periode lama tidak ikut berubah.
  */
 
-export type RefKind = "rab" | "ral" | "rad" | "raa";
+export type RefKind = "rab" | "ral" | "rad" | "raa" | "rai";
 
 type Config = {
   /** "RAB" / "RAL" — juga awalan kode. */
@@ -28,7 +28,7 @@ type Config = {
    * `<col>_l4`, `<col>_l5` (teks bebas L4/L5), dan `<col>_review` (perlu pemetaan ulang).
    */
   usage: { table: string; col: string; unit: string };
-  /** Level node yang boleh dipakai sebagai `<col>_id`. Bawaan L3; RAD & RAA juga menerima L2 yang tidak memiliki turunan. */
+  /** Level node yang boleh dipakai sebagai `<col>_id`. Bawaan L3; RAD, RAA & RAI juga menerima L2 yang tidak memiliki turunan. */
   leafLevels?: number[];
 };
 

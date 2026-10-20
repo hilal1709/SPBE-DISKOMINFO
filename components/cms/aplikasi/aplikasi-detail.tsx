@@ -6,7 +6,9 @@ import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/de
 import { ReviewBadge } from "@/components/cms/review-badge";
 import { ReviewActions, ReviewHistory } from "@/components/cms/review-panel";
 import { QueueList } from "@/components/cms/review-queue";
+import { useSecurityRefs } from "@/components/keamanan/security-context";
 import { Badge } from "@/components/ui/badge";
+import { flowLabels } from "@/lib/aplikasi/data-flow";
 import { basisLabel, infraFields, kepemilikanLabel, lisensiLabel } from "@/lib/aplikasi/reference";
 import { securityFields } from "@/lib/data/reference";
 import type { Actor, ReviewStage } from "@/lib/permissions";
@@ -46,6 +48,7 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
     return `${index.text(code)}${node && !index.active(node) ? " (tidak berlaku)" : ""}`;
   };
   const security = securityFields.filter((f) => record.security[f.key]?.length);
+  const sec = useSecurityRefs();
   const aligned = record.probis.some((p) => p.status === "approved");
   const pengembang = pdByCode.get(record.pengembang)?.name ?? record.pengembang;
 
@@ -103,9 +106,9 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
       {(record.inputData || record.outputData || record.supplier || record.customer) && (
         <DetailSection title="Aliran data">
           <div className="grid gap-2 sm:grid-cols-2">
-            <DetailField label="← Inputan data" value={record.inputData ?? "—"} />
+            <DetailField label="← Inputan data" value={flowLabels(record.inputData, record.dataNames).join("; ") || "—"} />
             <DetailField label="→ Supplier data" value={record.supplier ?? "—"} />
-            <DetailField label="→ Luaran data" value={record.outputData ?? "—"} />
+            <DetailField label="→ Luaran data" value={flowLabels(record.outputData, record.dataNames).join("; ") || "—"} />
             <DetailField label="→ Customer data" value={record.customer ?? "—"} />
           </div>
         </DetailSection>
@@ -121,7 +124,7 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
         <DetailSection title="Keamanan SPBE">
           <div className="grid gap-2 sm:grid-cols-2">
             {security.map((f) => (
-              <DetailField key={f.key} label={f.label} value={record.security[f.key]!.join("; ")} />
+              <DetailField key={f.key} label={f.label} value={record.security[f.key]!.map((v) => sec.label(v, f.key, record.period)).join("; ")} />
             ))}
           </div>
         </DetailSection>

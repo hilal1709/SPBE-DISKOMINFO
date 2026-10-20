@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Login01Icon, Menu01Icon } from "@hugeicons/core-free-icons";
+import { SessionProvider, useSession } from "next-auth/react";
+import { DashboardSquare01Icon, Login01Icon, Menu01Icon } from "@hugeicons/core-free-icons";
 import { Logo } from "@/components/brand/logo";
 import { Icon } from "@/components/icon";
 import { AosInit } from "@/components/motion/aos";
@@ -13,14 +14,16 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { activeItem, portalSections, publicNav } from "@/lib/navigation";
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  // Status login dibaca di klien agar halaman portal tetap statis.
+  const signedIn = useSession().status === "authenticated";
   return (
     <div className="flex h-full flex-col gap-8 px-4 py-6">
       <Logo className="px-1" />
-      <SidebarNav items={publicNav} onNavigate={onNavigate} />
+      <SidebarNav items={publicNav} onNavigate={onNavigate} signedIn={signedIn} />
       <Button asChild variant="ghost" className="group mt-auto justify-start gap-3 px-3 text-sidebar-foreground hover:bg-sidebar-accent">
-        <Link href="/login">
-          <Icon icon={Login01Icon} />
-          Masuk CMS
+        <Link href={signedIn ? "/cms" : "/login"}>
+          <Icon icon={signedIn ? DashboardSquare01Icon : Login01Icon} />
+          {signedIn ? "Buka CMS" : "Masuk CMS"}
         </Link>
       </Button>
     </div>
@@ -29,6 +32,14 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 /** Kerangka portal publik: sidebar pastel, header ber-blur, area konten. */
 export function PublicShell({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <Shell>{children}</Shell>
+    </SessionProvider>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const section = activeItem(publicNav, pathname)?.section ?? portalSections[pathname] ?? "Arsitektur SPBE";

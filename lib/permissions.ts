@@ -9,15 +9,17 @@ export type ReviewStage = "verifikasi" | "validasi";
 
 /**
  * Domain arsitektur yang diperiksa. Bagian Organisasi memverifikasi Probis & Layanan; domain Data diverifikasi
- * Diskominfo (Admin Verifikator Referensi Arsitektur & Domain Data), domain Aplikasi oleh Admin Verifikator Aplikasi
- * Diskominfo — notulen 1 Juli 2026 & Detailing Requirement.
+ * Diskominfo (Admin Verifikator Referensi Arsitektur & Domain Data), domain Aplikasi, Infrastruktur, dan Keamanan oleh
+ * Admin Verifikator masing-masing di Diskominfo — notulen 1 Juli 2026 & Detailing Requirement.
  */
-export type ReviewDomain = "probis" | "layanan" | "data" | "aplikasi";
+export type ReviewDomain = "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan";
 
 /** Verifikator domain yang berada di Diskominfo (bukan Bagian Organisasi). */
 const diskominfoVerifier: Partial<Record<ReviewDomain, { role: Role; team: string }>> = {
   data: { role: "validator_data", team: "Verifikator Data Diskominfo" },
   aplikasi: { role: "validator_aplikasi", team: "Verifikator Aplikasi Diskominfo" },
+  infrastruktur: { role: "validator_infrastruktur", team: "Verifikator Infrastruktur Diskominfo" },
+  keamanan: { role: "validator_keamanan", team: "Verifikator Keamanan Diskominfo" },
 };
 
 /** Nama tim pemeriksa per domain dan tahap (untuk teks antrean & beranda). */
@@ -45,8 +47,11 @@ export const can = {
   import: (a: Actor) => a.role === "operator_opd" || diskominfoAdmins.includes(a.role),
   export: (a: Actor) => a.role !== "pimpinan",
   managePeriods: (a: Actor) => diskominfoAdmins.includes(a.role),
-  /** Pengelola referensi arsitektur: tim Diskominfo dan verifikator referensi arsitektur; RAA juga Verifikator Aplikasi. */
-  manageReference: (a: Actor, kind?: RefKind) => diskominfoAdmins.includes(a.role) || a.role === "validator_data" || (kind === "raa" && a.role === "validator_aplikasi"),
+  /** Pengelola referensi arsitektur: tim Diskominfo dan verifikator referensi arsitektur; RAA/RAI juga verifikator domainnya. */
+  manageReference: (a: Actor, kind?: RefKind) =>
+    diskominfoAdmins.includes(a.role) || a.role === "validator_data" || (kind === "raa" && a.role === "validator_aplikasi") || (kind === "rai" && a.role === "validator_infrastruktur"),
+  /** Dashboard Keamanan (wajib login): tim Diskominfo dan pimpinan, bukan operator OPD maupun Bagian Organisasi. */
+  viewKeamanan: (a: Actor) => !["operator_opd", "organisasi"].includes(a.role),
   /** Operator wajib memilih OPD-nya sendiri; peran lain bebas memilih. */
   lockedOpd: (a: Actor) => (a.role === "operator_opd" ? a.opdId : null),
   /** Boleh bertindak pada tahap ini? */

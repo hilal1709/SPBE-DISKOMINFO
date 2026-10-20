@@ -1,5 +1,7 @@
 import * as XLSX from "xlsx";
 import { can, currentActor } from "@/lib/access";
+import { securityRefs } from "@/lib/keamanan/cms-repo";
+import { withSecurityLabels } from "@/lib/keamanan/link";
 import { listData } from "@/lib/data/cms-repo";
 import { rad } from "@/lib/data/rad";
 import { jenisLabel, securityFields, sifatLabel } from "@/lib/data/reference";
@@ -10,7 +12,9 @@ import { refResolver } from "@/lib/reference/versioned";
 export async function GET() {
   const actor = await currentActor().catch(() => null);
   if (!actor || !can.export(actor)) return new Response("Tidak diizinkan", { status: 403 });
-  const [rows, radSet] = await Promise.all([listData({ opdId: can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000") }), rad.loadSet()]);
+  const [records, radSet, refs] = await Promise.all([listData({ opdId: can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000") }), rad.loadSet(), securityRefs()]);
+  // Dependensi keamanan tertaut diekspor sebagai "kode nama" agar terbaca dan bisa diimpor ulang.
+  const rows = withSecurityLabels(records, refs);
   const radFor = refResolver(radSet);
 
   const security = securityFields.map((f) => `← ${f.label} (Dependency)`);

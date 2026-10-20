@@ -3,7 +3,7 @@ import { RefManager } from "@/components/cms/ref-manager";
 import { can, currentActor } from "@/lib/access";
 import type { RefKind, VersionedRef } from "@/lib/reference/versioned";
 
-/** Isi halaman Pengaturan › Referensi RAB/RAL/RAD/RAA (server). */
+/** Isi halaman Pengaturan › Referensi RAB/RAL/RAD/RAA/RAI (server). */
 export async function RefPage({ kind, repo, versi }: { kind: RefKind; repo: VersionedRef; versi?: string }) {
   const actor = await currentActor();
   if (!can.manageReference(actor, kind)) return <NoAccess title="Halaman ini untuk pengelola referensi arsitektur" />;

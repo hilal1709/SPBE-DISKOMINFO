@@ -1,6 +1,9 @@
 import * as XLSX from "xlsx";
 import { can, currentActor } from "@/lib/access";
+import { securityRefs } from "@/lib/keamanan/cms-repo";
+import { withSecurityLabels } from "@/lib/keamanan/link";
 import { listAplikasi } from "@/lib/aplikasi/cms-repo";
+import { flowLabels } from "@/lib/aplikasi/data-flow";
 import { raa } from "@/lib/aplikasi/raa";
 import { basisLabel, lisensiLabel } from "@/lib/aplikasi/reference";
 import { securityFields } from "@/lib/data/reference";
@@ -15,7 +18,9 @@ const securityLabel = Object.fromEntries(securityFields.map((f) => [f.key, f.lab
 export async function GET() {
   const actor = await currentActor().catch(() => null);
   if (!actor || !can.export(actor)) return new Response("Tidak diizinkan", { status: 403 });
-  const [rows, raaSet] = await Promise.all([listAplikasi({ opdId: can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000") }), raa.loadSet()]);
+  const [records, raaSet, refs] = await Promise.all([listAplikasi({ opdId: can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000") }), raa.loadSet(), securityRefs()]);
+  // Dependensi keamanan tertaut diekspor sebagai "kode nama" agar terbaca dan bisa diimpor ulang.
+  const rows = withSecurityLabels(records, refs);
   const raaFor = refResolver(raaSet);
 
   const security = securityOrder.map((key) => `← ${securityLabel[key]} (Dependency)`);
@@ -47,9 +52,9 @@ export async function GET() {
         "→ Layanan (Dependency)": links(r.layanan),
         "→ Data yang digunakan (Dependency)": links(r.data),
         "← Proses Bisnis (Dependency)": links(r.probis),
-        "← Inputan Data (Dependency)": r.inputData ?? "",
+        "← Inputan Data (Dependency)": flowLabels(r.inputData, r.dataNames).join("\n"),
         "→ Supplier Data (Dependency)": r.supplier ?? "",
-        "→ Luaran Data (Dependency)": r.outputData ?? "",
+        "→ Luaran Data (Dependency)": flowLabels(r.outputData, r.dataNames).join("\n"),
         "→ Customer Data (Dependency)": r.customer ?? "",
         "→ Komputasi Awan (Dependency)": r.cloud ?? "",
         "→ Perangkat Keras Server (Dependency)": r.server ?? "",

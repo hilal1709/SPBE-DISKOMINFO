@@ -63,7 +63,7 @@ export function radForRal2(ral2: string, ralName: string | undefined) {
   return sampleRad.level(2).find((n) => bare(n.name) === name)?.code ?? ralFallback[ral2];
 }
 
-/** Dependensi Keamanan SPBE di template (urutan kolom). Diisi teks sampai modul Keamanan tersedia. */
+/** Dependensi Keamanan SPBE di template (urutan kolom). Diisi kode kegiatan keamanan (lib/keamanan/link.ts). */
 export const securityFields = [
   { key: "standar", label: "Standar Teknis dan Prosedur Keamanan SPBE" },
   { key: "audit", label: "Audit Keamanan SPBE" },

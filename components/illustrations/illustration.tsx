@@ -25,6 +25,8 @@ const catalog = {
   "service-desk": { load: () => import("./data/service-desk.json"), ratio: "3 / 2", still: 120 },
   "data-catalog": { load: () => import("./data/data-catalog.json"), ratio: "3 / 2", still: 120 },
   "app-ecosystem": { load: () => import("./data/app-ecosystem.json"), ratio: "3 / 2", still: 130 },
+  "data-center": { load: () => import("./data/data-center.json"), ratio: "3 / 2", still: 120 },
+  "security-shield": { load: () => import("./data/security-shield.json"), ratio: "3 / 2", still: 140 },
 } as const;
 
 export type IllustrationName = keyof typeof catalog;

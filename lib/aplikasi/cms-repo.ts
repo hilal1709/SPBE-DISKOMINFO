@@ -39,7 +39,9 @@ export const LINKS_SQL = `
             where x.application_id = a.id), '[]') as layanan,
   coalesce((select json_agg(json_build_object('id', d.code, 'name', d.name) order by d.code)
             from application_datasets x join datasets d on d.id = x.dataset_id
-            where x.application_id = a.id), '[]') as data`;
+            where x.application_id = a.id), '[]') as data,
+  coalesce((select json_object_agg(d.code, d.name) from datasets d
+            where d.period_id = a.period_id and d.code = any(string_to_array(coalesce(a.input_data, '') || E'\\n' || coalesce(a.output_data, ''), E'\\n'))), '{}') as data_names`;
 
 // raa_id menunjuk node terdalam (L3, atau L2 tanpa turunan); L1–L3 diturunkan dari induknya.
 export const RAA_SQL = `
@@ -73,6 +75,7 @@ type Row = Record<string, string | null> & {
   probis: (Link & { status: SubmissionStatus })[];
   layanan: Link[];
   data: Link[];
+  data_names: Record<string, string>;
 };
 
 const toRecord = (r: Row): AplikasiRecord => ({
@@ -102,6 +105,7 @@ const toRecord = (r: Row): AplikasiRecord => ({
   probis: r.probis.map((p) => ({ id: p.id, name: p.name, status: p.status })),
   layanan: r.layanan,
   data: r.data,
+  dataNames: r.data_names ?? {},
   inputData: r.input_data,
   outputData: r.output_data,
   supplier: r.supplier,
@@ -179,9 +183,19 @@ export async function dependencyOptions(opd: string, period: string) {
        where ap.name = $1 ${extra} order by (o.code = $2) desc, t.code`,
       [period, opd],
     );
-  const [probis, layanan, data] = await Promise.all([query("process_businesses", "and t.status = 'approved'"), query("services"), query("datasets")]);
+  const [probis, layanan, data, infra] = await Promise.all([
+    query("process_businesses", "and t.status = 'approved'"),
+    query("services"),
+    query("datasets"),
+    // Komponen infrastruktur untuk kolom komputasi awan, server (atau fasilitas tempatnya), SPLP, dan JIP.
+    db().query(
+      `select t.code, t.name, t.kind, o.code as opd from infrastructures t join opd o on o.id = t.opd_id join architecture_periods ap on ap.id = t.period_id
+       where ap.name = $1 and t.kind in ('cloud', 'server', 'fasilitas', 'splp', 'jip') and t.status <> 'rejected' order by t.kind, t.name`,
+      [period],
+    ),
+  ]);
   const map = (rows: Record<string, string>[]) => rows.map((r) => ({ code: r.code!, name: r.name!, opd: r.opd! }));
-  return { probis: map(probis.rows), layanan: map(layanan.rows), data: map(data.rows) };
+  return { probis: map(probis.rows), layanan: map(layanan.rows), data: map(data.rows), infra: infra.rows.map((r) => ({ code: r.code as string, name: r.name as string, opd: r.opd as string, jenis: r.kind as string })) };
 }
 
 async function ids(client: PoolClient, v: Pick<AplikasiValues, "opd" | "period" | "raa" | "probis" | "layanan" | "data" | "pengembang">) {

@@ -16,7 +16,12 @@
     "referensi:rad": "node scripts/extract-rad.mjs",
     "referensi:raa": "node scripts/extract-raa.mjs",
     "seed:data": "tsx scripts/seed-sample-data.mts",
-    "seed:aplikasi": "tsx scripts/seed-sample-aplikasi.mts"
+    "seed:aplikasi": "tsx scripts/seed-sample-aplikasi.mts",
+    "referensi:rai": "node scripts/extract-rai.mjs",
+    "template:infrastruktur": "tsx scripts/build-infra-template.mts",
+    "seed:infrastruktur": "tsx scripts/seed-sample-infrastruktur.mts",
+    "template:keamanan": "tsx scripts/build-keamanan-template.mts",
+    "seed:keamanan": "tsx scripts/seed-sample-keamanan.mts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

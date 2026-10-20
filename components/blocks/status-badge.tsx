@@ -36,7 +36,26 @@ const variants: Record<string, "success" | "warning" | "muted" | "alert" | "acce
   Pemda: "success",
   "Instansi Pusat": "info",
   "Pihak Ketiga": "warning",
+  "Milik sendiri": "success",
+  Sewa: "warning",
+  "Instansi lain": "info",
+  "Pihak ketiga": "alert",
+  Berlaku: "success",
 };
+
+/** Varian badge untuk token warna kategori (sama dengan warna seri grafiknya). */
+const toneVariants: Record<string, "success" | "warning" | "info" | "accent" | "alert"> = {
+  "--brand-teal": "success",
+  "--brand-yellow": "warning",
+  "--brand-sky": "info",
+  "--brand-amber": "accent",
+  "--brand-orange": "alert",
+};
+
+/** Badge kategori (komponen infrastruktur, kegiatan keamanan) berwarna sama dengan grafiknya. */
+export function ToneBadge({ tone, children }: { tone: string; children: React.ReactNode }) {
+  return <Badge variant={toneVariants[tone] ?? "muted"}>{children}</Badge>;
+}
 
 /** Badge status dengan warna semantik. Terima kode status atau label bebas. */
 export function StatusBadge({ status }: { status: SubmissionStatus | string }) {

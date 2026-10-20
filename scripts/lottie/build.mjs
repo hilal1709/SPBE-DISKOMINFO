@@ -472,7 +472,116 @@ function appEcosystem() {
   });
 }
 
-const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty, "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem };
+/* 13. Pusat data — dua rak server dengan lampu berkedip, tersambung ke awan lewat jaringan; paket data mengalir. */
+function dataCenter() {
+  const frames = 180;
+  // Lampu indikator berkedip bergantian (fase berbeda per unit).
+  const led = (x, y, color, t) =>
+    group([ellipse(4.5, 4.5, [x, y]), fill(color)], { o: anim([[0, 100], [t, 100], [t + 6, 25], [t + 14, 100], [t + 70, 100], [t + 76, 25], [t + 84, 100], [frames, 100]], ease.linear) });
+  // Satu unit server: pelat, celah ventilasi, dan dua lampu.
+  const unit = (y, color, t) => [
+    led(14, y, c.teal, t),
+    led(7, y, color, t + 9),
+    group([path([[-16, y - 1.5], [-2, y - 1.5]]), path([[-16, y + 1.5], [-2, y + 1.5]]), stroke(c.slate, 1.2, { opacity: 70 })]),
+    group([rect(42, 13, 2.5, [0, y]), fill(c.surface), stroke(c.charcoal, 1.6)]),
+  ];
+  const rack = (name, x, height, units, delay) =>
+    layer(name, [
+      ...units.flatMap(([y, color], i) => unit(y, color, delay + i * 11)),
+      group([rect(54, height, 6), fill(c.white), stroke(c.charcoal, 3)]),
+      group([rect(46, 6, 2, [0, height / 2 + 2]), fill(c.charcoal)]),
+    ], {
+      p: [x, 146 - height / 2 - 6],
+      s: anim([[0, [100, 0]], [delay, [100, 0]], [delay + 18, [100, 100], ease.back], [156, [100, 100]], [168, [100, 0]], [frames, [100, 0]]]),
+      a: [0, height / 2 + 6],
+    });
+  const wire = (points, t) => group([curve(points), trim(0, anim([[0, 0], [t, 0], [t + 28, 100], [150, 100], [166, 0], [frames, 0]], ease.inOut)), stroke(c.charcoal, 2, { opacity: 60, dash: [4, 4] })]);
+  const packet = (from, to, t, color) =>
+    layer("paket", group([rect(8, 8, 2.5), fill(color), stroke(c.charcoal, 1.2)]), {
+      p: anim([[0, from], [t, from], [t + 30, to, ease.inOut], [frames, to]]),
+      o: anim([[0, 0], [t - 2, 0], [t + 2, 100], [t + 28, 100], [t + 32, 0], [frames, 0]], ease.linear),
+    });
+  return composition("data-center", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("blob", group([ellipse(220, 140), fill(c.amberPale)]), { p: [120, 80], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(200, 10), fill(c.navy, 8)]), { p: [120, 144] }),
+      layer("jaringan", [wire([[84, 52], [104, 22], [150, 26]], 46), wire([[150, 66], [170, 48], [176, 40]], 58)], {}),
+      rack("rak kiri", 62, 88, [[-28, c.yellow], [-12, c.amber], [4, c.yellow], [20, c.sky]], 6),
+      rack("rak kanan", 126, 70, [[-20, c.amber], [-4, c.yellow], [12, c.teal]], 16),
+      layer("awan", [
+        group([rect(14, 4, 2), fill(c.white)], { p: [0, 4], o: anim([[0, 100], [86, 100], [90, 30], [96, 100], [126, 100], [130, 30], [136, 100], [frames, 100]], ease.linear) }),
+        group([ellipse(32, 28, [0, -4]), ellipse(24, 20, [-15, 3]), ellipse(24, 18, [15, 4]), rect(44, 12, 6, [0, 6]), fill(c.sky), stroke(c.charcoal, 2)]),
+      ], { p: [184, 34], s: pingPong([100, 100], [106, 106], 90) }),
+      layer("menara", [
+        group([path([[0, -18], [-10, 18]]), path([[0, -18], [10, 18]]), path([[-6, 6], [6, 6]]), stroke(c.charcoal, 2.5)]),
+        group([ellipse(7, 7, [0, -20]), fill(c.orange)]),
+      ], { p: [190, 122] }),
+      layer("sinyal", group([ellipse(14, 14), stroke(c.orange, 2)]), {
+        p: [190, 102],
+        s: anim([[0, [40, 40]], [60, [40, 40]], [90, [220, 220]], [91, [40, 40]], [120, [220, 220]], [frames, [220, 220]]], ease.out),
+        o: anim([[0, 0], [60, 0], [62, 90], [90, 0], [92, 90], [120, 0], [frames, 0]], ease.linear),
+      }),
+      packet([86, 50], [160, 30], 74, c.yellow),
+      packet([150, 64], [178, 42], 104, c.teal),
+    ],
+  });
+}
+
+/* 14. Perisai keamanan — perisai bergembok dipindai garis cahaya, titik ancaman ditepis, lalu centang. */
+function securityShield() {
+  const frames = 180;
+  const shield = (s) => [[0, -42 * s], [36 * s, -30 * s], [32 * s, 10 * s], [0, 42 * s], [-32 * s, 10 * s], [-36 * s, -30 * s]];
+  // Titik ancaman mendekat lalu terpental saat menyentuh perisai.
+  const threat = (from, hit, t) =>
+    layer("ancaman", group([ellipse(8, 8), fill(c.orange), stroke(c.charcoal, 1.2)]), {
+      p: anim([[0, from], [t, from], [t + 22, hit, ease.inOut], [t + 40, from, ease.out], [frames, from]]),
+      o: anim([[0, 0], [t - 2, 0], [t + 2, 100], [t + 34, 100], [t + 40, 0], [frames, 0]], ease.linear),
+      s: anim([[0, [100, 100]], [t + 20, [100, 100]], [t + 24, [140, 70]], [t + 30, [100, 100]], [frames, [100, 100]]]),
+    });
+  return composition("security-shield", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("blob", group([ellipse(220, 140), fill(c.amberPale)]), { p: [120, 80], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(150, 10), fill(c.navy, 8)]), { p: [120, 144] }),
+      layer("riak", group([path(shield(1.05), true), stroke(c.teal, 2)]), {
+        p: [120, 80],
+        s: anim([[0, [100, 100]], [40, [100, 100]], [80, [130, 130]], [81, [100, 100]], [120, [130, 130]], [frames, [130, 130]]], ease.out),
+        o: anim([[0, 0], [40, 0], [42, 70], [80, 0], [82, 70], [120, 0], [frames, 0]], ease.linear),
+      }),
+      layer("perisai", [
+        group([path(shield(0.74), true), fill(c.sky)]),
+        group([path(shield(1), true), fill(c.teal), stroke(c.charcoal, 3)]),
+      ], { p: [120, 80], s: anim([[0, [0, 0]], [6, [0, 0]], [26, [100, 100], ease.back], [158, [100, 100]], [170, [0, 0]], [frames, [0, 0]]]) }),
+      layer("gembok", [
+        group([ellipse(6, 6, [0, 2]), rect(3, 7, 1.5, [0, 7]), fill(c.charcoal)]),
+        group([rect(30, 24, 5, [0, 6]), fill(c.yellow), stroke(c.charcoal, 2.5)]),
+        group([curve([[-9, -6], [-9, -20], [9, -20], [9, -6]]), stroke(c.charcoal, 3)], {
+          p: anim([[0, [0, -6]], [30, [0, -6]], [40, [0, 0], ease.back], [frames, [0, 0]]]),
+        }),
+      ], { p: [120, 76], s: anim([[0, [0, 0]], [18, [0, 0]], [32, [100, 100], ease.back], [156, [100, 100]], [168, [0, 0]], [frames, [0, 0]]]) }),
+      layer("pindai", group([rect(64, 3, 1.5), fill(c.white, 70)]), {
+        p: anim([[0, [120, 50]], [44, [120, 50]], [74, [120, 108], ease.inOut], [104, [120, 50], ease.inOut], [frames, [120, 50]]]),
+        o: anim([[0, 0], [44, 0], [48, 100], [100, 100], [104, 0], [frames, 0]], ease.linear),
+      }),
+      threat([30, 50], [86, 62], 52),
+      threat([212, 110], [152, 96], 70),
+      threat([206, 34], [150, 56], 90),
+      layer("centang", [
+        group([path([[-6, 0], [-2, 4], [6, -4]]), trim(0, anim([[0, 0], [126, 0], [138, 100], [150, 100], [160, 0], [frames, 0]], ease.inOut)), stroke(c.white, 3)]),
+        group([ellipse(24, 24), fill(c.teal), stroke(c.white, 2)]),
+      ], {
+        p: [152, 112],
+        s: anim([[0, [0, 0]], [118, [0, 0]], [130, [100, 100], ease.back], [150, [100, 100]], [162, [0, 0]], [frames, [0, 0]]]),
+      }),
+    ],
+  });
+}
+
+const builds = {
+  loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty,
+  "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem, "data-center": dataCenter, "security-shield": securityShield,
+};
 for (const [name, build] of Object.entries(builds)) {
   const json = JSON.stringify(build());
   writeFileSync(join(out, `${name}.json`), json);

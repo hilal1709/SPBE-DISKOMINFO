@@ -2,21 +2,32 @@ import { CmsHome } from "@/components/cms/cms-home";
 import { can, currentActor } from "@/lib/access";
 import { aplikasiSummary } from "@/lib/aplikasi/cms-repo";
 import { dataSummary } from "@/lib/data/cms-repo";
+import { infrastrukturSummary } from "@/lib/infrastruktur/cms-repo";
+import { keamananSummary } from "@/lib/keamanan/cms-repo";
 import { layananSummary } from "@/lib/layanan/cms-repo";
 import { cmsSummary } from "@/lib/probis/repo";
 
 export default async function CmsPage() {
   const actor = await currentActor();
   const scope = can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000");
-  const [probis, layanan, data, aplikasi] = await Promise.all([cmsSummary(scope), layananSummary(scope), dataSummary(scope), aplikasiSummary(scope)]);
-  // Aktivitas terbaru gabungan probis + layanan + data + aplikasi.
+  const [probis, layanan, data, aplikasi, infrastruktur, keamanan] = await Promise.all([
+    cmsSummary(scope),
+    layananSummary(scope),
+    dataSummary(scope),
+    aplikasiSummary(scope),
+    infrastrukturSummary(scope),
+    keamananSummary(scope),
+  ]);
+  // Aktivitas terbaru gabungan semua domain.
   const recent = [
     ...probis.recent.map((a) => ({ ...a, kind: "probis" as const })),
     ...layanan.recent.map((a) => ({ ...a, kind: "layanan" as const })),
     ...data.recent.map((a) => ({ ...a, kind: "data" as const })),
     ...aplikasi.recent.map((a) => ({ ...a, kind: "aplikasi" as const })),
+    ...infrastruktur.recent.map((a) => ({ ...a, kind: "infrastruktur" as const })),
+    ...keamanan.recent.map((a) => ({ ...a, kind: "keamanan" as const })),
   ]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 8);
-  return <CmsHome actor={actor} probis={probis} layanan={layanan} data={data} aplikasi={aplikasi} recent={recent} />;
+  return <CmsHome actor={actor} probis={probis} layanan={layanan} data={data} aplikasi={aplikasi} infrastruktur={infrastruktur} keamanan={keamanan} recent={recent} />;
 }

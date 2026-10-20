@@ -26,6 +26,10 @@ export type Period = {
   applications: number;
   raaVersionId: string | null;
   raaVersionName: string | null;
+  /** Jumlah komponen infrastruktur & versi RAI. */
+  infrastructures: number;
+  raiVersionId: string | null;
+  raiVersionName: string | null;
 };
 
 export const MIN_SPAN = 2;
@@ -44,13 +48,15 @@ export async function listPeriods(): Promise<Period[]> {
             (select count(*)::int from services s where s.period_id = ap.id) as services,
             (select count(*)::int from datasets d where d.period_id = ap.id) as datasets,
             (select count(*)::int from applications a where a.period_id = ap.id) as applications,
+            (select count(*)::int from infrastructures i where i.period_id = ap.id) as infrastructures,
             ap.rab_version_id, v.name as version_name, ap.ral_version_id, rv.name as ral_version_name, ap.rad_version_id, dv.name as rad_version_name,
-            ap.raa_version_id, av.name as raa_version_name
+            ap.raa_version_id, av.name as raa_version_name, ap.rai_version_id, iv.name as rai_version_name
      from architecture_periods ap
      left join rab_versions v on v.id = ap.rab_version_id
      left join ral_versions rv on rv.id = ap.ral_version_id
      left join rad_versions dv on dv.id = ap.rad_version_id
      left join raa_versions av on av.id = ap.raa_version_id
+     left join rai_versions iv on iv.id = ap.rai_version_id
      order by ap.start_year`,
   );
   return rows.map((r) => ({
@@ -71,6 +77,9 @@ export async function listPeriods(): Promise<Period[]> {
     applications: r.applications,
     raaVersionId: r.raa_version_id,
     raaVersionName: r.raa_version_name,
+    infrastructures: r.infrastructures,
+    raiVersionId: r.rai_version_id,
+    raiVersionName: r.rai_version_name,
   }));
 }
 
@@ -92,14 +101,15 @@ export async function createPeriod(start: number, end: number) {
   const overlap = await db().query("select name from architecture_periods where start_year <= $2 and end_year >= $1", [start, end]);
   if (overlap.rows.length) throw new Error(`Bertumpang tindih dengan periode ${overlap.rows.map((r) => r.name).join(", ")}.`);
   const name = `${start}–${end}`;
-  // Periode baru memakai versi RAB, RAL, RAD, dan RAA terbit terbaru.
+  // Periode baru memakai versi RAB, RAL, RAD, RAA, dan RAI terbit terbaru.
   await db().query(
-    `insert into architecture_periods (name, start_year, end_year, is_active, rab_version_id, ral_version_id, rad_version_id, raa_version_id)
+    `insert into architecture_periods (name, start_year, end_year, is_active, rab_version_id, ral_version_id, rad_version_id, raa_version_id, rai_version_id)
      values ($1, $2, $3, false,
        (select id from rab_versions where status = 'published' order by published_at desc nulls last limit 1),
        (select id from ral_versions where status = 'published' order by published_at desc nulls last limit 1),
        (select id from rad_versions where status = 'published' order by published_at desc nulls last limit 1),
-       (select id from raa_versions where status = 'published' order by published_at desc nulls last limit 1))`,
+       (select id from raa_versions where status = 'published' order by published_at desc nulls last limit 1),
+       (select id from rai_versions where status = 'published' order by published_at desc nulls last limit 1))`,
     [name, start, end],
   );
   return name;
@@ -126,7 +136,8 @@ export async function deletePeriod(id: string) {
             (select count(*)::int from process_businesses pb where pb.period_id = ap.id) as n,
             (select count(*)::int from services s where s.period_id = ap.id) as services,
             (select count(*)::int from datasets d where d.period_id = ap.id) as datasets,
-            (select count(*)::int from applications a where a.period_id = ap.id) as applications
+            (select count(*)::int from applications a where a.period_id = ap.id) as applications,
+            (select count(*)::int from infrastructures i where i.period_id = ap.id) as infrastructures
      from architecture_periods ap where ap.id = $1`,
     [id],
   );
@@ -136,5 +147,6 @@ export async function deletePeriod(id: string) {
   if (rows[0].services > 0) throw new Error(`Periode masih dipakai ${rows[0].services} layanan.`);
   if (rows[0].datasets > 0) throw new Error(`Periode masih dipakai ${rows[0].datasets} data.`);
   if (rows[0].applications > 0) throw new Error(`Periode masih dipakai ${rows[0].applications} aplikasi.`);
+  if (rows[0].infrastructures > 0) throw new Error(`Periode masih dipakai ${rows[0].infrastructures} komponen infrastruktur.`);
   await db().query("delete from architecture_periods where id = $1", [id]);
 }

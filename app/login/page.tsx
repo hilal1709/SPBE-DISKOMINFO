@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useActionState, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useActionState, useRef, useState } from "react";
 import { Alert02Icon, ArrowLeft01Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { login } from "@/app/actions/auth";
 import { Icon } from "@/components/icon";
@@ -68,6 +69,9 @@ export default function Login() {
           </div>
 
           <form ref={form} action={formAction} className="mt-8" data-reveal>
+            <Suspense fallback={null}>
+              <CallbackField />
+            </Suspense>
             <FieldGroup className="gap-5">
               {error && (
                 <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-1">
@@ -105,4 +109,10 @@ export default function Login() {
       </section>
     </main>
   );
+}
+
+/** Halaman tujuan setelah login (mis. /keamanan); divalidasi ulang di server action. */
+function CallbackField() {
+  const callbackUrl = useSearchParams().get("callbackUrl");
+  return callbackUrl ? <input type="hidden" name="callbackUrl" value={callbackUrl} /> : null;
 }

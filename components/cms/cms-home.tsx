@@ -15,9 +15,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { can, reviewTeam, type Actor } from "@/lib/permissions";
 import type { SubmissionStatus } from "@/lib/types";
 
-type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" | "data" | "aplikasi" };
+type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan" };
 type Summary = { counts: Partial<Record<SubmissionStatus, number>>; /** Perlu pemetaan ulang referensi (RAB/RAL). */ review: number };
-type Domain = "probis" | "layanan" | "data" | "aplikasi";
+type Domain = "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan";
 
 /** Teks & tautan per domain. */
 const domains = {
@@ -25,6 +25,8 @@ const domains = {
   layanan: { noun: "layanan", total: "Total layanan", ref: "RAL", list: "/cms/layanan", base: "/cms/layanan" },
   data: { noun: "data", total: "Total data", ref: "RAD", list: "/cms/data", base: "/cms/data" },
   aplikasi: { noun: "aplikasi", total: "Total aplikasi", ref: "RAA", list: "/cms/aplikasi", base: "/cms/aplikasi" },
+  infrastruktur: { noun: "komponen infrastruktur", total: "Total komponen", ref: "RAI", list: "/cms/infrastruktur", base: "/cms/infrastruktur" },
+  keamanan: { noun: "kegiatan keamanan", total: "Total kegiatan", ref: "", list: "/cms/keamanan", base: "/cms/keamanan" },
 } as const;
 
 /** Tindakan tertunda untuk satu domain, urut prioritas. */
@@ -52,10 +54,28 @@ const dotTone: Record<SubmissionStatus, string> = {
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
 /** Beranda CMS: ringkasan status per domain dalam cakupan pengguna, tindakan berikutnya, dan aktivitas terbaru. */
-export function CmsHome({ actor, probis, layanan, data, aplikasi, recent }: { actor: Actor; probis: Summary; layanan: Summary; data: Summary; aplikasi: Summary; recent: Activity[] }) {
+export function CmsHome({
+  actor,
+  probis,
+  layanan,
+  data,
+  aplikasi,
+  infrastruktur,
+  keamanan,
+  recent,
+}: {
+  actor: Actor;
+  probis: Summary;
+  layanan: Summary;
+  data: Summary;
+  aplikasi: Summary;
+  infrastruktur: Summary;
+  keamanan: Summary;
+  recent: Activity[];
+}) {
   const timeline = useRef<HTMLOListElement>(null);
   const [domain, setDomain] = useState<Domain>("probis");
-  const counts = { probis, layanan, data, aplikasi }[domain].counts;
+  const counts = { probis, layanan, data, aplikasi, infrastruktur, keamanan }[domain].counts;
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
 
   useGSAP(
@@ -68,7 +88,7 @@ export function CmsHome({ actor, probis, layanan, data, aplikasi, recent }: { ac
   );
 
   // Maksimal tiga tindakan terpenting dari semua domain.
-  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan), ...steps(actor, "data", data), ...steps(actor, "aplikasi", aplikasi)].slice(0, 3);
+  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan), ...steps(actor, "data", data), ...steps(actor, "aplikasi", aplikasi), ...steps(actor, "infrastruktur", infrastruktur), ...steps(actor, "keamanan", keamanan)].slice(0, 3);
 
   return (
     <Reveal className="grid gap-5">
@@ -82,6 +102,8 @@ export function CmsHome({ actor, probis, layanan, data, aplikasi, recent }: { ac
           { value: "layanan", label: "Layanan" },
           { value: "data", label: "Data" },
           { value: "aplikasi", label: "Aplikasi" },
+          { value: "infrastruktur", label: "Infrastruktur" },
+          { value: "keamanan", label: "Keamanan" },
         ]}
       />
       <StatRow>
@@ -123,6 +145,9 @@ export function CmsHome({ actor, probis, layanan, data, aplikasi, recent }: { ac
                 {can.import(actor) && <QuickLink tone="bg-brand-orange" href="/cms/data/impor" icon={FileImportIcon} title="Impor data" text="Unggah template atau zip arsitektur" />}
                 <QuickLink tone="bg-brand-teal" href="/cms/aplikasi/baru" icon={Add01Icon} title="Tambah aplikasi" text="Isi form dengan bantuan AI" />
                 {can.import(actor) && <QuickLink tone="bg-brand-yellow" href="/cms/aplikasi/impor" icon={FileImportIcon} title="Impor aplikasi" text="Unggah template analis" />}
+                <QuickLink tone="bg-brand-amber" href="/cms/infrastruktur/baru" icon={Add01Icon} title="Tambah komponen" text="Server, jaringan, cloud, dan lainnya" />
+                {can.import(actor) && <QuickLink tone="bg-brand-sky" href="/cms/infrastruktur/impor" icon={FileImportIcon} title="Impor infrastruktur" text="Unggah 10 template komponen" />}
+                <QuickLink tone="bg-brand-orange" href="/cms/keamanan/baru" icon={Add01Icon} title="Tambah kegiatan keamanan" text="Standar, audit, insiden, dan lainnya" />
               </div>
             )}
           </CardContent>

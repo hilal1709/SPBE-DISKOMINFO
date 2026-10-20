@@ -1,6 +1,6 @@
 ## SPBE Kabupaten Gresik
 
-Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat ini **Proses Bisnis**, **Layanan**, **Data**, dan **Aplikasi** sudah lengkap, domain lain menyusul.
+Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat ini **Proses Bisnis**, **Layanan**, **Data**, **Aplikasi**, **Infrastruktur**, dan **Keamanan** sudah lengkap; Gap Analysis dan Peta Rencana menyusul (notulen: Gap Analysis wajib sebelum Peta Rencana).
 
 ### Menjalankan
 
@@ -34,7 +34,7 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 
 ### CMS Data
 
-- Kolom mengikuti template analis `public/templates/data.xlsx` (Domain Arsitektur Data dan Informasi): uraian, tujuan, produsen & wali data, informasi terkait (output/input), RAD L1–L4, sifat (Terbuka/Terbatas/Tertutup), jenis, validitas (frekuensi pemutakhiran), interoperabilitas, ← proses bisnis, → layanan, dan 7 dependensi Keamanan SPBE (teks, ditautkan saat modul Keamanan tersedia).
+- Kolom mengikuti template analis `public/templates/data.xlsx` (Domain Arsitektur Data dan Informasi): uraian, tujuan, produsen & wali data, informasi terkait (output/input), RAD L1–L4, sifat (Terbuka/Terbatas/Tertutup), jenis, validitas (frekuensi pemutakhiran), interoperabilitas, ← proses bisnis, → layanan, dan 7 dependensi Keamanan SPBE (ditautkan ke kegiatan keamanan, lihat CMS Keamanan).
 - Alur: Operator OPD → **Verifikasi** Verifikator Data Diskominfo (peran `validator_data`, sesuai Detailing Requirement & notulen) → **Validasi** Diskominfo → tayang di `/data`. Probis adalah master: data wajib ditautkan ke minimal satu proses bisnis. ID otomatis `GSK-DAT <kode RAD>.<urutan>`.
 - **Referensi RAD berversi** di *Pengaturan › Referensi RAD* (mesin sama dengan RAB/RAL). Tiap periode memilih versi RAD di *Periode Arsitektur*; RAD Level 2 tanpa turunan (mis. RAD.10.04) boleh dipakai langsung.
 - Impor/ekspor di `/cms/data/impor`: unggah template Data atau zip paket arsitektur semua domain (berkas Data dibaca, domain lain dilewati).
@@ -44,7 +44,7 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 
 ### CMS Aplikasi
 
-- Kolom mengikuti template analis `public/templates/aplikasi.xlsx` (Domain Arsitektur Aplikasi, 32 kolom): uraian, fungsi, luaran, **mesin basis data** (notulen: bukan "nama basis data"), basis (Web Based/Desktop/Mobile/Cloud), lisensi, bahasa & kerangka, RAA, → layanan, → data, ← proses bisnis, aliran data (inputan, supplier, luaran, customer), dependensi infrastruktur (komputasi awan, server, SPLP, JIP), unit pengembang, unit operasional teknologi, dan 7 dependensi Keamanan SPBE (teks).
+- Kolom mengikuti template analis `public/templates/aplikasi.xlsx` (Domain Arsitektur Aplikasi, 32 kolom): uraian, fungsi, luaran, **mesin basis data** (notulen: bukan "nama basis data"), basis (Web Based/Desktop/Mobile/Cloud), lisensi, bahasa & kerangka, RAA, → layanan, → data, ← proses bisnis, aliran data (inputan, supplier, luaran, customer), dependensi infrastruktur (komputasi awan, server, SPLP, JIP), unit pengembang, unit operasional teknologi, dan 7 dependensi Keamanan SPBE (ditautkan ke kegiatan keamanan).
 - Alur: Operator OPD (unit operasional) → **Verifikasi** Admin Verifikator Aplikasi Diskominfo (peran `validator_aplikasi`) → **Validasi** Diskominfo → tayang di `/aplikasi`. ID otomatis `GSK-APL <kode RAA>.<urutan>`.
 - Sesuai notulen, aplikasi **wajib selaras proses bisnis yang sudah disetujui**: pilihan probis hanya yang tervalidasi, simpan ditolak bila probis belum disetujui, dan ajuan/verifikasi/validasi ditolak bila tautan probis tervalidasi hilang. Tabel hanya kolom inti; kolom lain di pop-up detail.
 - **Kepemilikan** (Pemda / Instansi Pusat / Pihak Ketiga) tidak ada di template; diturunkan dari unit pengembang (`kepemilikanOf` di `lib/aplikasi/reference.ts`).
@@ -53,6 +53,26 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 - Impor/ekspor di `/cms/aplikasi/impor`: unggah template Aplikasi atau zip paket arsitektur; ekspor memakai 32 kolom template (+ periode & status).
 - Dashboard `/aplikasi` membaca aplikasi tervalidasi; bila kosong memakai data contoh (`lib/aplikasi/generate.ts`). `pnpm seed:aplikasi` mengisi aplikasi contoh ke database (`--hapus` untuk menghapus; jalankan `seed:contoh`, `seed:layanan`, `seed:data` dulu agar tautannya terisi).
 - Akun demo Verifikator Aplikasi: `aplikasi@gresikkab.go.id` (kata sandi sama dengan akun demo lain).
+
+### CMS Infrastruktur
+
+- Mengikuti **10 template analis** "Domain Arsitektur Infrastruktur - *.xlsx" (asli di `public/templates/infrastruktur/`): Fasilitas Komputasi, Komputasi Awan, Perangkat Keras Server/Jaringan/Keamanan/Media Penyimpan/Periferal, Perangkat Lunak Platform, Jaringan Intra Pemerintah (JIP), dan Sistem Penghubung Layanan Pemerintah (SPLP).
+- Satu tabel `infrastructures`: kolom bersama (nama, deskripsi, pemilik, status kepemilikan, unit pengelola, RAI, instansi, 7 dependensi Keamanan SPBE) + kolom khusus tiap komponen di `attributes`. Konfigurasi komponen (kolom, pilihan, relasi yang diizinkan, header template) ada di `lib/infrastruktur/jenis.ts` dan dipakai form, impor, ekspor, detail, serta dashboard.
+- Relasi mengikuti kolom template: antarkomponen (mis. server → platform → fasilitas), ← aplikasi, data, → proses bisnis tervalidasi. Relasi ke jenis yang tidak ada di template ditolak.
+- Dashboard `/infrastruktur` juga mencocokkan aplikasi lewat kolom infrastruktur aplikasi (komputasi awan, server, SPLP, JIP) dengan nama komponen.
+- Alur: Operator OPD → **Verifikasi** Admin Verifikator Infrastruktur Diskominfo (`validator_infrastruktur`) → **Validasi** Diskominfo → tayang. ID otomatis `GSK-INF <kode RAI>.<urutan>`.
+- **Referensi RAI berversi** di *Pengaturan › Referensi RAI* (mesin sama dengan RAB/RAL/RAD/RAA; L2 tanpa turunan dipakai langsung). Template analis memberi kode ganda `RAI.02.01` untuk JIP dan SPLP; ekstraksi menomori SPLP menjadi `RAI.02.02`. `pnpm referensi:rai` membuat ulang `lib/infrastruktur/rai-reference.json` (`--sql` mencetak INSERT).
+- Impor di `/cms/infrastruktur/impor`: satu workbook komponen, workbook gabungan `public/templates/infrastruktur.xlsx` (`pnpm template:infrastruktur`), atau zip folder Infrastruktur / paket arsitektur. Komponen dikenali dari nama berkas/sheet; relasi dalam satu unggahan ditautkan lewat nama. Ekspor satu sheet per komponen dan bisa diimpor ulang.
+- `pnpm seed:infrastruktur` mengisi komponen contoh (`--hapus` untuk menghapus). Akun demo: `infrastruktur@gresikkab.go.id`.
+
+### CMS Keamanan
+
+- Mengikuti **7 template analis** Domain Arsitektur Keamanan (asli di `public/templates/keamanan/`): Standar Teknis dan Prosedur; Penerapan (edukasi kesadaran, identifikasi kerentanan, peningkatan, penanganan insiden, audit); Kelaikan. Kuncinya sama dengan `securityFields` (dependensi keamanan di Data, Aplikasi, Infrastruktur).
+- Tabel `security_activities`: nama, deskripsi, tanggal, instansi, kolom khusus (`lib/keamanan/jenis.ts`) — jenis & tanggal akhir standar, jenis/hasil/tindak lanjut audit, nilai kematangan penanganan insiden (0–5).
+- Alur: Operator OPD → **Verifikasi** Admin Verifikator Keamanan Diskominfo (`validator_keamanan`) → **Validasi** Diskominfo → tayang di `/keamanan`. ID otomatis `GSK-KAM <STD|EDU|KRT|PNK|INS|AUD|KLK>.<urutan>`.
+- Dashboard `/keamanan` **wajib login** (proxy mengarahkan ke `/login?callbackUrl=/keamanan`) dan hanya untuk tim Diskominfo & pimpinan (`can.viewKeamanan`); operator OPD dan Bagian Organisasi melihat pesan akses ditolak. Isinya: siklus 7 kegiatan, kegiatan per tahun, standar berlaku, dan **cakupan dependensi** (berapa persen data, aplikasi, infrastruktur tervalidasi yang mencantumkan tiap kegiatan keamanan).
+- **Tautan dependensi keamanan**: form Data, Aplikasi, dan Infrastruktur memilih kegiatan keamanan tervalidasi pada periode yang sama; kolom `security` menyimpan kode kegiatan (`lib/keamanan/link.ts`). Isian teks lama tetap tampil apa adanya. Impor mencocokkan kode, "kode nama", atau nama kegiatan; ekspor menulis "kode nama".
+- Impor menerima tanggal Excel maupun teks (12/03/2025, 12 Maret 2025); template gabungan `public/templates/keamanan.xlsx` (`pnpm template:keamanan`). `pnpm seed:keamanan` mengisi kegiatan contoh dan menautkannya ke data, aplikasi, serta infrastruktur contoh. Akun demo: `keamanan@gresikkab.go.id`.
 
 ## Getting Started
 

@@ -8,6 +8,15 @@ export const categorical = ["--brand-teal", "--brand-orange", "--brand-yellow", 
 
 export type CategoryColor = (typeof categorical)[number];
 
+/** Kelas latar per token warna (ditulis utuh agar terbaca Tailwind), mis. untuk bar `Meter`. */
+export const toneBgClass: Record<string, string> = {
+  "--brand-teal": "bg-brand-teal",
+  "--brand-sky": "bg-brand-sky",
+  "--brand-yellow": "bg-brand-yellow",
+  "--brand-amber": "bg-brand-amber",
+  "--brand-orange": "bg-brand-orange",
+};
+
 export const categoryColor = (index: number): CategoryColor => categorical[((index % categorical.length) + categorical.length) % categorical.length]!;
 
 /** Warna per kode (urutan = urutan warna), agar satu sektor/jenis berwarna sama di semua widget. */

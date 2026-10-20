@@ -1,6 +1,6 @@
 import {
-  Building03Icon, Calendar03Icon, CheckListIcon, CheckmarkBadge01Icon, ComputerIcon, CustomerService01Icon, DashboardSquare01Icon,
-  Database01Icon, FileImportIcon, FlowConnectionIcon, GitCompareIcon, Idea01Icon, Layers01Icon, ListViewIcon, Route01Icon,
+  Calendar03Icon, CheckListIcon, CheckmarkBadge01Icon, ComputerIcon, CustomerService01Icon, DashboardSquare01Icon,
+  Database01Icon, FileImportIcon, FlowConnectionIcon, GitCompareIcon, Layers01Icon, ListViewIcon, Route01Icon,
   ServerStack01Icon, Settings02Icon, ShieldKeyIcon, TaskAdd01Icon, TaskDone01Icon, UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@/components/icon";
@@ -15,10 +15,14 @@ export type NavItem = {
   roles?: Role[];
   /** Modul belum tersedia (ditandai "Segera"). */
   soon?: boolean;
+  /** Wajib login (portal); ditandai gembok selama pengunjung belum masuk. */
+  locked?: boolean;
   /** Penjelasan singkat fungsi menu (tampil di bawah label & di header halaman). */
   description?: string;
   /** Kunci angka lencana (mis. jumlah antrean). */
-  badgeKey?: "submitted" | "verified" | "layananSubmitted" | "layananVerified" | "dataSubmitted" | "dataVerified" | "aplikasiSubmitted" | "aplikasiVerified";
+  badgeKey?:
+    | "submitted" | "verified" | "layananSubmitted" | "layananVerified" | "dataSubmitted" | "dataVerified" | "aplikasiSubmitted" | "aplikasiVerified"
+    | "infrastrukturSubmitted" | "infrastrukturVerified" | "keamananSubmitted" | "keamananVerified";
 };
 
 /** Menu besar berisi sub-menu. */
@@ -32,10 +36,9 @@ export const publicNav: NavItem[] = [
   { href: "/layanan", label: "Layanan", icon: CustomerService01Icon, section: "Domain Layanan" },
   { href: "/data", label: "Data", icon: Database01Icon, section: "Domain Data" },
   { href: "/aplikasi", label: "Aplikasi", icon: ComputerIcon, section: "Domain Aplikasi" },
-  { href: "/domain-infrastruktur", label: "Domain Infrastruktur", icon: ServerStack01Icon, section: "Domain Infrastruktur" },
-  { href: "/aplikasi-usulan", label: "Aplikasi Usulan", icon: Idea01Icon, section: "Aplikasi Usulan" },
+  { href: "/infrastruktur", label: "Infrastruktur", icon: ServerStack01Icon, section: "Domain Infrastruktur" },
+  { href: "/keamanan", label: "Keamanan", icon: ShieldKeyIcon, section: "Domain Keamanan", locked: true },
   { href: "/peta-rencana", label: "Peta Rencana", icon: Route01Icon, section: "Peta Rencana" },
-  { href: "/infrastruktur", label: "Infrastruktur", icon: Building03Icon, section: "Infrastruktur Aset" },
 ];
 
 /** Halaman portal di luar menu tetap mendapat judul section yang benar. */
@@ -45,7 +48,7 @@ export const portalSections: Record<string, string> = {
 
 const soon = (slug: string, label: string, icon: IconSvgElement, description: string): NavItem => ({ href: `/cms/segera/${slug}`, label, icon, section: label, soon: true, description });
 
-/** Menu CMS dikelompokkan per modul. Modul dibangun bertahap (notulen): Proses Bisnis, Layanan, Data, lalu Aplikasi. */
+/** Menu CMS dikelompokkan per modul. Modul dibangun bertahap (notulen): Proses Bisnis, Layanan, Data, Aplikasi, Infrastruktur, lalu Keamanan. */
 export const cmsNav: NavEntry[] = [
   { href: "/cms", label: "Beranda", icon: DashboardSquare01Icon, section: "Beranda CMS", description: "Ringkasan tugas dan aktivitas terbaru Anda" },
   {
@@ -93,11 +96,25 @@ export const cmsNav: NavEntry[] = [
     ],
   },
   {
-    label: "Domain Arsitektur",
-    icon: Layers01Icon,
+    label: "Infrastruktur",
+    icon: ServerStack01Icon,
     children: [
-      soon("infrastruktur", "Infrastruktur", ServerStack01Icon, "Domain arsitektur infrastruktur"),
-      soon("keamanan", "Keamanan", ShieldKeyIcon, "Domain arsitektur keamanan"),
+      { href: "/cms/infrastruktur", label: "Daftar Komponen", icon: ListViewIcon, section: "Daftar Infrastruktur", description: "Lihat dan kelola 10 komponen infrastruktur" },
+      { href: "/cms/infrastruktur/baru", label: "Tambah Komponen", icon: TaskAdd01Icon, section: "Tambah Infrastruktur", description: "Isi komponen baru, dibantu AI", roles: ["operator_opd", "admin", "superadmin"] },
+      { href: "/cms/infrastruktur/verifikasi", label: "Verifikasi", icon: CheckListIcon, section: "Verifikasi Infrastruktur", description: "Verifikator Infrastruktur Diskominfo memeriksa ajuan OPD", roles: ["validator_infrastruktur", "superadmin"], badgeKey: "infrastrukturSubmitted" },
+      { href: "/cms/infrastruktur/validasi", label: "Validasi", icon: CheckmarkBadge01Icon, section: "Validasi Infrastruktur", description: "Tim Diskominfo memvalidasi akhir sebelum tayang", roles: ["admin", "superadmin"], badgeKey: "infrastrukturVerified" },
+      { href: "/cms/infrastruktur/impor", label: "Impor & Ekspor", icon: FileImportIcon, section: "Impor & Ekspor Infrastruktur", description: "Unggah template komponen atau zip arsitektur", roles: ["operator_opd", "admin", "superadmin"] },
+    ],
+  },
+  {
+    label: "Keamanan",
+    icon: ShieldKeyIcon,
+    children: [
+      { href: "/cms/keamanan", label: "Daftar Kegiatan", icon: ListViewIcon, section: "Daftar Kegiatan Keamanan", description: "Standar, penerapan, dan kelaikan keamanan SPBE" },
+      { href: "/cms/keamanan/baru", label: "Tambah Kegiatan", icon: TaskAdd01Icon, section: "Tambah Kegiatan Keamanan", description: "Isi kegiatan baru, dibantu AI", roles: ["operator_opd", "admin", "superadmin"] },
+      { href: "/cms/keamanan/verifikasi", label: "Verifikasi", icon: CheckListIcon, section: "Verifikasi Keamanan", description: "Verifikator Keamanan Diskominfo memeriksa ajuan OPD", roles: ["validator_keamanan", "superadmin"], badgeKey: "keamananSubmitted" },
+      { href: "/cms/keamanan/validasi", label: "Validasi", icon: CheckmarkBadge01Icon, section: "Validasi Keamanan", description: "Tim Diskominfo memvalidasi akhir sebelum tayang", roles: ["admin", "superadmin"], badgeKey: "keamananVerified" },
+      { href: "/cms/keamanan/impor", label: "Impor & Ekspor", icon: FileImportIcon, section: "Impor & Ekspor Keamanan", description: "Unggah template kegiatan atau zip arsitektur", roles: ["operator_opd", "admin", "superadmin"] },
     ],
   },
   {
@@ -116,6 +133,7 @@ export const cmsNav: NavEntry[] = [
       { href: "/cms/pengaturan/referensi-ral", label: "Referensi RAL", icon: Layers01Icon, section: "Referensi RAL", description: "Kelola versi, kode, dan nama RAL", roles: ["admin", "superadmin", "validator_data"] },
       { href: "/cms/pengaturan/referensi-rad", label: "Referensi RAD", icon: Layers01Icon, section: "Referensi RAD", description: "Kelola versi, kode, dan nama RAD", roles: ["admin", "superadmin", "validator_data"] },
       { href: "/cms/pengaturan/referensi-raa", label: "Referensi RAA", icon: Layers01Icon, section: "Referensi RAA", description: "Kelola versi, kode, dan nama RAA", roles: ["admin", "superadmin", "validator_data", "validator_aplikasi"] },
+      { href: "/cms/pengaturan/referensi-rai", label: "Referensi RAI", icon: Layers01Icon, section: "Referensi RAI", description: "Kelola versi, kode, dan nama RAI", roles: ["admin", "superadmin", "validator_data", "validator_infrastruktur"] },
       { href: "/cms/pengaturan/periode", label: "Periode Arsitektur", icon: Calendar03Icon, section: "Periode Arsitektur", description: "Tambah dan aktifkan periode arsitektur", roles: ["admin", "superadmin"] },
       { ...soon("pengguna", "Pengguna", UserGroupIcon, "Kelola akun dan hak akses"), roles: ["superadmin"] },
     ],

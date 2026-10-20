@@ -2,10 +2,13 @@
 import { suggestAplikasi as suggest, type AplikasiSuggestion } from "@/lib/ai/aplikasi-suggest";
 import { can, currentActor, reviewTeam, stageOf } from "@/lib/access";
 import * as repo from "@/lib/aplikasi/cms-repo";
+import { resolveFlow } from "@/lib/aplikasi/data-flow";
 import { readUpload, validateRows, type AplikasiImportResult, type AplikasiImportRow } from "@/lib/aplikasi/import";
 import { raa } from "@/lib/aplikasi/raa";
 import { makeAplikasiInput, type AplikasiInput } from "@/lib/aplikasi/schema";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { securityRefs } from "@/lib/keamanan/cms-repo";
+import { resolveSecurity } from "@/lib/keamanan/link";
 import { listData } from "@/lib/data/cms-repo";
 import type { DepRef } from "@/lib/data/import";
 import { listLayanan } from "@/lib/layanan/cms-repo";
@@ -113,7 +116,7 @@ export async function getAplikasiReviews(id: string) {
 export async function listDependencyOptions(opd: string, period: string): Promise<ActionResult<Awaited<ReturnType<typeof repo.dependencyOptions>>>> {
   try {
     await currentActor();
-    if (!period) return { ok: true, data: { probis: [], layanan: [], data: [] } };
+    if (!period) return { ok: true, data: { probis: [], layanan: [], data: [], infra: [] } };
     return { ok: true, data: await repo.dependencyOptions(opd, period) };
   } catch (error) {
     return fail(error);
@@ -124,7 +127,7 @@ export async function suggestAplikasi(input: { name: string; opd: string; pengem
   try {
     await currentActor();
     if (input.name.trim().length < 2) throw new Error("Isi nama aplikasi terlebih dahulu.");
-    const [raaSet, deps] = await Promise.all([raa.loadSet(), input.period ? repo.dependencyOptions(input.opd, input.period) : Promise.resolve({ probis: [], layanan: [], data: [] })]);
+    const [raaSet, deps] = await Promise.all([raa.loadSet(), input.period ? repo.dependencyOptions(input.opd, input.period) : Promise.resolve({ probis: [], layanan: [], data: [], infra: [] })]);
     const data = await suggest({ name: input.name.trim(), opd: input.opd, pengembang: input.pengembang, note: input.note?.trim() }, refResolver(raaSet)(input.period), deps);
     return { ok: true, data };
   } catch (error) {
@@ -166,7 +169,7 @@ export async function previewAplikasiImport(form: FormData): Promise<ActionResul
 /** Langkah 2 impor: simpan baris tanpa galat. Validasi diulang di server. */
 export async function commitAplikasiImport(rows: AplikasiImportRow[], options: { status: "draft" | "submitted"; update: boolean }): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   try {
-    const { actor, ctx } = await importContext(rows.map((r) => r.code).filter((c): c is string => !!c));
+    const [{ actor, ctx }, refs] = await Promise.all([importContext(rows.map((r) => r.code).filter((c): c is string => !!c)), securityRefs()]);
     const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...makeAplikasiInput(ctx.raaFor(r.period)).parse({
@@ -186,15 +189,17 @@ export async function commitAplikasiImport(rows: AplikasiImportRow[], options: {
         probis: r.probis,
         layanan: r.layanan,
         data: r.data,
-        inputData: r.inputData ?? undefined,
-        outputData: r.outputData ?? undefined,
+        // Inputan & luaran data ditautkan ke data periode yang sama (kode); yang tidak cocok tetap teks.
+        inputData: resolveFlow(r.inputData, ctx.data.filter((d) => d.period === r.period), r.opd) ?? undefined,
+        outputData: resolveFlow(r.outputData, ctx.data.filter((d) => d.period === r.period), r.opd) ?? undefined,
         supplier: r.supplier ?? undefined,
         customer: r.customer ?? undefined,
         cloud: r.cloud ?? undefined,
         server: r.server ?? undefined,
         splp: r.splp ?? undefined,
         jip: r.jip ?? undefined,
-        security: r.security,
+        // Isian keamanan (kode, "kode nama", atau nama) ditautkan ke kegiatan keamanan tervalidasi periode yang sama.
+        security: resolveSecurity(r.security, r.period, refs),
       }),
       code: r.code,
     }));

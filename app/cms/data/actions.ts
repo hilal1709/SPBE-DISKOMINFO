@@ -2,6 +2,8 @@
 import { suggestData as suggest, type DataSuggestion } from "@/lib/ai/data-suggest";
 import { can, currentActor, reviewTeam, stageOf } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { securityRefs } from "@/lib/keamanan/cms-repo";
+import { resolveSecurity } from "@/lib/keamanan/link";
 import * as repo from "@/lib/data/cms-repo";
 import { readUpload, validateRows, type DataImportResult, type DataImportRow, type DepRef } from "@/lib/data/import";
 import { rad } from "@/lib/data/rad";
@@ -163,7 +165,7 @@ export async function previewDataImport(form: FormData): Promise<ActionResult<Da
 /** Langkah 2 impor: simpan baris tanpa galat. Validasi diulang di server. */
 export async function commitDataImport(rows: DataImportRow[], options: { status: "draft" | "submitted"; update: boolean }): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   try {
-    const { actor, ctx } = await importContext(rows.map((r) => r.code).filter((c): c is string => !!c));
+    const [{ actor, ctx }, refs] = await Promise.all([importContext(rows.map((r) => r.code).filter((c): c is string => !!c)), securityRefs()]);
     const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...makeDataInput(ctx.radFor(r.period)).parse({
@@ -184,7 +186,8 @@ export async function commitDataImport(rows: DataImportRow[], options: { status:
         radL5: r.radL5 ?? undefined,
         probis: r.probis,
         layanan: r.layanan,
-        security: r.security,
+        // Isian keamanan (kode, "kode nama", atau nama) ditautkan ke kegiatan keamanan tervalidasi periode yang sama.
+        security: resolveSecurity(r.security, r.period, refs),
       }),
       code: r.code,
     }));

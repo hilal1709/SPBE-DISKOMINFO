@@ -8,7 +8,25 @@ import { Button } from "@/components/ui/button";
 const fmt = new Intl.NumberFormat("id-ID");
 
 /** Pemberitahuan data contoh aktif; tim Diskominfo dapat menghapusnya sebelum data asli diimpor. */
-export function SampleBanner({ count, probis, layanan, data = 0, aplikasi = 0, canClear }: { count: number; probis: number; layanan: number; data?: number; aplikasi?: number; canClear: boolean }) {
+export function SampleBanner({
+  count,
+  probis,
+  layanan,
+  data = 0,
+  aplikasi = 0,
+  infrastruktur = 0,
+  keamanan = 0,
+  canClear,
+}: {
+  count: number;
+  probis: number;
+  layanan: number;
+  data?: number;
+  aplikasi?: number;
+  infrastruktur?: number;
+  keamanan?: number;
+  canClear: boolean;
+}) {
   const [confirm, setConfirm] = useState(false);
   const [pending, start] = useTransition();
   const clear = () =>
@@ -31,7 +49,7 @@ export function SampleBanner({ count, probis, layanan, data = 0, aplikasi = 0, c
         )
       }
     >
-      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`, data && `${fmt.format(data)} data`, aplikasi && `${fmt.format(aplikasi)} aplikasi`].filter(Boolean).join(", ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
+      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`, data && `${fmt.format(data)} data`, aplikasi && `${fmt.format(aplikasi)} aplikasi`, infrastruktur && `${fmt.format(infrastruktur)} infrastruktur`, keamanan && `${fmt.format(keamanan)} kegiatan keamanan`].filter(Boolean).join(", ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
     </Banner>
   );
 }

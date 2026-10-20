@@ -3,6 +3,7 @@ import { PeriodManager } from "@/components/cms/period-manager";
 import { can, currentActor } from "@/lib/access";
 import { raa } from "@/lib/aplikasi/raa";
 import { rad } from "@/lib/data/rad";
+import { rai } from "@/lib/infrastruktur/rai";
 import { ral } from "@/lib/layanan/ral";
 import { MAX_SPAN, MIN_SPAN, listPeriods } from "@/lib/probis/periods";
 import { rab } from "@/lib/probis/rab";
@@ -13,13 +14,20 @@ const published = (list: VersionInfo[]) => list.filter((v) => v.status === "publ
 export default async function PeriodPage() {
   const actor = await currentActor();
   if (!can.managePeriods(actor)) return <NoAccess title="Halaman ini untuk tim Diskominfo" />;
-  const [periods, rabVersions, ralVersions, radVersions, raaVersions] = await Promise.all([listPeriods(), rab.listVersions(), ral.listVersions(), rad.listVersions(), raa.listVersions()]);
+  const [periods, rabVersions, ralVersions, radVersions, raaVersions, raiVersions] = await Promise.all([
+    listPeriods(),
+    rab.listVersions(),
+    ral.listVersions(),
+    rad.listVersions(),
+    raa.listVersions(),
+    rai.listVersions(),
+  ]);
   return (
     <PeriodManager
       periods={periods}
       min={MIN_SPAN}
       max={MAX_SPAN}
-      versions={{ rab: published(rabVersions), ral: published(ralVersions), rad: published(radVersions), raa: published(raaVersions) }}
+      versions={{ rab: published(rabVersions), ral: published(ralVersions), rad: published(radVersions), raa: published(raaVersions), rai: published(raiVersions) }}
     />
   );
 }

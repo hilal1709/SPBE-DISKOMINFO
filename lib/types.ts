@@ -142,10 +142,12 @@ export type AplikasiRecord = Omit<Aplikasi, "id" | "operasional" | "raa1" | "raa
   raaL5: string | null;
   /** Proses bisnis terkait beserta status verifikasinya (wajib minimal satu yang disetujui). */
   probis: { id: string; name: string; status: SubmissionStatus }[];
-  /** ← Inputan data / → luaran data (teks template). */
+  /** ← Inputan data / → luaran data: kode data (dipisah baris) atau teks lama. */
   inputData: string | null;
   outputData: string | null;
-  /** Dependensi Keamanan SPBE (teks) per kunci securityFields. */
+  /** Nama data untuk kode di inputan/luaran data. */
+  dataNames: Record<string, string>;
+  /** Dependensi Keamanan SPBE per kunci securityFields: kode kegiatan keamanan (atau teks lama). */
   security: Partial<Record<string, string[]>>;
   updatedAt: string;
   isSample: boolean;
@@ -180,7 +182,7 @@ export type DataRecord = {
   rad3: string | null;
   radL4: string | null;
   radL5: string | null;
-  /** Dependensi Keamanan SPBE (teks) per kunci securityFields. */
+  /** Dependensi Keamanan SPBE per kunci securityFields: kode kegiatan keamanan (atau teks lama). */
   security: Partial<Record<string, string[]>>;
   probis: { id: string; name: string }[];
   layanan: { id: string; name: string }[];
@@ -222,4 +224,81 @@ export type LayananRecord = {
   isSample: boolean;
   /** RAL perlu dipetakan ulang setelah periodenya pindah versi RAL. */
   ralReview: boolean;
+};
+
+/** Tautan ringkas ke entri domain lain (kode + nama). */
+type InfraLink = { id: string; name: string };
+
+/** Komponen infrastruktur di dashboard publik (10 template "Domain Arsitektur Infrastruktur - *.xlsx"). */
+export type Infrastruktur = {
+  id: string;
+  name: string;
+  /** Kunci komponen (lib/infrastruktur/jenis.ts). */
+  jenis: "fasilitas" | "cloud" | "server" | "jaringan" | "perangkat_keamanan" | "penyimpanan" | "periferal" | "platform" | "jip" | "splp";
+  deskripsi: string | null;
+  pemilik: string | null;
+  kepemilikan: "milik_sendiri" | "sewa" | "instansi_lain" | "pihak_ketiga" | null;
+  /** Unit kerja pengelola / penanggung jawab. */
+  pengelola: string | null;
+  /** → Instansi (kode PD pemilik isian). */
+  opd: string;
+  period: string;
+  rai1: string;
+  rai2: string;
+  /** Kolom khusus komponen (kunci di jenisConfig[jenis].attrs). */
+  atribut: Record<string, string>;
+  /** Komponen infrastruktur lain yang ditautkan (keluar) dan yang menautkan komponen ini (masuk). */
+  relasi: (InfraLink & { jenis: Infrastruktur["jenis"] })[];
+  terhubung: (InfraLink & { jenis: Infrastruktur["jenis"] })[];
+  aplikasi: InfraLink[];
+  data: InfraLink[];
+  probis: InfraLink[];
+  /** Dependensi Keamanan SPBE per kunci securityFields: kode kegiatan keamanan (atau teks lama). */
+  security: Partial<Record<string, string[]>>;
+};
+
+/** Komponen infrastruktur di CMS (satu baris tabel infrastructures beserta referensinya). */
+export type InfrastrukturRecord = Omit<Infrastruktur, "id" | "opd" | "rai1" | "rai2"> & {
+  id: string;
+  code: string;
+  opdId: string;
+  opdCode: string;
+  opdName: string;
+  status: SubmissionStatus;
+  rai1: string | null;
+  rai2: string | null;
+  /** Null selama RAI belum memiliki Level 3. */
+  rai3: string | null;
+  updatedAt: string;
+  isSample: boolean;
+  /** RAI perlu dipetakan ulang setelah periodenya pindah versi RAI. */
+  raiReview: boolean;
+};
+
+/** Kegiatan keamanan di dashboard publik (7 template "Domain Arsitektur Keamanan"). */
+export type KegiatanKeamanan = {
+  id: string;
+  name: string;
+  /** Kunci kegiatan (lib/keamanan/jenis.ts), sama dengan kunci securityFields. */
+  jenis: "standar" | "edukasi" | "kerentanan" | "peningkatan" | "insiden" | "audit" | "kelaikan";
+  deskripsi: string | null;
+  /** Tanggal kegiatan / mulai penerapan (YYYY-MM-DD). */
+  tanggal: string | null;
+  /** → Instansi (kode PD pelaksana). */
+  opd: string;
+  period: string;
+  /** Kolom khusus kegiatan (kunci di kegiatanConfig[jenis].attrs). */
+  atribut: Record<string, string>;
+};
+
+/** Kegiatan keamanan di CMS (satu baris tabel security_activities). */
+export type KeamananRecord = Omit<KegiatanKeamanan, "id" | "opd"> & {
+  id: string;
+  code: string;
+  opdId: string;
+  opdCode: string;
+  opdName: string;
+  status: SubmissionStatus;
+  updatedAt: string;
+  isSample: boolean;
 };

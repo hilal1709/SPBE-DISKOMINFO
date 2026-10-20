@@ -11,7 +11,6 @@ import { Segmented } from "@/components/blocks/segmented";
 import { LinkPicker, type LinkOption } from "@/components/cms/link-picker";
 import { DeepRabField, SuggestItem, flash } from "@/components/cms/probis-form";
 import { ReviewBadge } from "@/components/cms/review-badge";
-import { TagField } from "@/components/cms/tag-field";
 import { useRad } from "@/components/data/rad-context";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustrations/illustration";
@@ -26,7 +25,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { DataSuggestion } from "@/lib/ai/data-suggest";
-import { jenisLabel, jenisOptions, securityFields, sifatLabel, sifatOptions, validitasOptions, type Jenis, type SecurityKey, type Sifat } from "@/lib/data/reference";
+import { SecurityLinks, securityCount } from "@/components/keamanan/security-links";
+import { jenisLabel, jenisOptions, sifatLabel, sifatOptions, validitasOptions, type Jenis, type SecurityKey, type Sifat } from "@/lib/data/reference";
 import type { DataInput } from "@/lib/data/schema";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { DataRecord } from "@/lib/types";
@@ -397,7 +397,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
           </CardContent>
         </Card>
 
-        <SecurityCard value={values.security} onChange={(v) => set("security", v)} />
+        <SecurityCard period={values.period} value={values.security} onChange={(v) => set("security", v)} />
 
         <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-end gap-2 rounded-2xl bg-card/90 p-3 shadow-raised backdrop-blur-md" data-reveal>
           <Button asChild variant="ghost" className="mr-auto">
@@ -490,9 +490,9 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
   );
 }
 
-/** Dependensi Keamanan SPBE (7 kolom template). Teks bebas sampai modul Keamanan tersedia; terlipat secara bawaan. */
-function SecurityCard({ value, onChange }: { value: Values["security"]; onChange: (value: Values["security"]) => void }) {
-  const filled = securityFields.reduce((n, f) => n + (value[f.key]?.length ?? 0), 0);
+/** Dependensi Keamanan SPBE (7 kolom template), ditautkan ke kegiatan keamanan tervalidasi; terlipat secara bawaan. */
+function SecurityCard({ period, value, onChange }: { period: string; value: Values["security"]; onChange: (value: Values["security"]) => void }) {
+  const filled = securityCount(value);
   const [open, setOpen] = useState(filled > 0);
   const body = useRef<HTMLDivElement>(null);
 
@@ -513,17 +513,15 @@ function SecurityCard({ value, onChange }: { value: Values["security"]; onChange
           <span className="grid gap-1">
             <CardTitle className="section-title">Keamanan SPBE</CardTitle>
             <CardDescription>
-              Opsional · {filled ? `${filled} isian` : "belum diisi"} · ditautkan saat modul Keamanan tersedia
+              Opsional · {filled ? `${filled} tautan` : "belum diisi"} · kegiatan keamanan tervalidasi periode {period}
             </CardDescription>
           </span>
           <Icon icon={ArrowDown01Icon} size={18} className={cn("shrink-0 text-muted-foreground transition-transform duration-300", open && "rotate-180")} />
         </button>
       </CardHeader>
       {open && (
-        <CardContent ref={body} className="grid gap-4 sm:grid-cols-2">
-          {securityFields.map((f) => (
-            <TagField key={f.key} label={`← ${f.label}`} values={value[f.key] ?? []} onChange={(list) => onChange({ ...value, [f.key]: list })} />
-          ))}
+        <CardContent ref={body}>
+          <SecurityLinks period={period} value={value} onChange={onChange} />
         </CardContent>
       )}
     </Card>

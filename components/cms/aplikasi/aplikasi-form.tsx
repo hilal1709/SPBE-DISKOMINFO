@@ -12,9 +12,9 @@ import { Segmented } from "@/components/blocks/segmented";
 import { LinkPicker, type LinkOption } from "@/components/cms/link-picker";
 import { SuggestItem, flash } from "@/components/cms/probis-form";
 import { ReviewBadge } from "@/components/cms/review-badge";
-import { TagField } from "@/components/cms/tag-field";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustrations/illustration";
+import { SecurityLinks, securityCount } from "@/components/keamanan/security-links";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +27,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import type { AplikasiSuggestion } from "@/lib/ai/aplikasi-suggest";
 import { basisLabel, basisOptions, infraFields, instansiPusat, kepemilikanLabel, kepemilikanOf, lisensiOptions, mesinOptions, type Basis, type Lisensi } from "@/lib/aplikasi/reference";
+import { flowLines } from "@/lib/aplikasi/data-flow";
 import type { AplikasiInput } from "@/lib/aplikasi/schema";
-import { securityFields, type SecurityKey } from "@/lib/data/reference";
+import type { SecurityKey } from "@/lib/data/reference";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { AplikasiRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,13 @@ const fromRecord = (r: AplikasiRecord | null, lockedOpd: string | null, activePe
   security: (r?.security ?? {}) as Values["security"],
 });
 
+type InfraOption = { code: string; name: string; opd: string; jenis: string };
+const NONE = "__tidak";
+/** Isian lama yang tidak ada di daftar pilihan tetap tampil sebagai chip. */
+const withLegacy = (list: readonly LinkOption[], current: string[]) => [...list, ...current.filter((v) => !list.some((o) => o.code === v)).map((v) => ({ code: v, name: v, hint: "teks lama" }))];
+/** Supplier data: Perangkat Daerah atau instansi pusat (disimpan sebagai nama). */
+const supplierOptions: LinkOption[] = [...perangkatDaerah.map((pd) => ({ code: pd.name, name: pd.name })), ...instansiPusat.map((k) => ({ code: k, name: k, hint: "instansi pusat" }))];
+
 const isKnownDeveloper = (v: string) => !v || pdByCode.has(v) || instansiPusat.includes(v);
 const hintOf = (opd: string, own: string) => (opd === own ? undefined : pdByCode.get(opd)?.name);
 
@@ -92,10 +100,12 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
   const panel = useRef<HTMLDivElement>(null);
 
   // Pilihan dependensi mengikuti periode (lintas OPD, milik unit operasional di atas); nama entri tertaut disimpan agar chip tetap terbaca.
-  const [options, setOptions] = useState<{ probis: LinkOption[]; layanan: LinkOption[]; data: LinkOption[]; loaded: boolean }>(() => ({
+  const [options, setOptions] = useState<{ probis: LinkOption[]; layanan: LinkOption[]; data: LinkOption[]; infra: InfraOption[]; loaded: boolean }>(() => ({
     probis: record?.probis.map((p) => ({ code: p.id, name: p.name })) ?? [],
     layanan: record?.layanan.map((l) => ({ code: l.id, name: l.name })) ?? [],
-    data: record?.data.map((d) => ({ code: d.id, name: d.name })) ?? [],
+    // Data tertaut + data yang dirujuk inputan/luaran, agar chip terbaca sebelum daftar dimuat.
+    data: [...(record?.data.map((d) => ({ code: d.id, name: d.name })) ?? []), ...Object.entries(record?.dataNames ?? {}).map(([code, name]) => ({ code, name }))],
+    infra: [],
     loaded: false,
   }));
   const [loadingDeps, startDeps] = useTransition();
@@ -105,7 +115,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
       const result = await listDependencyOptions(values.opd, values.period);
       if (!result.ok) return;
       const map = (list: { code: string; name: string; opd: string }[]) => list.map((x) => ({ code: x.code, name: x.name, hint: hintOf(x.opd, values.opd) }));
-      setOptions({ probis: map(result.data.probis), layanan: map(result.data.layanan), data: map(result.data.data), loaded: true });
+      setOptions({ probis: map(result.data.probis), layanan: map(result.data.layanan), data: map(result.data.data), infra: result.data.infra, loaded: true });
     });
   }, [values.opd, values.period]);
   /** Notulen: aplikasi wajib selaras proses bisnis yang sudah disetujui. */
@@ -394,41 +404,73 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
           </CardContent>
         </Card>
 
-        <Collapsible title="Aliran data" hint="Inputan, supplier, luaran, dan customer data" filled={[values.inputData, values.supplier, values.outputData, values.customer].filter(Boolean).length}>
+        <Collapsible title="Aliran data" hint="Inputan & luaran dari modul Data, supplier dari instansi" filled={[values.inputData, values.supplier, values.outputData, values.customer].filter(Boolean).length}>
           <div className="grid gap-4 sm:grid-cols-2">
             {(
               [
-                ["inputData", "← Inputan data", "Data yang dibutuhkan/diinput"],
-                ["supplier", "→ Supplier data", "Penghasil data, mis. Disdukcapil"],
-                ["outputData", "→ Luaran data", "Data yang dihasilkan"],
-                ["customer", "→ Customer data", "mis. Masyarakat, ASN"],
+                ["inputData", "← Inputan data", "data", options.data],
+                ["supplier", "→ Supplier data", "instansi", supplierOptions],
+                ["outputData", "→ Luaran data", "data", options.data],
               ] as const
-            ).map(([key, label, placeholder]) => (
+            ).map(([key, label, noun, list]) => (
               <Field key={key} data-field={key} data-sec className="rounded-lg">
-                <FieldLabel htmlFor={key}>{label}</FieldLabel>
-                <Textarea id={key} rows={2} value={values[key]} onChange={(e) => set(key, e.target.value)} placeholder={placeholder} />
+                <FieldLabel>{label}</FieldLabel>
+                <LinkPicker
+                  noun={noun}
+                  disabledText="Pilih periode dulu"
+                  options={withLegacy(list, flowLines(values[key]))}
+                  values={flowLines(values[key])}
+                  loading={noun === "data" && loadingDeps}
+                  disabled={false}
+                  onChange={(v) => set(key, v.join("\n"))}
+                />
               </Field>
             ))}
+            <Field data-field="customer" data-sec className="rounded-lg">
+              <FieldLabel htmlFor="customer">→ Customer data</FieldLabel>
+              <Textarea id="customer" rows={2} value={values.customer} onChange={(e) => set("customer", e.target.value)} placeholder="mis. Masyarakat, ASN" />
+            </Field>
           </div>
         </Collapsible>
 
-        <Collapsible title="Infrastruktur" hint="Kosongkan bila tidak memakai" filled={infraFields.filter((f) => values[f.key]).length}>
+        <Collapsible title="Infrastruktur" hint={`komponen Infrastruktur periode ${values.period}`} filled={infraFields.filter((f) => values[f.key]).length}>
           <div className="grid gap-4 sm:grid-cols-2">
-            {infraFields.map((f) => (
-              <Field key={f.key} data-field={f.key} data-sec className="rounded-lg">
-                <FieldLabel htmlFor={f.key}>→ {f.label}</FieldLabel>
-                <Input id={f.key} value={values[f.key]} onChange={(e) => set(f.key, e.target.value)} placeholder="Nama komponen, mis. Data Center Diskominfo" />
-              </Field>
-            ))}
+            {infraFields.map((f) => {
+              // Server boleh menunjuk perangkat keras server atau fasilitas komputasi tempat aplikasi berjalan.
+              const kinds: string[] = f.key === "server" ? ["server", "fasilitas"] : [f.key];
+              const list = options.infra.filter((o) => kinds.includes(o.jenis));
+              const value = values[f.key];
+              return (
+                <Field key={f.key} data-field={f.key} data-sec className="rounded-lg">
+                  <FieldLabel htmlFor={f.key}>→ {f.label}</FieldLabel>
+                  <Select value={value || NONE} onValueChange={(v) => set(f.key, v === NONE ? "" : v)}>
+                    <SelectTrigger id={f.key} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Tidak memakai</SelectItem>
+                      {list.map((o) => (
+                        <SelectItem key={o.code} value={o.name}>
+                          {o.name}
+                          {kinds.length > 1 && <span className="text-xs text-muted-foreground">({o.jenis === "fasilitas" ? "fasilitas" : "server"})</span>}
+                        </SelectItem>
+                      ))}
+                      {value && !list.some((o) => o.name === value) && (
+                        <SelectItem value={value}>
+                          {value} <span className="text-xs text-muted-foreground">(teks lama)</span>
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {options.loaded && !list.length && <FieldDescription>Belum ada komponen {f.label.toLowerCase()} di periode ini.</FieldDescription>}
+                </Field>
+              );
+            })}
           </div>
         </Collapsible>
 
-        <Collapsible title="Keamanan SPBE" hint="ditautkan saat modul Keamanan tersedia" filled={securityFields.reduce((n, f) => n + (values.security[f.key]?.length ?? 0), 0)}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {securityFields.map((f) => (
-              <TagField key={f.key} label={`← ${f.label}`} values={values.security[f.key] ?? []} onChange={(list) => set("security", { ...values.security, [f.key]: list })} />
-            ))}
-          </div>
+        <Collapsible title="Keamanan SPBE" hint={`kegiatan keamanan tervalidasi periode ${values.period}`} filled={securityCount(values.security)}>
+          <SecurityLinks period={values.period} value={values.security} onChange={(v) => set("security", v)} />
         </Collapsible>
 
         <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-end gap-2 rounded-2xl bg-card/90 p-3 shadow-raised backdrop-blur-md" data-reveal>
@@ -511,7 +553,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
 }
 
 /** Daftar saran kode yang bisa diklik (RAA, probis, layanan). */
-function PickList({ label, items, active, name, onPick }: { label: string; items: { code: string; reason: string }[]; active: (code: string) => boolean; name: (code: string) => string; onPick: (code: string) => void }) {
+export function PickList({ label, items, active, name, onPick }: { label: string; items: { code: string; reason: string }[]; active: (code: string) => boolean; name: (code: string) => string; onPick: (code: string) => void }) {
   return (
     <div data-suggest className="grid gap-1.5 rounded-xl bg-muted/60 p-3">
       <p className="eyebrow">{label}</p>
@@ -537,7 +579,7 @@ function PickList({ label, items, active, name, onPick }: { label: string; items
 }
 
 /** Kartu opsional yang terlipat secara bawaan (terbuka bila sudah berisi). */
-function Collapsible({ title, hint, filled, children }: { title: string; hint: string; filled: number; children: React.ReactNode }) {
+export function Collapsible({ title, hint, filled, children }: { title: string; hint: string; filled: number; children: React.ReactNode }) {
   const [open, setOpen] = useState(filled > 0);
   const body = useRef<HTMLDivElement>(null);
 

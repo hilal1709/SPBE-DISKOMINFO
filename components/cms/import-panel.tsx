@@ -22,7 +22,8 @@ import { pdByCode } from "@/lib/probis/reference";
 import { cn } from "@/lib/utils";
 
 /** Baris impor minimal yang dibutuhkan panel. */
-export type PanelRow = { line: number; name: string; opd: string | null; opdRaw: string | null; issues: { level: "error" | "warning"; message: string }[] };
+/** `key` unik bila satu unggahan berisi beberapa sheet (nomor baris bisa sama). */
+export type PanelRow = { line: number; key?: string; name: string; opd: string | null; opdRaw: string | null; issues: { level: "error" | "warning"; message: string }[] };
 type Preview<R> = { file: string | null; unsupported: string[]; rows: R[] };
 type Saved = { created: number; updated: number; skipped: number };
 
@@ -178,7 +179,7 @@ export function ImportPanel<R extends PanelRow>({
                   title="Pratinjau"
                   description={preview.file?.split("/").pop()}
                   rows={rows}
-                  rowId={(r) => String(r.line)}
+                  rowId={(r) => r.key ?? String(r.line)}
                   searchText={(r) => `${r.name} ${r.opdRaw ?? ""} ${refColumn.search(r)}`}
                   searchPlaceholder="Cari baris"
                   pageSize={15}
