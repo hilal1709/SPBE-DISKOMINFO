@@ -5,6 +5,7 @@ import { Add01Icon, ArrowRight01Icon, FileImportIcon } from "@hugeicons/core-fre
 import { EmptyState } from "@/components/blocks/empty-state";
 import { Segmented } from "@/components/blocks/segmented";
 import { StatCard } from "@/components/blocks/stat-card";
+import { StatRow } from "@/components/blocks/stat-row";
 import { ReviewBadge } from "@/components/cms/review-badge";
 import { Icon } from "@/components/icon";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
@@ -81,13 +82,13 @@ export function CmsHome({ actor, probis, layanan, data, recent }: { actor: Actor
           { value: "data", label: "Data" },
         ]}
       />
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <StatRow>
         <StatCard tone="teal" label={domains[domain].total} value={total} />
         <StatCard tone="orange" label="Menunggu verifikasi" value={counts.submitted ?? 0} hint={`tim ${reviewTeam("verifikasi", domain)}`} />
         <StatCard tone="yellow" label="Menunggu validasi" value={counts.verified ?? 0} hint="tim Diskominfo" />
         <StatCard tone="amber" label="Tervalidasi" value={counts.approved ?? 0} hint="tayang di portal publik" />
         <StatCard tone="sky" label="Draf & dikembalikan" value={(counts.draft ?? 0) + (counts.rejected ?? 0)} hint="perlu dilengkapi OPD" />
-      </section>
+      </StatRow>
 
       <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.2fr_1fr]">
         <Card data-reveal>

@@ -84,7 +84,7 @@ export function DesignSystemShowcase() {
       <Reveal className="mx-auto grid max-w-6xl gap-12 p-4 lg:p-8">
         <PageHeader title="Design system SPBE Gresik" description="shadcn/ui · GSAP · Hugeicons · Lottie · Chart.js — aturan lengkap di docs/design-system.md." />
 
-        <Section id="logo" title="Logo" description="Lima lapisan arsitektur membentuk G. Favicon: app/icon.svg, apple-icon: app/apple-icon.tsx.">
+        <Section id="logo" title="Logo" description="Gapura Lapisan: lima lapisan arsitektur menjadi gapura bertingkat. Panduan: docs/logo/README.md.">
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="items-center justify-center py-8"><Logo /></Card>
             <Card className="items-center justify-center bg-panel py-8"><Logo tone="dark" /></Card>

@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/blocks/empty-state";
 import { FilterBar } from "@/components/blocks/filter-bar";
 import { FilterChips, type Chip } from "@/components/blocks/filter-chips";
 import { StatCard } from "@/components/blocks/stat-card";
+import { StatRow } from "@/components/blocks/stat-row";
 import { StatusBadge } from "@/components/blocks/status-badge";
 import { Treemap } from "@/components/blocks/treemap";
 import { ExploreHint } from "@/components/dashboards/probis/explore-hint";
@@ -153,12 +154,12 @@ export function BusinessProcessDashboard({
         </Card>
       ) : (
         <>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatRow>
             <StatCard tone="teal" label="Jumlah proses bisnis" value={rows.length} hint={`${fmt.format(statusCount.get("as_is") ?? 0)} AS-IS`} />
             <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Rencana upgrade" value={statusCount.get("upgrade") ?? 0} hint="pengembangan dari AS-IS" />
             <StatCard tone="amber" label="Probis baru" value={statusCount.get("new") ?? 0} hint={`${tree.length} sektor RAB terisi`} />
-          </section>
+          </StatRow>
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1fr_1.15fr]">
             <RabTreeCard tree={tree} total={rows.length} colorOf={sectorColor} />

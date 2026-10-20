@@ -1,35 +1,54 @@
 "use client";
 import Link from "next/link";
-import { useRef } from "react";
-import { MOTION_OK, gsap } from "@/components/motion/gsap";
+import { useEffect, useRef } from "react";
+import { animate, motionOk } from "@/components/motion/anime";
 import { cn } from "@/lib/utils";
 import { LOGO_BAR_HEIGHT, logoBars, logoColors } from "./logo-geometry";
 
-/** Simbol logo: lima lapisan arsitektur membentuk huruf G. */
+const bars = (root: Element | null) => root?.querySelectorAll<SVGGElement>("[data-logo-bar]") ?? [];
+/** Jeda per lapisan, dari dasar gapura ke puncak; dua belahan satu lapisan bergerak bersamaan. */
+const fromBase = (step: number, start = 0) => (el: unknown) => start + (4 - Number((el as SVGGElement).dataset.row)) * step;
+
+/** Simbol logo "Gapura Lapisan": lima lapisan arsitektur bertumpuk menjadi gapura bertingkat. */
 export function LogoMark({ className, title }: { className?: string; title?: string }) {
   return (
     <svg viewBox="0 0 40 40" className={cn("size-10 shrink-0", className)} role={title ? "img" : undefined} aria-label={title} aria-hidden={title ? undefined : true}>
       <rect width="40" height="40" rx="10" fill={logoColors.tile} />
       {logoBars.map((bar) => (
-        <rect key={`${bar.row}-${bar.x}`} data-logo-bar data-row={bar.row} x={bar.x} y={bar.y} width={bar.w} height={LOGO_BAR_HEIGHT} rx={LOGO_BAR_HEIGHT / 2} fill={logoColors[bar.color]} />
+        // Lapisan dibungkus <g>: anime.js menganimasikan x/y <rect> sebagai atribut, bukan transform.
+        <g key={`${bar.row}-${bar.x}`} data-logo-bar data-row={bar.row} style={{ transformBox: "fill-box", transformOrigin: "center" }}>
+          <rect x={bar.x} y={bar.y} width={bar.w} height={LOGO_BAR_HEIGHT} rx={LOGO_BAR_HEIGHT / 2} fill={logoColors[bar.color]} />
+        </g>
       ))}
     </svg>
   );
 }
 
 /**
- * Logo lengkap (simbol + wordmark). Saat hover, lapisan bergeser bertahap — micro-interaction GSAP.
- * `tone="dark"` untuk latar charcoal.
+ * Logo lengkap (simbol + wordmark). Saat muncul, gapura tersusun dari lapisan dasar ke puncak; saat hover,
+ * lapisan terangkat bergelombang dari bawah. Keduanya memakai anime.js. `tone="dark"` untuk latar charcoal.
  */
 export function Logo({ href = "/", subtitle = "Kabupaten Gresik", tone = "light", className }: { href?: string; subtitle?: string; tone?: "light" | "dark"; className?: string }) {
   const ref = useRef<HTMLAnchorElement>(null);
 
-  const ripple = () => {
-    const mm = gsap.matchMedia();
-    mm.add(MOTION_OK, () => {
-      const bars = ref.current?.querySelectorAll("[data-logo-bar]") ?? [];
-      gsap.fromTo(bars, { x: 0 }, { keyframes: { x: [0, 2.5, 0] }, duration: 0.5, ease: "power2.inOut", stagger: 0.05, overwrite: true });
+  useEffect(() => {
+    if (!motionOk()) return;
+    const intro = animate(bars(ref.current), {
+      scaleX: [0.2, 1],
+      y: [3, 0],
+      opacity: [0, 1],
+      duration: 650,
+      delay: fromBase(70, 150),
+      ease: "out(4)",
     });
+    return () => {
+      intro.revert();
+    };
+  }, []);
+
+  const ripple = () => {
+    if (!motionOk()) return;
+    animate(bars(ref.current), { y: [0, -1.4, 0], duration: 480, delay: fromBase(45), ease: "inOut(2)", composition: "replace" });
   };
 
   return (

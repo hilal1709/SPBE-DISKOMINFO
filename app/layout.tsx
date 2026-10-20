@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* Tanpa JavaScript, elemen beranimasi tetap harus terlihat. */}
         <noscript>
-          <style>{"[data-reveal]{opacity:1!important;transform:none!important}"}</style>
+          <style>{"[data-reveal],[data-aos]{opacity:1!important;transform:none!important;filter:none!important}"}</style>
         </noscript>
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
         <Toaster position="bottom-right" closeButton />

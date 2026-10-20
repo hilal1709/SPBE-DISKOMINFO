@@ -8,6 +8,9 @@ Panduan visual dan teknis untuk seluruh UI portal publik dan CMS. Versi interakt
 | --- | --- | --- |
 | Komponen UI | **shadcn/ui** (style `radix-nova`, Radix UI) | `components/ui/*` |
 | Animasi & micro-interaction | **GSAP** + `@gsap/react` (`useGSAP`), ScrollTrigger | `components/motion/*` |
+| Reveal deklaratif | **AOS** (`data-aos`, diinisialisasi `AosInit` di shell) | `components/motion/aos.tsx` |
+| Animasi SVG & teks | **anime.js** v4 (`animate`, `stagger`, `splitText`) | `components/motion/anime.ts` |
+| Carousel / geser | **Swiper** (`swiper/react`) | `components/blocks/stat-row.tsx` |
 | Ikon | **Hugeicons** (`@hugeicons/core-free-icons`) lewat `<Icon/>` | `components/icon.tsx` |
 | Ilustrasi & animasi ilustrasi | **Lottie** (`lottie-react`, build svg) | `components/illustrations/*` |
 | Grafik | **Chart.js** + `react-chartjs-2` | `components/charts/*` |
@@ -80,10 +83,10 @@ Teks di atas warna palet (kartu statistik, lencana, petak treemap/heat) memakai 
 
 ## Logo & favicon
 
-Konsep "lapisan arsitektur": lima bar membulat (bisnis, layanan, data, aplikasi, infrastruktur) dalam lima warna palet membentuk huruf **G** di atas petak charcoal.
+Konsep **Gapura Lapisan**: lima bar membulat (bisnis, layanan, data, aplikasi, infrastruktur) dalam lima warna palet bertumpuk menjadi gapura paduraksa bertingkat, dengan pintu yang membelah dua lapisan dasar, di atas petak charcoal. Kit lengkap (master SVG, varian, ikon web, papan presentasi, panduan pemakaian) ada di `docs/logo/`.
 
-- `components/brand/logo-geometry.ts` adalah satu-satunya sumber geometri. Setelah mengubahnya, regenerasi favicon dengan `npx tsx -e "import('./components/brand/logo-geometry.ts').then(m=>require('fs').writeFileSync('app/icon.svg', m.logoSvg(40)))"`.
-- `<Logo/>` (simbol + wordmark, `tone="dark"` untuk latar charcoal) dan `<LogoMark/>` (simbol saja). Saat hover, lapisan bergeser bertahap (GSAP).
+- `components/brand/logo-geometry.ts` adalah satu-satunya sumber geometri. Setelah mengubahnya, regenerasi favicon dengan `npx tsx -e "import('./components/brand/logo-geometry.ts').then(m=>require('fs').writeFileSync('app/icon.svg', m.logoSvg(32,'small')))"`. Potongan `small` (petak 32, tepat piksel) khusus ukuran ≤ 32 px; loader (`components/loader.tsx` dan Lottie `loader`) memakai bentuk gapura yang sama.
+- `<Logo/>` (simbol + wordmark, `tone="dark"` untuk latar charcoal) dan `<LogoMark/>` (simbol saja). Saat muncul, gapura tersusun dari dasar ke puncak; saat hover, lapisan terangkat bergelombang dari bawah (anime.js).
 - Favicon `app/icon.svg`; ikon iOS `app/apple-icon.tsx` (ImageResponse 180×180).
 
 ## Struktur komponen
@@ -96,9 +99,10 @@ components/
   charts/        Chart.js: BarChart, DoughnutChart, Sparkline, theme.ts
   icon.tsx       <Icon icon={...}/>, pembungkus tunggal Hugeicons
   motion/        GSAP: Reveal, CountUp, Meter, SpotlightCard, PageTransition, gsap.ts
+                 AOS: AosInit · anime.js: anime.ts, WordStagger
   illustrations/ <Illustration name=.../> + data/*.json (hasil generator)
   loader.tsx     Loader bermerek (Lottie "loader", dengan versi SVG+CSS yang tampil sebelum JS termuat)
-  blocks/        Pola tingkat aplikasi: StatCard, FilterBar, MultiSelect, Segmented, Treemap, DataTable, DetailDialog,
+  blocks/        Pola tingkat aplikasi: StatCard, StatRow, FilterBar, MultiSelect, Segmented, Treemap, DataTable, DetailDialog,
                  StatusBadge, HeatTile, PageHeader, EmptyState, DashboardSkeleton, Banner, Gauge,
                  RefPicker (pemilih RAB/RAL berjenjang; RabPicker = pembungkus RAB)
   layout/        PublicShell, CmsShell, SidebarNav
@@ -127,7 +131,20 @@ Pola filter & tabel dashboard:
 
 Halaman (`app/**/page.tsx`) cukup merangkai komponen. Shell dipasang di layout: `app/(public)/layout.tsx` dan `app/cms/layout.tsx`.
 
-## Animasi (GSAP)
+## Animasi
+
+Pembagian peran library (jangan dicampur pada elemen yang sama):
+
+| Library | Pakai untuk | Jangan untuk |
+| --- | --- | --- |
+| GSAP | Micro-interaction, `Reveal` konten dashboard, ScrollTrigger, tween angka | — |
+| AOS | Reveal deklaratif lewat atribut, termasuk di server component: `data-aos="fade-blur"` (+ `data-aos-delay`). Dipakai di item `SidebarNav`. `AosInit` dipasang di akhir `PublicShell`/`CmsShell` agar AOS baru jalan setelah shell terhidrasi | Elemen ber-`data-reveal` (sudah dipegang GSAP) |
+| anime.js | Animasi SVG dan teks: intro & hover `Logo`, judul header `WordStagger` (kata demi kata, blur). Animasikan `<g>` pembungkus, bukan `<rect>`/`<circle>`: pada elemen SVG, `x`/`y`/`translateY` diterapkan anime.js ke atribut | Layout/scroll |
+| Swiper | Deretan kartu yang perlu digeser di layar sempit: `StatRow` membungkus `StatCard` (carousel < xl, grid ≥ xl) | Konten yang muat tanpa geser |
+
+Semua library menghormati `prefers-reduced-motion`: AOS lewat opsi `disable`, anime.js lewat `motionOk()`, GSAP lewat `MOTION_OK`.
+
+### GSAP
 
 - Selalu impor dari `@/components/motion/gsap`. File itu sudah mendaftarkan `useGSAP` dan `ScrollTrigger` serta menyediakan `MOTION_OK`.
 - Bungkus animasi dekoratif dengan `gsap.matchMedia().add(MOTION_OK, …)`.
@@ -146,6 +163,9 @@ Halaman (`app/**/page.tsx`) cukup merangkai komponen. Shell dipasang di layout: 
 | Collapse & slide | Item verifikasi disetujui/dikembalikan |
 | Nudge ikon panah saat hover | `group-hover:translate-x-0.5` |
 | Press scale | Semua `Button` |
+| Words stagger (anime.js) | Judul header `PublicShell` / `CmsShell` |
+| Fade + blur reveal (AOS) | Item `SidebarNav` |
+| Snap carousel dengan tepi mengintip (Swiper) | `StatRow` |
 
 ## Grafik (Chart.js)
 
@@ -178,6 +198,9 @@ Impor dari `@/components/charts`: `BarChart`, `DoughnutChart`, `Sparkline`.
 | `banner` (@diceui, @dubinc), `announcement/info` (@haydenbleasel) | `<Banner/>` |
 | `dashboard-4` (@efferd), `animated-sidebar` (@starc007) | Ritme dashboard, sidebar pastel + sliding highlight |
 | Number ticker, spotlight card | `CountUp`, `SpotlightCard` |
+| `snap-carousel` (@ddoemonn), `carousel` (@wensity) | `StatRow` (Swiper, peek + bullet pil) |
+| `words-stagger` (@tom_ui) | `WordStagger` (anime.js) |
+| `reveal` (@asanshay), `scroll-reveal` (@cnippet-dev) | AOS `fade-blur` |
 
 ## Ilustrasi (Lottie)
 

@@ -262,6 +262,26 @@
   [data-reveal] { opacity: 0; transform: translateY(14px); }
 }
 
+/* AOS (components/motion/aos.tsx): varian "fade-blur" mengikuti pola reveal 21st.dev. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-aos="fade-blur"] { opacity: 0; filter: blur(6px); transform: translateY(10px); transition-property: opacity, filter, transform; }
+  [data-aos="fade-blur"].aos-animate { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* Swiper (components/blocks/stat-row.tsx): bullet memakai token warna. */
+.stat-row .swiper {
+  --swiper-pagination-color: var(--primary);
+  --swiper-pagination-bullet-inactive-color: var(--muted-foreground);
+  --swiper-pagination-bullet-inactive-opacity: 0.35;
+  --swiper-pagination-bottom: 0px;
+  --swiper-pagination-bullet-horizontal-gap: 3px;
+}
+.stat-row .swiper-pagination-bullet { transition: width 0.3s var(--ease-out), background-color 0.3s; border-radius: 999px; }
+.stat-row .swiper-pagination-bullet-active { width: 18px; }
+@media (min-width: 1280px) {
+  .stat-row .swiper-pagination { display: none; }
+}
+
 /* Loader SVG (fallback sebelum Lottie siap): satu siklus 1,6 dtk = 96 frame Lottie @60fps. */
 @keyframes loader-bar {
   0% { opacity: 0; transform: translateY(-12px); }

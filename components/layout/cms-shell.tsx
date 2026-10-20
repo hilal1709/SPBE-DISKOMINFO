@@ -8,6 +8,8 @@ import { logout } from "@/app/actions/auth";
 import { Banner } from "@/components/blocks/banner";
 import { Logo } from "@/components/brand/logo";
 import { Icon } from "@/components/icon";
+import { AosInit } from "@/components/motion/aos";
+import { WordStagger } from "@/components/motion/word-stagger";
 import { SidebarNav, type NavBadges } from "@/components/layout/sidebar-nav";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -93,7 +95,7 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
             </SheetContent>
           </Sheet>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight">{section}</h1>
+            <WordStagger as="h1" text={section} className="truncate text-lg font-bold tracking-tight" />
             {current?.description && <p className="hidden truncate text-xs text-muted-foreground sm:block">{current.description}</p>}
           </div>
           <Button asChild className="ml-auto rounded-full">
@@ -113,6 +115,7 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
           {children}
         </main>
       </div>
+      <AosInit />
     </div>
   );
 }

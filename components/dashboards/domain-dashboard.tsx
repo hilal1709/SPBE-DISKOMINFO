@@ -4,6 +4,7 @@ import { DataTable } from "@/components/blocks/data-table";
 import { DetailDialog, DetailField } from "@/components/blocks/detail-dialog";
 import { FilterBar } from "@/components/blocks/filter-bar";
 import { StatCard } from "@/components/blocks/stat-card";
+import { StatRow } from "@/components/blocks/stat-row";
 import { StatusBadge } from "@/components/blocks/status-badge";
 import { BarChart, DoughnutChart } from "@/components/charts";
 import { Reveal } from "@/components/motion/reveal";
@@ -33,12 +34,12 @@ export function DomainDashboard({ domain }: { domain: DomainKey }) {
     <Reveal className="grid gap-5">
       <FilterBar filters={[{ label: "Status", options: ["Disetujui", "Diajukan"] }, { label: "Perangkat Daerah", options: opdList }, { label: "Klasifikasi" }]} />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatRow>
         <StatCard tone="teal" label={d.metric} value={d.count} trend={[0.82, 0.86, 0.9, 0.95, 1].map((f) => Math.round(d.count * f))} />
         <StatCard tone="orange" label="Disetujui" value={82} suffix="%" />
         <StatCard tone="yellow" label="Terintegrasi" value={64} suffix="%" />
         <StatCard tone="amber" label="OPD terlibat" value={30} />
-      </section>
+      </StatRow>
 
       <section className="grid gap-5 *:min-w-0 lg:grid-cols-[1fr_2fr]">
         <Card data-reveal>

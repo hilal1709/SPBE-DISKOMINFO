@@ -10,6 +10,7 @@ import { FilterBar } from "@/components/blocks/filter-bar";
 import { FilterChips, type Chip } from "@/components/blocks/filter-chips";
 import { Gauge } from "@/components/blocks/gauge";
 import { StatCard } from "@/components/blocks/stat-card";
+import { StatRow } from "@/components/blocks/stat-row";
 import { StatusBadge } from "@/components/blocks/status-badge";
 import { Treemap } from "@/components/blocks/treemap";
 import { TargetMetodeCard } from "@/components/dashboards/layanan/target-metode";
@@ -172,12 +173,12 @@ export function ServiceDashboard({
         </Card>
       ) : (
         <>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatRow>
             <StatCard tone="teal" label="Jumlah layanan" value={rows.length} hint={`${fmt.format(rows.length - publik)} administrasi pemerintahan`} />
             <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Terdigitalisasi" value={digital} hint="elektronik + hybrid" />
             <StatCard tone="amber" label="Layanan publik" value={publik} />
-          </section>
+          </StatRow>
 
           <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
             <Card data-reveal className="gap-3">

@@ -14,17 +14,21 @@ const star = (color) => group([path([[0, -8], [2, -2], [8, 0], [2, 2], [0, 8], [
 const twinkle = (start, frames) =>
   anim([[0, [55, 55]], [start, [55, 55]], [start + 40, [110, 110]], [start + 80, [55, 55]], [frames, [55, 55]]], ease.inOut);
 
-/* 1. Loader — lima lapisan arsitektur SPBE (warna sama dengan logo) tersusun dari bawah ke atas. */
+/* 1. Loader — lima lapisan arsitektur SPBE (warna sama dengan logo) tersusun dari bawah ke atas menjadi gapura. */
 function loader() {
   const frames = 96;
-  const widths = [56, 40, 64, 80, 64];
+  const widths = [24, 39, 54, 69, 84];
+  const door = 12;
   const colors = [c.teal, c.yellow, c.amber, c.orange, c.sky];
   const layers = widths.map((w, i) => {
     const y = 30 + i * 15;
     const j = widths.length - 1 - i;
     const tin = j * 7;
     const tout = 60 + j * 3;
-    return layer(`lapisan-${i}`, group([rect(w, 10, 5), fill(colors[i])]), {
+    // Dua lapisan dasar dibelah pintu gapura.
+    const half = (w - door) / 2;
+    const shapes = i >= 3 ? [rect(half, 10, 5, [-(door + half) / 2, 0]), rect(half, 10, 5, [(door + half) / 2, 0])] : [rect(w, 10, 5)];
+    return layer(`lapisan-${i}`, group([...shapes, fill(colors[i])]), {
       p: anim([[0, [60, y - 12]], [tin, [60, y - 12]], [tin + 14, [60, y]], [tout, [60, y]], [tout + 12, [60, y + 6]], [frames, [60, y - 12]]]),
       o: anim([[0, 0], [tin, 0], [tin + 14, 100], [tout, 100], [tout + 12, 0], [frames, 0]]),
     });

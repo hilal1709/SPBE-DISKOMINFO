@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Login01Icon, Menu01Icon } from "@hugeicons/core-free-icons";
 import { Logo } from "@/components/brand/logo";
 import { Icon } from "@/components/icon";
+import { AosInit } from "@/components/motion/aos";
+import { WordStagger } from "@/components/motion/word-stagger";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -52,12 +54,13 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
             </SheetContent>
           </Sheet>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight">{section}</h1>
+            <WordStagger as="h1" text={section} className="truncate text-lg font-bold tracking-tight" />
             <p className="hidden text-xs text-muted-foreground sm:block">Arsitektur SPBE Kabupaten Gresik 2025–2029</p>
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1440px] px-4 pb-10 lg:px-8">{children}</main>
       </div>
+      <AosInit />
     </div>
   );
 }

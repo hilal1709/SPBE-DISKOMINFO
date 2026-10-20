@@ -13,7 +13,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Semua UI mengikuti `docs/design-system.md` (versi interaktif: `/design-system`). Ringkasnya:
 
 - Komponen: **shadcn/ui** di `components/ui` + pola aplikasi di `components/blocks`. Tambah dengan `pnpm dlx shadcn@latest add <nama>`.
-- Animasi & micro-interaction: **GSAP** lewat `@/components/motion/gsap` (`useGSAP`, `MOTION_OK`). Hormati `prefers-reduced-motion`. Referensi pola dari **21st.dev**.
+- Animasi & micro-interaction: **GSAP** lewat `@/components/motion/gsap` (`useGSAP`, `MOTION_OK`). Hormati `prefers-reduced-motion`. Pelengkap: **AOS** (`data-aos="fade-blur"`, reveal deklaratif), **anime.js** lewat `@/components/motion/anime` (SVG & teks, `WordStagger`), **Swiper** (`StatRow` untuk deretan `StatCard`). Referensi pola dari **21st.dev**.
 - Ikon: **Hugeicons** lewat `<Icon icon={...}/>` (`@/components/icon`). Jangan overuse: hanya untuk navigasi, aksi, dan input. Jangan pakai lucide-react.
 - Ilustrasi: **Lottie** lewat `<Illustration/>` / `<EmptyState/>`. Untuk keadaan kosong, sukses, error, 404, dan sambutan pakai ilustrasi, bukan ikon besar. Ilustrasi baru dibuat di `scripts/lottie/build.mjs`, lalu jalankan `pnpm illustrations`.
 - Grafik: **Chart.js** lewat `@/components/charts` (`BarChart`, `DoughnutChart`, `Sparkline`), warna seri pakai token (`"--brand-teal"`).

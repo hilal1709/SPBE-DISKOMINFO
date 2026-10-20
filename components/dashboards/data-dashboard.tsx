@@ -10,6 +10,7 @@ import { FilterBar } from "@/components/blocks/filter-bar";
 import { FilterChips, type Chip } from "@/components/blocks/filter-chips";
 import { Gauge } from "@/components/blocks/gauge";
 import { StatCard } from "@/components/blocks/stat-card";
+import { StatRow } from "@/components/blocks/stat-row";
 import { StatusBadge } from "@/components/blocks/status-badge";
 import { Treemap } from "@/components/blocks/treemap";
 import { BarChart } from "@/components/charts";
@@ -189,12 +190,12 @@ export function DataDashboard({
         </Card>
       ) : (
         <>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatRow>
             <StatCard tone="teal" label="Jumlah data" value={rows.length} hint={`${tree.length} data pokok RAD`} />
             <StatCard tone="orange" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Data terbuka" value={sifat.get("terbuka") ?? 0} hint={`${pct(sifat.get("terbuka") ?? 0, rows.length)} dari seluruh data`} />
             <StatCard tone="amber" label="Produsen lintas PD" value={lintas} hint="produsen berbeda dari wali" />
-          </section>
+          </StatRow>
 
           <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
             <Card data-reveal className="gap-3">
