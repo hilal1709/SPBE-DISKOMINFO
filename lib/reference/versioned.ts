@@ -5,12 +5,12 @@ import { getDb } from "@/lib/db";
 import { makeRabIndex, type RabIndex, type RabLevel, type RabNode, type RabSet, type RabStatus } from "@/lib/probis/rab-index";
 
 /**
- * Referensi berversi (server saja) — dipakai RAB (proses bisnis) dan RAL (layanan).
+ * Referensi berversi (server saja) — dipakai RAB (proses bisnis), RAL (layanan), RAD (data), dan RAA (aplikasi).
  * Tiap periode arsitektur memakai satu versi; perubahan nama, kode, induk, atau status dilakukan pada versi
  * draf lalu diterbitkan, sehingga periode lama tidak ikut berubah.
  */
 
-export type RefKind = "rab" | "ral" | "rad";
+export type RefKind = "rab" | "ral" | "rad" | "raa";
 
 type Config = {
   /** "RAB" / "RAL" — juga awalan kode. */
@@ -28,7 +28,7 @@ type Config = {
    * `<col>_l4`, `<col>_l5` (teks bebas L4/L5), dan `<col>_review` (perlu pemetaan ulang).
    */
   usage: { table: string; col: string; unit: string };
-  /** Level node yang boleh dipakai sebagai `<col>_id`. Bawaan L3; RAD juga menerima L2 yang tidak memiliki turunan. */
+  /** Level node yang boleh dipakai sebagai `<col>_id`. Bawaan L3; RAD & RAA juga menerima L2 yang tidak memiliki turunan. */
   leafLevels?: number[];
 };
 
@@ -347,8 +347,9 @@ export function makeVersionedRef(cfg: Config) {
         [id],
       );
       if (broken.rows.length) throw new Error(`Hierarki tidak konsisten: ${broken.rows.slice(0, 5).map((r) => r.code).join(", ")}.`);
-      const l3 = await client.query(`select count(*)::int as n from ${R} where version_id = $1 and level = 3 and status = 'berlaku'`, [id]);
-      if (!l3.rows[0].n) throw new Error(`Versi harus memiliki minimal satu ${L} Level 3 yang berlaku.`);
+      // Minimal satu node yang bisa dipilih isian (bawaan L3; RAA baru sampai L2).
+      const leaves = await client.query(`select count(*)::int as n from ${R} where version_id = $1 and level = any($2) and status = 'berlaku'`, [id, leafLevels]);
+      if (!leaves.rows[0].n) throw new Error(`Versi harus memiliki minimal satu ${L} Level ${leafLevels.join("/")} yang berlaku.`);
       await client.query(`update ${V} set status = 'published', published_at = now() where id = $1`, [id]);
       await log(client, id, null, "terbit", null, { nama: version.name }, actor);
     });

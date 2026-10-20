@@ -33,6 +33,9 @@ const variants: Record<string, "success" | "warning" | "muted" | "alert" | "acce
   Terbatas: "warning",
   Tertutup: "alert",
   Interoperabel: "success",
+  Pemda: "success",
+  "Instansi Pusat": "info",
+  "Pihak Ketiga": "warning",
 };
 
 /** Badge status dengan warna semantik. Terima kode status atau label bebas. */

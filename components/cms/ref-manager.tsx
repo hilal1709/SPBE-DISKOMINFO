@@ -24,11 +24,12 @@ import { cn } from "@/lib/utils";
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 const ROOT = "__root";
 
-/** Teks per jenis referensi: RAB (dipakai probis) dan RAL (dipakai layanan). */
+/** Teks per jenis referensi: RAB (probis), RAL (layanan), RAD (data), RAA (aplikasi). */
 const kinds = {
   rab: { ref: "RAB", unit: "probis", Unit: "Probis", root: "Sektor (L1)", rootTitle: "Tambah sektor (Level 1)", basePath: "/cms/pengaturan/referensi-rab" },
   ral: { ref: "RAL", unit: "layanan", Unit: "Layanan", root: "Jenis (L1)", rootTitle: "Tambah jenis layanan (Level 1)", basePath: "/cms/pengaturan/referensi-ral" },
   rad: { ref: "RAD", unit: "data", Unit: "Data", root: "Data pokok (L1)", rootTitle: "Tambah data pokok (Level 1)", basePath: "/cms/pengaturan/referensi-rad" },
+  raa: { ref: "RAA", unit: "aplikasi", Unit: "Aplikasi", root: "Jenis (L1)", rootTitle: "Tambah jenis aplikasi (Level 1)", basePath: "/cms/pengaturan/referensi-raa" },
 } as const;
 type KindText = (typeof kinds)[RefKind];
 

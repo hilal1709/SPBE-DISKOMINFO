@@ -5,6 +5,8 @@ import { can, currentActor, stageOf } from "@/lib/access";
 import * as periods from "@/lib/probis/periods";
 import { readUpload, validateRows, type ImportResult, type ImportRow } from "@/lib/probis/import";
 import * as repo from "@/lib/probis/repo";
+import * as aplikasiRepo from "@/lib/aplikasi/cms-repo";
+import * as raaRepo from "@/lib/aplikasi/raa";
 import * as dataRepo from "@/lib/data/cms-repo";
 import * as radRepo from "@/lib/data/rad";
 import * as layananRepo from "@/lib/layanan/cms-repo";
@@ -220,8 +222,8 @@ export async function clearSamples(): Promise<ActionResult<{ removed: number }>>
   try {
     const actor = await currentActor();
     if (!can.managePeriods(actor)) throw new Error("Hanya tim Diskominfo yang dapat menghapus data contoh.");
-    // Data & layanan contoh dihapus dulu: tautannya ke probis contoh ikut terlepas.
-    const removed = (await dataRepo.clearSamples()) + (await layananRepo.clearSamples()) + (await repo.clearSamples());
+    // Aplikasi, data & layanan contoh dihapus dulu: tautannya ke probis contoh ikut terlepas.
+    const removed = (await aplikasiRepo.clearSamples()) + (await dataRepo.clearSamples()) + (await layananRepo.clearSamples()) + (await repo.clearSamples());
     refresh();
     return { ok: true, data: { removed } };
   } catch (error) {
@@ -229,13 +231,13 @@ export async function clearSamples(): Promise<ActionResult<{ removed: number }>>
   }
 }
 
-/* ---------- Referensi berversi (RAB untuk probis, RAL untuk layanan, RAD untuk data) ---------- */
+/* ---------- Referensi berversi (RAB untuk probis, RAL untuk layanan, RAD untuk data, RAA untuk aplikasi) ---------- */
 
-const refs = { rab: rabRepo.rab, ral: ralRepo.ral, rad: radRepo.rad } satisfies Record<RefKind, VersionedRef>;
+const refs = { rab: rabRepo.rab, ral: ralRepo.ral, rad: radRepo.rad, raa: raaRepo.raa } satisfies Record<RefKind, VersionedRef>;
 
 async function refAdmin(kind: RefKind) {
   const actor = await currentActor();
-  if (!can.manageReference(actor)) throw new Error(`Hanya pengelola referensi arsitektur yang dapat mengubah ${refs[kind].label}.`);
+  if (!can.manageReference(actor, kind)) throw new Error(`Hanya pengelola referensi arsitektur yang dapat mengubah ${refs[kind].label}.`);
   return actor;
 }
 

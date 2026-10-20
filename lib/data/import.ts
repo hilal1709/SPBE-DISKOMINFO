@@ -86,7 +86,7 @@ const deepCode = (raw: string | null, rad: RabIndex) => {
   const found = raw?.match(/^RAD(?:\.\d{2}){4,5}/i)?.[0].toUpperCase();
   return found && rad.byCode.has(found) ? found : raw;
 };
-const parts = (raw: string | null) => (raw ?? "").split(/[\n;]+/).map((x) => x.trim()).filter(Boolean);
+export const parts = (raw: string | null) => (raw ?? "").split(/[\n;]+/).map((x) => x.trim()).filter(Boolean);
 
 /** Teks pilihan → nilai tetap; `guessed` bila tidak sama persis dengan label template. */
 function pick<T extends string>(raw: string | null, labels: Record<T, string>, guess: (v: string) => T | null): { value: T | null; guessed: boolean } {
@@ -177,7 +177,7 @@ function parseSheet(data: Uint8Array): Raw[] {
 export type DepRef = { code: string; name: string; opd: string; period: string };
 
 /** Cocokkan isian dependensi (kode atau nama) ke daftar referensi periode yang sama; utamakan OPD yang sama. */
-function matchRefs(raw: string | null, pool: DepRef[], opd: string | null) {
+export function matchRefs(raw: string | null, pool: DepRef[], opd: string | null) {
   const found: string[] = [];
   const missing: string[] = [];
   for (const part of parts(raw)) {

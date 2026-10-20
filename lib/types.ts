@@ -88,6 +88,71 @@ export type DataInfo = {
   layanan: { id: string; name: string }[];
 };
 
+/** Aplikasi di dashboard publik (kolom mengikuti template "Domain Arsitektur Aplikasi.xlsx"). */
+export type Aplikasi = {
+  id: string;
+  name: string;
+  uraian: string;
+  fungsi: string;
+  luaran: string;
+  /** Mesin basis data (notulen: "nama basis data" → "mesin", mis. PostgreSQL, MySQL). */
+  mesin: string | null;
+  basis: "web" | "desktop" | "mobile" | "cloud";
+  lisensi: "open_source" | "proprietary";
+  bahasa: string;
+  kerangka: string | null;
+  /** ← Unit pengembang: kode PD, atau nama K/L/penyedia. */
+  pengembang: string;
+  /** Diturunkan dari unit pengembang (tidak ada di template). */
+  kepemilikan: "pemda" | "pusat" | "pihak_ketiga";
+  /** → Unit operasional teknologi (kode PD). */
+  operasional: string;
+  period: string;
+  raa1: string;
+  raa2: string;
+  /** → Layanan yang didukung. */
+  layanan: { id: string; name: string }[];
+  /** ← Proses bisnis terkait; wajib minimal satu (notulen: aplikasi selaras dengan probis). */
+  probis: { id: string; name: string; sasaran?: string; iku?: string }[];
+  /** → Data yang digunakan (RAD L3/L2). */
+  data: { id: string; name: string }[];
+  supplier: string | null;
+  customer: string | null;
+  /** → Dependensi infrastruktur (nama komponen; null = tidak memakai). */
+  cloud: string | null;
+  server: string | null;
+  splp: string | null;
+  jip: string | null;
+};
+
+/** Aplikasi di CMS (satu baris tabel applications beserta referensinya). Kolom mengikuti template 32 kolom. */
+export type AplikasiRecord = Omit<Aplikasi, "id" | "operasional" | "raa1" | "raa2" | "probis"> & {
+  id: string;
+  code: string;
+  /** Unit operasional teknologi (Perangkat Daerah pemilik isian). */
+  opdId: string;
+  opdCode: string;
+  opdName: string;
+  status: SubmissionStatus;
+  raa1: string | null;
+  raa2: string | null;
+  /** Null selama RAA belum memiliki Level 3. */
+  raa3: string | null;
+  raaL4: string | null;
+  raaL5: string | null;
+  /** Proses bisnis terkait beserta status verifikasinya (wajib minimal satu yang disetujui). */
+  probis: { id: string; name: string; status: SubmissionStatus }[];
+  /** ← Inputan data / → luaran data (teks template). */
+  inputData: string | null;
+  outputData: string | null;
+  /** Dependensi Keamanan SPBE (teks) per kunci securityFields. */
+  security: Partial<Record<string, string[]>>;
+  updatedAt: string;
+  isSample: boolean;
+  /** RAA perlu dipetakan ulang setelah periodenya pindah versi RAA. */
+  raaReview: boolean;
+};
+
 /** Data & informasi di CMS (satu baris tabel datasets beserta referensinya). */
 export type DataRecord = {
   id: string;

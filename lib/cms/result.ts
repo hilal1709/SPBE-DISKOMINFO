@@ -10,4 +10,6 @@ export function refresh() {
   revalidatePath("/cms", "layout");
   revalidatePath("/");
   revalidatePath("/layanan");
+  revalidatePath("/data");
+  revalidatePath("/aplikasi");
 }

@@ -15,15 +15,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { can, reviewTeam, type Actor } from "@/lib/permissions";
 import type { SubmissionStatus } from "@/lib/types";
 
-type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" | "data" };
+type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" | "data" | "aplikasi" };
 type Summary = { counts: Partial<Record<SubmissionStatus, number>>; /** Perlu pemetaan ulang referensi (RAB/RAL). */ review: number };
-type Domain = "probis" | "layanan" | "data";
+type Domain = "probis" | "layanan" | "data" | "aplikasi";
 
 /** Teks & tautan per domain. */
 const domains = {
   probis: { noun: "probis", total: "Total proses bisnis", ref: "RAB", list: "/cms/proses-bisnis", base: "/cms/proses-bisnis" },
   layanan: { noun: "layanan", total: "Total layanan", ref: "RAL", list: "/cms/layanan", base: "/cms/layanan" },
   data: { noun: "data", total: "Total data", ref: "RAD", list: "/cms/data", base: "/cms/data" },
+  aplikasi: { noun: "aplikasi", total: "Total aplikasi", ref: "RAA", list: "/cms/aplikasi", base: "/cms/aplikasi" },
 } as const;
 
 /** Tindakan tertunda untuk satu domain, urut prioritas. */
@@ -51,10 +52,10 @@ const dotTone: Record<SubmissionStatus, string> = {
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
 /** Beranda CMS: ringkasan status per domain dalam cakupan pengguna, tindakan berikutnya, dan aktivitas terbaru. */
-export function CmsHome({ actor, probis, layanan, data, recent }: { actor: Actor; probis: Summary; layanan: Summary; data: Summary; recent: Activity[] }) {
+export function CmsHome({ actor, probis, layanan, data, aplikasi, recent }: { actor: Actor; probis: Summary; layanan: Summary; data: Summary; aplikasi: Summary; recent: Activity[] }) {
   const timeline = useRef<HTMLOListElement>(null);
   const [domain, setDomain] = useState<Domain>("probis");
-  const counts = { probis, layanan, data }[domain].counts;
+  const counts = { probis, layanan, data, aplikasi }[domain].counts;
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
 
   useGSAP(
@@ -67,7 +68,7 @@ export function CmsHome({ actor, probis, layanan, data, recent }: { actor: Actor
   );
 
   // Maksimal tiga tindakan terpenting dari semua domain.
-  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan), ...steps(actor, "data", data)].slice(0, 3);
+  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan), ...steps(actor, "data", data), ...steps(actor, "aplikasi", aplikasi)].slice(0, 3);
 
   return (
     <Reveal className="grid gap-5">
@@ -80,6 +81,7 @@ export function CmsHome({ actor, probis, layanan, data, recent }: { actor: Actor
           { value: "probis", label: "Proses bisnis" },
           { value: "layanan", label: "Layanan" },
           { value: "data", label: "Data" },
+          { value: "aplikasi", label: "Aplikasi" },
         ]}
       />
       <StatRow>
@@ -119,6 +121,8 @@ export function CmsHome({ actor, probis, layanan, data, recent }: { actor: Actor
                 <QuickLink tone="bg-brand-sky" href="/cms/data/baru" icon={Add01Icon} title="Tambah data" text="Isi form dengan bantuan AI" />
                 {can.import(actor) && <QuickLink tone="bg-brand-amber" href="/cms/layanan/impor" icon={FileImportIcon} title="Impor layanan" text="Unggah template analis" />}
                 {can.import(actor) && <QuickLink tone="bg-brand-orange" href="/cms/data/impor" icon={FileImportIcon} title="Impor data" text="Unggah template atau zip arsitektur" />}
+                <QuickLink tone="bg-brand-teal" href="/cms/aplikasi/baru" icon={Add01Icon} title="Tambah aplikasi" text="Isi form dengan bantuan AI" />
+                {can.import(actor) && <QuickLink tone="bg-brand-yellow" href="/cms/aplikasi/impor" icon={FileImportIcon} title="Impor aplikasi" text="Unggah template analis" />}
               </div>
             )}
           </CardContent>

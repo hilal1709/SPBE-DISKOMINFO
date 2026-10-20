@@ -14,7 +14,9 @@
     "seed:layanan": "tsx scripts/seed-sample-layanan.mts",
     "referensi:ral": "node scripts/extract-ral.mjs",
     "referensi:rad": "node scripts/extract-rad.mjs",
-    "seed:data": "tsx scripts/seed-sample-data.mts"
+    "referensi:raa": "node scripts/extract-raa.mjs",
+    "seed:data": "tsx scripts/seed-sample-data.mts",
+    "seed:aplikasi": "tsx scripts/seed-sample-aplikasi.mts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

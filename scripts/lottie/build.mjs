@@ -418,7 +418,61 @@ function dataCatalog() {
   });
 }
 
-const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty, "service-desk": serviceDesk, "data-catalog": dataCatalog };
+/* 12. Ekosistem aplikasi — modul aplikasi web dan ponsel muncul, lalu bertukar data lewat awan penghubung (SPLP). */
+function appEcosystem() {
+  const frames = 180;
+  // Modul/ikon muncul berurutan lalu menghilang menjelang akhir siklus.
+  const pop = (t) => anim([[0, [0, 0]], [t, [0, 0]], [t + 12, [100, 100], ease.back], [150, [100, 100]], [160, [0, 0]], [frames, [0, 0]]]);
+  const tile = (x, y, w, h, color, t) => group([rect(w, h, 3), fill(color)], { p: [x, y], s: pop(t) });
+  const icon = (x, y, color, t) => group([rect(11, 11, 3.5), fill(color)], { p: [x, y], s: pop(t) });
+  const link = (points, t) => group([curve(points), trim(0, anim([[0, 0], [t, 0], [t + 30, 100], [150, 100], [166, 0], [frames, 0]], ease.inOut)), stroke(c.charcoal, 2, { opacity: 60, dash: [4, 4] })]);
+  // Paket data bergerak bolak-balik antara aplikasi dan awan.
+  const packet = (from, to, t, color) =>
+    layer("paket", group([rect(9, 9, 2.5), fill(color), stroke(c.charcoal, 1.2)]), {
+      p: anim([[0, from], [t, from], [t + 26, to, ease.inOut], [t + 52, from, ease.inOut], [frames, from]]),
+      o: anim([[0, 0], [t - 2, 0], [t + 2, 100], [t + 50, 100], [t + 54, 0], [frames, 0]], ease.linear),
+    });
+  return composition("app-ecosystem", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("blob", group([ellipse(220, 140), fill(c.amberPale)]), { p: [120, 80], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(200, 10), fill(c.navy, 8)]), { p: [120, 144] }),
+      layer("tautan", [link([[86, 50], [96, 26], [118, 28]], 40), link([[192, 54], [186, 28], [162, 28]], 52)], {}),
+      layer("awan", [
+        group([rect(14, 4, 2), fill(c.white)], { p: [0, 4], o: anim([[0, 100], [70, 100], [74, 30], [80, 100], [110, 100], [114, 30], [120, 100], [frames, 100]], ease.linear) }),
+        group([ellipse(30, 26, [0, -4]), ellipse(22, 18, [-14, 3]), ellipse(22, 16, [14, 4]), rect(40, 12, 6, [0, 6]), fill(c.sky)]),
+      ], { p: [140, 30], s: pingPong([100, 100], [106, 106], 90) }),
+      layer("peramban", [
+        tile(-26, -4, 36, 22, c.teal, 20),
+        tile(16, -4, 30, 22, c.amber, 28),
+        tile(-26, 22, 22, 14, c.yellow, 36),
+        tile(6, 22, 50, 14, c.slateSoft, 44),
+        group([ellipse(5, 5, [-42, -27]), ellipse(5, 5, [-34, -27]), ellipse(5, 5, [-26, -27]), fill(c.white)]),
+        group([rect(104, 12, 0, [0, -27]), fill(c.charcoal)]),
+        group([rect(104, 74, 8), fill(c.white), stroke(c.charcoal, 3)]),
+      ], { p: [84, 92] }),
+      layer("ponsel", [
+        icon(-8, -14, c.teal, 60),
+        icon(8, -14, c.yellow, 66),
+        icon(-8, 2, c.amber, 72),
+        icon(8, 2, c.sky, 78),
+        group([rect(14, 3, 1.5, [0, 24]), fill(c.line)]),
+        group([rect(42, 74, 9), fill(c.surface), stroke(c.charcoal, 3)]),
+      ], { p: [192, 96] }),
+      packet([90, 52], [124, 30], 74, c.yellow),
+      packet([190, 56], [156, 30], 96, c.teal),
+      layer("centang", [
+        group([path([[-6, 0], [-2, 4], [6, -4]]), trim(0, anim([[0, 0], [118, 0], [130, 100], [150, 100], [160, 0], [frames, 0]], ease.inOut)), stroke(c.white, 3)]),
+        group([ellipse(24, 24), fill(c.teal), stroke(c.white, 2)]),
+      ], {
+        p: [134, 58],
+        s: anim([[0, [0, 0]], [110, [0, 0]], [122, [100, 100], ease.back], [150, [100, 100]], [162, [0, 0]], [frames, [0, 0]]]),
+      }),
+    ],
+  });
+}
+
+const builds = { loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty, "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem };
 for (const [name, build] of Object.entries(builds)) {
   const json = JSON.stringify(build());
   writeFileSync(join(out, `${name}.json`), json);

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AiMagicIcon, ArrowDown01Icon, Cancel01Icon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
+import { AiMagicIcon, ArrowDown01Icon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { listDependencyOptions, saveData, suggestData } from "@/app/cms/data/actions";
 import { Banner } from "@/components/blocks/banner";
@@ -11,6 +11,7 @@ import { Segmented } from "@/components/blocks/segmented";
 import { LinkPicker, type LinkOption } from "@/components/cms/link-picker";
 import { DeepRabField, SuggestItem, flash } from "@/components/cms/probis-form";
 import { ReviewBadge } from "@/components/cms/review-badge";
+import { TagField } from "@/components/cms/tag-field";
 import { useRad } from "@/components/data/rad-context";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustrations/illustration";
@@ -526,45 +527,5 @@ function SecurityCard({ value, onChange }: { value: Values["security"]; onChange
         </CardContent>
       )}
     </Card>
-  );
-}
-
-/** Daftar isian teks: Enter untuk menambah, chip bisa dilepas. */
-function TagField({ label, values, onChange }: { label: string; values: string[]; onChange: (values: string[]) => void }) {
-  const [draft, setDraft] = useState("");
-  const add = () => {
-    const text = draft.trim();
-    if (text && !values.includes(text)) onChange([...values, text]);
-    setDraft("");
-  };
-  return (
-    <Field data-sec className="rounded-lg">
-      <FieldLabel>{label}</FieldLabel>
-      <Input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            add();
-          }
-        }}
-        onBlur={add}
-        placeholder="Nama/ID kegiatan, lalu Enter"
-        aria-label={label}
-      />
-      {values.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5">
-          {values.map((v) => (
-            <li key={v} className="inline-flex max-w-full items-center gap-1 rounded-full bg-brand-sky/40 py-0.5 pr-0.5 pl-2.5 text-xs">
-              <span className="truncate">{v}</span>
-              <Button type="button" variant="ghost" size="icon-xs" aria-label={`Hapus ${v}`} onClick={() => onChange(values.filter((x) => x !== v))} className="size-5 rounded-full">
-                <Icon icon={Cancel01Icon} size={11} />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Field>
   );
 }

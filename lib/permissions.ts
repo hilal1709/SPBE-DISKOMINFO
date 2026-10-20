@@ -1,3 +1,4 @@
+import type { RefKind } from "@/lib/reference/versioned";
 import type { ProbisRecord, Role, SubmissionStatus } from "@/lib/types";
 
 /** Pengguna yang sedang bertindak di CMS. `id` null untuk mode demo (tanpa sesi). */
@@ -8,13 +9,20 @@ export type ReviewStage = "verifikasi" | "validasi";
 
 /**
  * Domain arsitektur yang diperiksa. Bagian Organisasi memverifikasi Probis & Layanan; domain Data diverifikasi
- * Diskominfo (Admin Verifikator Referensi Arsitektur & Domain Data) — notulen 1 Juli 2026 & Detailing Requirement.
+ * Diskominfo (Admin Verifikator Referensi Arsitektur & Domain Data), domain Aplikasi oleh Admin Verifikator Aplikasi
+ * Diskominfo — notulen 1 Juli 2026 & Detailing Requirement.
  */
-export type ReviewDomain = "probis" | "layanan" | "data";
+export type ReviewDomain = "probis" | "layanan" | "data" | "aplikasi";
+
+/** Verifikator domain yang berada di Diskominfo (bukan Bagian Organisasi). */
+const diskominfoVerifier: Partial<Record<ReviewDomain, { role: Role; team: string }>> = {
+  data: { role: "validator_data", team: "Verifikator Data Diskominfo" },
+  aplikasi: { role: "validator_aplikasi", team: "Verifikator Aplikasi Diskominfo" },
+};
 
 /** Nama tim pemeriksa per domain dan tahap (untuk teks antrean & beranda). */
 export const reviewTeam = (stage: ReviewStage, domain: ReviewDomain = "probis") =>
-  stage === "validasi" ? "Diskominfo" : domain === "data" ? "Verifikator Data Diskominfo" : "Bagian Organisasi";
+  stage === "validasi" ? "Diskominfo" : (diskominfoVerifier[domain]?.team ?? "Bagian Organisasi");
 
 const editable = new Set(["draft", "rejected"]);
 const diskominfoAdmins: Role[] = ["admin", "superadmin"];
@@ -31,14 +39,14 @@ export const can = {
     a.role === "superadmin" ||
     (editable.has(r.status) && (a.role === "admin" || (a.role === "operator_opd" && !!a.opdId && a.opdId === r.opdId))),
   /** Tim verifikasi: diajukan → terverifikasi / dikembalikan. */
-  verify: (a: Actor, domain: ReviewDomain = "probis") => a.role === (domain === "data" ? "validator_data" : "organisasi") || a.role === "superadmin",
+  verify: (a: Actor, domain: ReviewDomain = "probis") => a.role === (diskominfoVerifier[domain]?.role ?? "organisasi") || a.role === "superadmin",
   /** Tim validasi: terverifikasi → tervalidasi (tayang di portal) / dikembalikan. */
   validate: (a: Actor) => diskominfoAdmins.includes(a.role),
   import: (a: Actor) => a.role === "operator_opd" || diskominfoAdmins.includes(a.role),
   export: (a: Actor) => a.role !== "pimpinan",
   managePeriods: (a: Actor) => diskominfoAdmins.includes(a.role),
-  /** Pengelola referensi arsitektur (RAB): tim Diskominfo dan verifikator referensi arsitektur. */
-  manageReference: (a: Actor) => diskominfoAdmins.includes(a.role) || a.role === "validator_data",
+  /** Pengelola referensi arsitektur: tim Diskominfo dan verifikator referensi arsitektur; RAA juga Verifikator Aplikasi. */
+  manageReference: (a: Actor, kind?: RefKind) => diskominfoAdmins.includes(a.role) || a.role === "validator_data" || (kind === "raa" && a.role === "validator_aplikasi"),
   /** Operator wajib memilih OPD-nya sendiri; peran lain bebas memilih. */
   lockedOpd: (a: Actor) => (a.role === "operator_opd" ? a.opdId : null),
   /** Boleh bertindak pada tahap ini? */

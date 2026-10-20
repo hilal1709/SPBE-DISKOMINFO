@@ -1,6 +1,6 @@
 ## SPBE Kabupaten Gresik
 
-Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat ini **Proses Bisnis** dan **Layanan** sudah lengkap, domain lain menyusul.
+Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat ini **Proses Bisnis**, **Layanan**, **Data**, dan **Aplikasi** sudah lengkap, domain lain menyusul.
 
 ### Menjalankan
 
@@ -41,6 +41,18 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 - Dashboard `/data` membaca data tervalidasi; bila kosong memakai data contoh (`lib/data/generate.ts`). `pnpm seed:data` mengisi data contoh ke database (`--hapus` untuk menghapus).
 - `pnpm referensi:rad` membuat ulang `lib/data/rad-reference.json` dari template analis (`--sql` mencetak INSERT untuk migrasi).
 - Akun demo Verifikator Data: `walidata@gresikkab.go.id` (kata sandi sama dengan akun demo lain).
+
+### CMS Aplikasi
+
+- Kolom mengikuti template analis `public/templates/aplikasi.xlsx` (Domain Arsitektur Aplikasi, 32 kolom): uraian, fungsi, luaran, **mesin basis data** (notulen: bukan "nama basis data"), basis (Web Based/Desktop/Mobile/Cloud), lisensi, bahasa & kerangka, RAA, → layanan, → data, ← proses bisnis, aliran data (inputan, supplier, luaran, customer), dependensi infrastruktur (komputasi awan, server, SPLP, JIP), unit pengembang, unit operasional teknologi, dan 7 dependensi Keamanan SPBE (teks).
+- Alur: Operator OPD (unit operasional) → **Verifikasi** Admin Verifikator Aplikasi Diskominfo (peran `validator_aplikasi`) → **Validasi** Diskominfo → tayang di `/aplikasi`. ID otomatis `GSK-APL <kode RAA>.<urutan>`.
+- Sesuai notulen, aplikasi **wajib selaras proses bisnis yang sudah disetujui**: pilihan probis hanya yang tervalidasi, simpan ditolak bila probis belum disetujui, dan ajuan/verifikasi/validasi ditolak bila tautan probis tervalidasi hilang. Tabel hanya kolom inti; kolom lain di pop-up detail.
+- **Kepemilikan** (Pemda / Instansi Pusat / Pihak Ketiga) tidak ada di template; diturunkan dari unit pengembang (`kepemilikanOf` di `lib/aplikasi/reference.ts`).
+- Form **Isi dengan AI** (`lib/ai/aplikasi-suggest.ts`): uraian, fungsi, luaran, RAA, basis, serta proses bisnis & layanan yang paling selaras (Gemini bila `GEMINI_API_KEY` ada, selain itu heuristik lokal).
+- **Referensi RAA berversi** di *Pengaturan › Referensi RAA* (mesin sama dengan RAB/RAL/RAD; template baru sampai Level 2, jadi RAA L2 tanpa turunan dipakai langsung). Tiap periode memilih versi RAA di *Periode Arsitektur*. `pnpm referensi:raa` membuat ulang `lib/aplikasi/raa-reference.json` (`--sql` mencetak INSERT untuk migrasi).
+- Impor/ekspor di `/cms/aplikasi/impor`: unggah template Aplikasi atau zip paket arsitektur; ekspor memakai 32 kolom template (+ periode & status).
+- Dashboard `/aplikasi` membaca aplikasi tervalidasi; bila kosong memakai data contoh (`lib/aplikasi/generate.ts`). `pnpm seed:aplikasi` mengisi aplikasi contoh ke database (`--hapus` untuk menghapus; jalankan `seed:contoh`, `seed:layanan`, `seed:data` dulu agar tautannya terisi).
+- Akun demo Verifikator Aplikasi: `aplikasi@gresikkab.go.id` (kata sandi sama dengan akun demo lain).
 
 ## Getting Started
 

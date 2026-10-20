@@ -18,7 +18,7 @@ export type NavItem = {
   /** Penjelasan singkat fungsi menu (tampil di bawah label & di header halaman). */
   description?: string;
   /** Kunci angka lencana (mis. jumlah antrean). */
-  badgeKey?: "submitted" | "verified" | "layananSubmitted" | "layananVerified" | "dataSubmitted" | "dataVerified";
+  badgeKey?: "submitted" | "verified" | "layananSubmitted" | "layananVerified" | "dataSubmitted" | "dataVerified" | "aplikasiSubmitted" | "aplikasiVerified";
 };
 
 /** Menu besar berisi sub-menu. */
@@ -45,7 +45,7 @@ export const portalSections: Record<string, string> = {
 
 const soon = (slug: string, label: string, icon: IconSvgElement, description: string): NavItem => ({ href: `/cms/segera/${slug}`, label, icon, section: label, soon: true, description });
 
-/** Menu CMS dikelompokkan per modul. Modul dibangun bertahap (notulen): Proses Bisnis, lalu Layanan. */
+/** Menu CMS dikelompokkan per modul. Modul dibangun bertahap (notulen): Proses Bisnis, Layanan, Data, lalu Aplikasi. */
 export const cmsNav: NavEntry[] = [
   { href: "/cms", label: "Beranda", icon: DashboardSquare01Icon, section: "Beranda CMS", description: "Ringkasan tugas dan aktivitas terbaru Anda" },
   {
@@ -82,10 +82,20 @@ export const cmsNav: NavEntry[] = [
     ],
   },
   {
+    label: "Aplikasi",
+    icon: ComputerIcon,
+    children: [
+      { href: "/cms/aplikasi", label: "Daftar Aplikasi", icon: ListViewIcon, section: "Daftar Aplikasi", description: "Lihat dan kelola seluruh aplikasi" },
+      { href: "/cms/aplikasi/baru", label: "Tambah Aplikasi", icon: TaskAdd01Icon, section: "Tambah Aplikasi", description: "Isi aplikasi baru, dibantu AI", roles: ["operator_opd", "admin", "superadmin"] },
+      { href: "/cms/aplikasi/verifikasi", label: "Verifikasi", icon: CheckListIcon, section: "Verifikasi Aplikasi", description: "Verifikator Aplikasi Diskominfo memeriksa ajuan OPD", roles: ["validator_aplikasi", "superadmin"], badgeKey: "aplikasiSubmitted" },
+      { href: "/cms/aplikasi/validasi", label: "Validasi", icon: CheckmarkBadge01Icon, section: "Validasi Aplikasi", description: "Tim Diskominfo memvalidasi akhir sebelum tayang", roles: ["admin", "superadmin"], badgeKey: "aplikasiVerified" },
+      { href: "/cms/aplikasi/impor", label: "Impor & Ekspor", icon: FileImportIcon, section: "Impor & Ekspor Aplikasi", description: "Unggah template analis atau zip arsitektur", roles: ["operator_opd", "admin", "superadmin"] },
+    ],
+  },
+  {
     label: "Domain Arsitektur",
     icon: Layers01Icon,
     children: [
-      soon("aplikasi", "Aplikasi", ComputerIcon, "Domain arsitektur aplikasi"),
       soon("infrastruktur", "Infrastruktur", ServerStack01Icon, "Domain arsitektur infrastruktur"),
       soon("keamanan", "Keamanan", ShieldKeyIcon, "Domain arsitektur keamanan"),
     ],
@@ -105,6 +115,7 @@ export const cmsNav: NavEntry[] = [
       { href: "/cms/pengaturan/referensi-rab", label: "Referensi RAB", icon: Layers01Icon, section: "Referensi RAB", description: "Kelola versi, kode, dan nama RAB", roles: ["admin", "superadmin", "validator_data"] },
       { href: "/cms/pengaturan/referensi-ral", label: "Referensi RAL", icon: Layers01Icon, section: "Referensi RAL", description: "Kelola versi, kode, dan nama RAL", roles: ["admin", "superadmin", "validator_data"] },
       { href: "/cms/pengaturan/referensi-rad", label: "Referensi RAD", icon: Layers01Icon, section: "Referensi RAD", description: "Kelola versi, kode, dan nama RAD", roles: ["admin", "superadmin", "validator_data"] },
+      { href: "/cms/pengaturan/referensi-raa", label: "Referensi RAA", icon: Layers01Icon, section: "Referensi RAA", description: "Kelola versi, kode, dan nama RAA", roles: ["admin", "superadmin", "validator_data", "validator_aplikasi"] },
       { href: "/cms/pengaturan/periode", label: "Periode Arsitektur", icon: Calendar03Icon, section: "Periode Arsitektur", description: "Tambah dan aktifkan periode arsitektur", roles: ["admin", "superadmin"] },
       { ...soon("pengguna", "Pengguna", UserGroupIcon, "Kelola akun dan hak akses"), roles: ["superadmin"] },
     ],

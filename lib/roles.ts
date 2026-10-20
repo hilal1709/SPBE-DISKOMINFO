@@ -4,7 +4,7 @@ export const roleLabel: Record<Role, string> = {
   operator_opd: "Operator OPD",
   organisasi: "Tim Verifikasi (Bag. Organisasi)",
   validator_data: "Validator Data",
-  validator_aplikasi: "Validator Aplikasi",
+  validator_aplikasi: "Verifikator Aplikasi (Diskominfo)",
   validator_infrastruktur: "Validator Infrastruktur",
   validator_keamanan: "Validator Keamanan",
   admin: "Tim Validasi (Diskominfo)",
