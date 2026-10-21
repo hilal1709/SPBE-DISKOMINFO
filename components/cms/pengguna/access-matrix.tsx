@@ -260,11 +260,11 @@ function RoleDialog({
         >
           <Field>
             <FieldLabel htmlFor="role-label">Nama peran</FieldLabel>
-            <Input id="role-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="mis. Auditor Inspektorat" maxLength={60} autoFocus required />
+            <Input id="role-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="mis. Auditor Inspektorat" autoFocus />
           </Field>
           <Field>
             <FieldLabel htmlFor="role-description">Keterangan (opsional)</FieldLabel>
-            <Textarea id="role-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={200} />
+            <Textarea id="role-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </Field>
           {!role && (
             <Field>
@@ -284,7 +284,7 @@ function RoleDialog({
           )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>Batal</Button>
-            <Button type="submit" loading={pending} disabled={label.trim().length < 3}>{role ? "Simpan" : "Tambah peran"}</Button>
+            <Button type="submit" loading={pending}>{role ? "Simpan" : "Tambah peran"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

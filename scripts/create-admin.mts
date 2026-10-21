@@ -18,7 +18,10 @@ if (!url) throw new Error("DATABASE_URL tidak tersedia");
 const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 const password = Array.from({ length: 16 }, () => chars[randomInt(chars.length)]).join("");
 
-const client = new pg.Client({ connectionString: url, ssl: /sslmode=disable/.test(url) ? false : { rejectUnauthorized: false } });
+const ca = process.env.DATABASE_CA
+  ?? (existsSync(envFile) ? readFileSync(envFile, "utf8").match(/^DATABASE_CA=(.+)$/m)?.[1]?.trim() : undefined);
+const ssl = /sslmode=disable/.test(url) ? false : ca ? { ca: ca.replace(/\\n/g, "\n"), rejectUnauthorized: true } : { rejectUnauthorized: false };
+const client = new pg.Client({ connectionString: url, ssl });
 await client.connect();
 try {
   await client.query(

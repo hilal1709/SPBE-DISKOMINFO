@@ -232,7 +232,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
                 <div className="grid grid-cols-2 gap-2">
                   <Field data-field="jumlah" data-invalid={!!errors.jumlah || undefined}>
                     <FieldLabel htmlFor="jumlah">Jumlah</FieldLabel>
-                    <Input id="jumlah" type="number" min={0} step="any" inputMode="decimal" value={values.jumlah} onChange={(e) => set("jumlah", e.target.value)} />
+                    <Input id="jumlah" type="text" inputMode="decimal" value={values.jumlah} onChange={(e) => set("jumlah", e.target.value)} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="satuan">Satuan</FieldLabel>

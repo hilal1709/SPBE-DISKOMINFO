@@ -14,6 +14,16 @@ const MAX_WORKBOOKS = 50;
 export type UploadBudget = { entries: number; bytes: number; workbooks: number };
 export const uploadBudget = (): UploadBudget => ({ entries: 0, bytes: 0, workbooks: 0 });
 
+/** Sama dengan serverActions.bodySizeLimit (next.config.ts); dicek ulang sebelum berkas dibaca ke memori. */
+export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+
+/** Berkas unggahan wajib ada dan tidak melebihi 12 MB. Jenis berkas dicek lewat ekstensi (readUpload) dan magic bytes (isZip). */
+export function assertUploadFile(file: FormDataEntryValue | null, empty: string): asserts file is File {
+  if (!(file instanceof File) || !file.size) throw new Error(empty);
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error("Berkas terlalu besar (maks. 12 MB).");
+  if (file.name.length > 255) throw new Error("Nama berkas terlalu panjang.");
+}
+
 /** .zip dan .xlsx sama-sama arsip ZIP: diawali "PK\x03\x04". Ekstensi saja bisa dipalsukan. */
 export const isZip = (data: Uint8Array) => data.length > 4 && data[0] === 0x50 && data[1] === 0x4b && data[2] === 0x03 && data[3] === 0x04;
 

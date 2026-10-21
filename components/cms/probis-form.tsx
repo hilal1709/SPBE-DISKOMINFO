@@ -90,11 +90,6 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
   );
 
   const askAi = () => {
-    if (values.name.trim().length < 3) {
-      setErrors((e) => ({ ...e, name: "Isi nama proses bisnis dulu agar AI punya konteks" }));
-      flash(field("name"));
-      return;
-    }
     startThinking(async () => {
       const request = suggestProbis({ name: values.name, opd: values.opd, note, period: values.period });
       toast.promise(request.then((r) => (r.ok ? r : Promise.reject(new Error(r.error)))), {
