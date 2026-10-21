@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
@@ -20,8 +20,8 @@ import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { unpack, type Packed } from "@/lib/pack";
 import { colorByCount } from "@/lib/palette";
-import { allProbis } from "@/lib/probis/generate";
 import { activeFilterCount, countBy, emptyFilter, filterFromParams, filterProbis, filterToParams, rabOptions, rabTree, type ProbisFilter } from "@/lib/probis/query";
 import { useRabSet } from "@/components/probis/rab-context";
 import type { RabIndex } from "@/lib/probis/rab-index";
@@ -52,13 +52,13 @@ export function BusinessProcessDashboard({
   sample,
   periods: { periods, active: activePeriod },
 }: {
-  /** Probis tervalidasi dari database; null = data contoh bawaan. */
-  data: Probis[] | null;
+  /** Probis tervalidasi dari database (dikemas ringkas); null = data contoh bawaan. */
+  data: Packed<Probis>;
   /** Data yang tampil masih data contoh. */
   sample: boolean;
   periods: PeriodOptions;
 }) {
-  const params = useSearchParams();
+  const params = useUrlParams();
   const rabs = useRabSet();
   const [filter, setFilterState] = useState<ProbisFilter>(() => filterFromParams(new URLSearchParams(params.toString()), activePeriod));
   const [selected, setSelected] = useState<Probis | null>(null);
@@ -83,7 +83,7 @@ export function BusinessProcessDashboard({
     if (adding) toast("Filter diterapkan", { description: label, action: { label: "Urungkan", onClick: () => setFilter(before) } });
   };
 
-  const all = useMemo(() => data ?? allProbis(), [data]);
+  const all = useMemo(() => unpack(data), [data]);
 
   const rows = useMemo(() => filterProbis(all, filter), [all, filter]);
   /** Widget yang juga berfungsi sebagai filter memakai data tanpa filternya sendiri, agar pilihan lain tetap terlihat. */

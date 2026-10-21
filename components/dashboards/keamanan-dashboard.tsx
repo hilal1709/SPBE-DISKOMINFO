@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
@@ -23,7 +23,6 @@ import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { allKeamanan, sampleCoverage } from "@/lib/keamanan/generate";
 import { kegiatanConfig, kegiatanKeys, kegiatanOptions, masihBerlaku, type Kegiatan } from "@/lib/keamanan/jenis";
 import { activeFilterCount, emptyFilter, filterFromParams, filterKeamanan, filterToParams, sanitizeFilter, yearsOf, type KeamananFilter } from "@/lib/keamanan/query";
 import type { Coverage, CoverageDomain } from "@/lib/keamanan/repo";
@@ -48,15 +47,15 @@ export function KeamananDashboard({
   periods: { periods, active: activePeriod },
 }: {
   /** Kegiatan tervalidasi dari database; null = data contoh bawaan. */
-  data: KegiatanKeamanan[] | null;
+  data: KegiatanKeamanan[];
   /** Dependensi keamanan yang diisi data/aplikasi/infrastruktur tervalidasi; null = contoh. */
-  coverage: Coverage | null;
+  coverage: Coverage;
   sample: boolean;
   periods: PeriodOptions;
 }) {
-  const params = useSearchParams();
-  const all = useMemo(() => data ?? allKeamanan(), [data]);
-  const coverageAll = useMemo(() => coverageFromDb ?? sampleCoverage(), [coverageFromDb]);
+  const params = useUrlParams();
+  const all = data;
+  const coverageAll = coverageFromDb;
   const [filter, setFilterState] = useState<KeamananFilter>(() =>
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod), {
       periods,

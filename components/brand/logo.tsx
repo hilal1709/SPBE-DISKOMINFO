@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { animate, motionOk } from "@/components/motion/anime";
+import { loadAnime, motionOk } from "@/components/motion/anime-lazy";
 import { cn } from "@/lib/utils";
 import { LOGO_BAR_HEIGHT, logoBars, logoColors } from "./logo-geometry";
 
@@ -33,22 +33,28 @@ export function Logo({ href = "/", subtitle = "Kabupaten Gresik", tone = "light"
 
   useEffect(() => {
     if (!motionOk()) return;
-    const intro = animate(bars(ref.current), {
-      scaleX: [0.2, 1],
-      y: [3, 0],
-      opacity: [0, 1],
-      duration: 650,
-      delay: fromBase(70, 150),
-      ease: "out(4)",
+    let intro: { revert: () => void } | undefined;
+    let active = true;
+    loadAnime().then(({ animate }) => {
+      if (!active) return;
+      intro = animate(bars(ref.current), {
+        scaleX: [0.2, 1],
+        y: [3, 0],
+        opacity: [0, 1],
+        duration: 650,
+        delay: fromBase(70, 150),
+        ease: "out(4)",
+      });
     });
     return () => {
-      intro.revert();
+      active = false;
+      intro?.revert();
     };
   }, []);
 
   const ripple = () => {
     if (!motionOk()) return;
-    animate(bars(ref.current), { y: [0, -1.4, 0], duration: 480, delay: fromBase(45), ease: "inOut(2)", composition: "replace" });
+    loadAnime().then(({ animate }) => animate(bars(ref.current), { y: [0, -1.4, 0], duration: 480, delay: fromBase(45), ease: "inOut(2)", composition: "replace" }));
   };
 
   return (

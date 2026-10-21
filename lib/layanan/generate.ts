@@ -1,7 +1,9 @@
 import { allProbis, mulberry32 } from "@/lib/probis/generate";
-import { perangkatDaerah, sampleActivePeriod as activePeriod, samplePeriods as periods, sampleRab } from "@/lib/probis/reference";
+import { perangkatDaerah, sampleActivePeriod as activePeriod, samplePeriods as periods } from "@/lib/probis/reference";
+import { sampleRab } from "@/lib/probis/sample-reference";
 import type { Layanan } from "@/lib/types";
-import { ekonomiByTarget, kementerianByRal2, layananByRal2, manfaatByTarget, ralForRab2, risikoMitigasi, sampleRal, unitPelaksana, type Metode, type Target } from "./reference";
+import { ekonomiByTarget, kementerianByRal2, layananByRal2, manfaatByTarget, ralForRab2, risikoMitigasi, unitPelaksana, type Metode, type Target } from "./reference";
+import { sampleRal } from "./sample-reference";
 
 /** Peluang metode per target: layanan kepegawaian paling banyak sudah elektronik. */
 const metodeOdds: Record<Target, [number, number]> = { masyarakat: [0.4, 0.28], usaha: [0.5, 0.25], asn: [0.68, 0.17], pemerintah: [0.45, 0.22] };
@@ -20,7 +22,7 @@ function generate(): Layanan[] {
   /** Kandidat [nama, target, RAB 2, RAL 2] untuk sekumpulan urusan RAB 2. */
   const candidates = (rab2s: string[]) =>
     rab2s.flatMap((rab2) => {
-      const ral2 = ralForRab2(rab2, sampleRab);
+      const ral2 = ralForRab2(rab2, sampleRab, sampleRal);
       return ral2 && sampleRal.children(ral2).length ? (layananByRal2[ral2] ?? []).map(([base, target]) => ({ base, target, rab2, ral2 })) : [];
     });
   const shuffle = <T,>(list: T[]) => {

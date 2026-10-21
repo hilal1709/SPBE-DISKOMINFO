@@ -1,6 +1,3 @@
-import rabReference from "./rab-reference.json";
-import { makeRabIndex, type RabNode, type RabSet } from "./rab-index";
-
 /**
  * Data referensi Domain Proses Bisnis (sumber: Detailing Requirement SPBE, sheet "Requirement Landing").
  * Sementara dipakai sebagai master; nanti diganti hasil impor master data.
@@ -123,19 +120,6 @@ export const sasaranBySektor: Record<string, number[]> = {
   "07": [15, 8],
   "08": [1, 8],
   "09": [4, 8],
-};
-
-/**
- * Referensi RAB bawaan template (versi awal). Hanya untuk data contoh dan cadangan bila database
- * tidak tersedia — referensi yang berlaku dibaca dari database per versi (lib/probis/rab.ts).
- */
-export const sampleRab = makeRabIndex(rabReference as RabNode[]);
-
-/** Kumpulan RAB cadangan: satu versi bawaan untuk semua periode contoh. */
-export const sampleRabSet: RabSet = {
-  versions: [{ id: "bawaan", name: "Perpres 132/2022", nodes: sampleRab.nodes }],
-  periodVersion: Object.fromEntries(samplePeriods.map((p) => [p, "bawaan"])),
-  activeVersion: "bawaan",
 };
 
 export const pdByCode = new Map(perangkatDaerah.map((pd) => [pd.code, pd]));

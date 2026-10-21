@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { allInfrastruktur } from "@/lib/infrastruktur/generate";
 import { DashboardSkeleton } from "@/components/blocks/dashboard-skeleton";
 import { InfrastrukturDashboard } from "@/components/dashboards/infrastruktur-dashboard";
 import { RaiProvider } from "@/components/infrastruktur/rai-context";
@@ -24,7 +25,7 @@ export default async function Page() {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <RaiProvider set={raiSet}>
-        <InfrastrukturDashboard data={fromDb ? approved.rows : null} sample={!fromDb || approved.sample} periods={periods} />
+        <InfrastrukturDashboard data={fromDb ? approved.rows : allInfrastruktur()} sample={!fromDb || approved.sample} periods={periods} />
       </RaiProvider>
     </Suspense>
   );

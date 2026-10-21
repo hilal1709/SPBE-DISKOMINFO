@@ -1,9 +1,9 @@
 "use client";
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+// ScrollTrigger didaftarkan di components/motion/reveal.tsx saja, agar tidak masuk bundel setiap halaman.
+gsap.registerPlugin(useGSAP);
 gsap.defaults({ ease: "power3.out", duration: 0.5 });
 
 /** Bungkus animasi dekoratif dengan ini agar otomatis mati saat prefers-reduced-motion. */
@@ -16,4 +16,4 @@ export const motion = {
   stagger: 0.06,
 } as const;
 
-export { gsap, ScrollTrigger, useGSAP };
+export { gsap, useGSAP };

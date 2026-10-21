@@ -1,5 +1,5 @@
 import { makeVersionedRef, refResolver, type ManagedNode, type RefChange, type VersionInfo } from "@/lib/reference/versioned";
-import { sampleRabSet } from "./reference";
+import { sampleRabSet } from "./sample-reference";
 
 /** Referensi RAB berversi untuk proses bisnis (server saja). Mesinnya generik: lib/reference/versioned.ts. */
 export const rab = makeVersionedRef({

@@ -1,8 +1,8 @@
 import { cache } from "react";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { roleAccess } from "@/lib/pengguna/grants";
-import { sessionUser } from "@/lib/pengguna/repo";
+import { roleAccess, roleGrant } from "@/lib/pengguna/grants";
+import { sessionAccess } from "@/lib/pengguna/repo";
 import type { Actor } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
 
@@ -15,9 +15,14 @@ type SessionLike = { id: string; name?: string | null; role: Role; opdId?: strin
 export async function actorFor(user: SessionLike): Promise<Actor | null> {
   let { name, role, opdId } = { name: user.name ?? "Pengguna", role: user.role, opdId: user.opdId ?? null };
   if (getDb() && user.id !== "demo-admin") {
-    const fresh = await sessionUser(user.id).catch(() => undefined);
+    // Akun + hak akses perannya dalam satu query (setiap halaman CMS & server action melewati ini).
+    const fresh = await sessionAccess(user.id).catch(() => undefined);
     if (fresh === null || fresh?.active === false) return null;
-    if (fresh) ({ name, role, opd_id: opdId } = fresh);
+    if (fresh) {
+      ({ name, role, opd_id: opdId } = fresh);
+      const access = roleGrant(role, fresh.custom_label, fresh.permissions);
+      return { id: user.id, name, role, roleName: access?.label ?? role, opdId, demo: false, perms: access?.perms ?? [] };
+    }
   }
   const access = await roleAccess(role);
   return { id: user.id, name, role, roleName: access?.label ?? role, opdId, demo: false, perms: access?.perms ?? [] };

@@ -44,20 +44,39 @@ type Props = {
   fallback?: React.ReactNode;
 };
 
+/** Loader punya versi CSS yang sudah bergerak; Lottie-nya hanya dimuat bila pemuatan berlangsung lama. */
+const LOADER_DELAY = 1500;
+
 export function Illustration({ name, label, loop = true, className, fallback }: Props) {
   const [data, setData] = useState<object | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   const lottie = useRef<LottieHandle>(null);
   const reduced = useReducedMotion();
   const entry = catalog[name];
 
+  // Lottie (±190 KB) dan JSON-nya dimuat setelah ilustrasi terlihat dan browser senggang, agar tidak
+  // bersaing dengan konten utama saat halaman pertama dibuka.
   useEffect(() => {
     let active = true;
-    entry.load().then((mod) => active && setData(mod.default));
-    return () => { active = false; };
-  }, [entry]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = () => entry.load().then((mod) => active && setData(mod.default));
+    const idle = () => ("requestIdleCallback" in window ? window.requestIdleCallback(load, { timeout: 2000 }) : (timer = setTimeout(load, 200)));
+    const observer = new IntersectionObserver(([seen]) => {
+      if (!seen.isIntersecting) return;
+      observer.disconnect();
+      timer = setTimeout(idle, name === "loader" ? LOADER_DELAY : 0);
+    });
+    observer.observe(box.current!);
+    return () => {
+      active = false;
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [entry, name]);
 
   return (
     <div
+      ref={box}
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}

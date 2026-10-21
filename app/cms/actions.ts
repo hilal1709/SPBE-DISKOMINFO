@@ -138,9 +138,13 @@ export async function previewImport(form: FormData): Promise<ActionResult<Import
     if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx atau .zip.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const locked = can.lockedOpd(actor);
-    const lockedOpd = locked ? await repo.opdCodeOf(locked) : null;
-    const existing = await repo.existingCodes(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
-    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, { existing, lockedOpd, periods: await periods.periodOptions(), rabFor: await rabFor() }) } };
+    const [lockedOpd, existing, options, resolve] = await Promise.all([
+      locked ? repo.opdCodeOf(locked) : null,
+      repo.existingCodes(upload.rows.map((r) => r.code).filter((c): c is string => !!c)),
+      periods.periodOptions(),
+      rabFor(),
+    ]);
+    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, { existing, lockedOpd, periods: options, rabFor: resolve }) } };
   } catch (error) {
     return fail(error);
   }
@@ -152,10 +156,13 @@ export async function commitImport(rows: ImportRow[], options: { status: "draft"
     const actor = await currentActor();
     if (!can.import(actor)) throw new Error("Peran Anda tidak dapat mengimpor data.");
     const locked = can.lockedOpd(actor);
-    const lockedOpd = locked ? await repo.opdCodeOf(locked) : null;
-    const existing = await repo.existingCodes(rows.map((r) => r.code).filter((c): c is string => !!c));
-    const resolve = await rabFor();
-    const valid = validateRows(rows, { existing, lockedOpd, periods: await periods.periodOptions(), rabFor: resolve }).filter((r) => !r.issues.some((i) => i.level === "error"));
+    const [lockedOpd, existing, periodList, resolve] = await Promise.all([
+      locked ? repo.opdCodeOf(locked) : null,
+      repo.existingCodes(rows.map((r) => r.code).filter((c): c is string => !!c)),
+      periods.periodOptions(),
+      rabFor(),
+    ]);
+    const valid = validateRows(rows, { existing, lockedOpd, periods: periodList, rabFor: resolve }).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...makeProbisInput(resolve(r.period)).parse({
         opd: r.opd,
@@ -193,7 +200,7 @@ export async function createPeriod(start: number, end: number): Promise<ActionRe
   try {
     await periodAdmin();
     const name = await periods.createPeriod(start, end);
-    refresh();
+    refresh({ reference: true });
     return { ok: true, data: { name } };
   } catch (error) {
     return fail(error);
@@ -204,7 +211,7 @@ export async function setActivePeriod(id: string): Promise<ActionResult> {
   try {
     await periodAdmin();
     await periods.setActivePeriod(id);
-    refresh();
+    refresh({ reference: true });
     return { ok: true, data: undefined };
   } catch (error) {
     return fail(error);
@@ -215,7 +222,7 @@ export async function deletePeriod(id: string): Promise<ActionResult> {
   try {
     await periodAdmin();
     await periods.deletePeriod(id);
-    refresh();
+    refresh({ reference: true });
     return { ok: true, data: undefined };
   } catch (error) {
     return fail(error);
@@ -251,7 +258,7 @@ const run = async <T,>(kind: RefKind, task: (ref: VersionedRef, actor: Awaited<R
     if (!(kind in refs)) throw new Error("Jenis referensi tidak dikenal.");
     const actor = await refAdmin(kind);
     const data = await task(refs[kind], actor);
-    refresh();
+    refresh({ reference: true });
     return { ok: true, data };
   } catch (error) {
     return fail(error);

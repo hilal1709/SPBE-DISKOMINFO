@@ -4,6 +4,8 @@ import { getDb } from "@/lib/db";
 import type { RencanaIndicator, RencanaRecord } from "@/lib/types";
 import { muatanConfig, type Muatan, type RencanaStatus } from "./muatan";
 import type { IndicatorValues, RencanaValues } from "./schema";
+import { cached, TAGS } from "@/lib/cache";
+import { importBatch, type ImportBatch } from "@/lib/cms/batch";
 
 /**
  * Akses data CMS Peta Rencana (server saja). Dikelola langsung oleh Diskominfo (Admin Operator) tanpa alur verifikasi:
@@ -68,7 +70,7 @@ const toRecord = (r: Row): RencanaRecord => ({
   isSample: r.is_sample,
 });
 
-export async function listRencana() {
+async function loadListRencana() {
   const { rows } = await db().query<Row>(`${SELECT} order by ap.start_year desc, r.year, r.code`);
   return rows.map(toRecord);
 }
@@ -79,7 +81,7 @@ export async function getRencana(id: string) {
 }
 
 /** Ringkasan beranda CMS: jumlah per status di periode aktif dan perubahan terbaru. */
-export async function rencanaSummary() {
+async function loadRencanaSummary() {
   const [counts, flags, recent] = await Promise.all([
     db().query(
       "select r.status, count(*)::int as n from roadmap_items r join architecture_periods ap on ap.id = r.period_id where ap.is_active group by 1",
@@ -100,16 +102,18 @@ export async function rencanaSummary() {
   };
 }
 
-async function ids(client: PoolClient, v: Pick<RencanaValues, "opd" | "period">) {
-  const { rows } = await client.query("select (select id from opd where code = $1) as opd_id, (select id from architecture_periods where name = $2) as period_id", [v.opd, v.period]);
+async function ids(client: PoolClient, v: Pick<RencanaValues, "opd" | "period">, batch?: ImportBatch) {
+  const read = batch?.lookup ?? ((sql: string, params: unknown[]) => client.query(sql, params));
+  const { rows } = await read("select (select id from opd where code = $1) as opd_id, (select id from architecture_periods where name = $2) as period_id", [v.opd, v.period]);
   if (!rows[0].opd_id) throw new Error("Perangkat daerah tidak ditemukan.");
   if (!rows[0].period_id) throw new Error(`Periode “${v.period}” belum terdaftar. Tambahkan di Pengaturan › Periode Arsitektur.`);
   return { opd_id: rows[0].opd_id as string, period_id: rows[0].period_id as string };
 }
 
 /** ID kegiatan otomatis: GSK-PRN {singkatan muatan}.{urutan 3 digit}. */
-async function nextCode(client: PoolClient, muatan: Muatan) {
+async function nextCode(client: PoolClient, muatan: Muatan, batch?: ImportBatch) {
   const prefix = `GSK-PRN ${muatanConfig[muatan].abbr}.`;
+  if (batch) return batch.code(prefix, 3);
   const { rows } = await client.query("select code from roadmap_items where code like $1", [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
@@ -120,9 +124,9 @@ const columns = (v: RencanaValues) => [v.name, v.year, v.sasaran, v.inisiatif, v
 const COLS = "name, year, sasaran, inisiatif, muatan, program, target, jumlah, satuan, status, realisasi, evaluation_note, source, source_ref";
 const N = COLS.split(", ").length;
 
-export async function insertRencana(client: PoolClient, v: RencanaValues, actor: Actor, extra: { code?: string; deferredFrom?: string; sample?: boolean } = {}) {
-  const ref = await ids(client, v);
-  const code = extra.code || (await nextCode(client, v.muatan));
+export async function insertRencana(client: PoolClient, v: RencanaValues, actor: Actor, extra: { code?: string; deferredFrom?: string; sample?: boolean } = {}, batch?: ImportBatch) {
+  const ref = await ids(client, v, batch);
+  const code = extra.code || (await nextCode(client, v.muatan, batch));
   const values = [code, ...columns(v), ref.opd_id, ref.period_id, actor.id, extra.deferredFrom ?? null, extra.sample ?? false];
   const { rows } = await client.query(
     `insert into roadmap_items (code, ${COLS}, opd_id, period_id, created_by, deferred_from, is_sample)
@@ -222,6 +226,7 @@ export function importRows(rows: (RencanaValues & { code?: string | null })[], a
       ? (await client.query("select r.id, r.code, ap.name as period from roadmap_items r join architecture_periods ap on ap.id = r.period_id where r.code = any($1)", [codes])).rows
       : [];
     const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r.id as string]));
+    const batch = importBatch(client, "roadmap_items", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
       if (existing) {
@@ -229,14 +234,15 @@ export function importRows(rows: (RencanaValues & { code?: string | null })[], a
           skipped++;
           continue;
         }
-        const ref = await ids(client, row);
+        const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing, ...columns(row), ref.opd_id, ref.period_id, actor.id]);
         updated++;
       } else {
-        await insertRencana(client, row, actor, { code: row.code ?? undefined });
+        await insertRencana(client, row, actor, { code: row.code ?? undefined }, batch);
         created++;
       }
     }
+    await batch.flush();
     return { created, updated, skipped };
   });
 }
@@ -287,3 +293,7 @@ export async function saveIndicator(v: IndicatorValues, { sample = false } = {})
 export async function deleteIndicator(id: string) {
   await db().query("delete from roadmap_indicators where id = $1", [id]);
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const rencanaSummary = cached(loadRencanaSummary, "peta-rencana/cms-repo:rencanaSummary", [TAGS.content]);
+export const listRencana = cached(loadListRencana, "peta-rencana/cms-repo:listRencana", [TAGS.content]);

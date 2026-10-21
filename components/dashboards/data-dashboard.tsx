@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
@@ -23,7 +23,6 @@ import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { allData } from "@/lib/data/generate";
 import { categorical, colorByCount } from "@/lib/palette";
 import { activeFilterCount, countBy, emptyFilter, filterData, filterFromParams, filterToParams, radOptions, radTree, sanitizeFilter, type DataFilter } from "@/lib/data/query";
 import { jenisLabel, jenisOptions, sifatLabel, sifatOptions, validitasOptions, type Jenis, type Sifat } from "@/lib/data/reference";
@@ -60,13 +59,13 @@ export function DataDashboard({
   periods: { periods, active: activePeriod },
 }: {
   /** Data disetujui dari database; null = data contoh bawaan. */
-  data: DataInfo[] | null;
+  data: DataInfo[];
   sample: boolean;
   periods: PeriodOptions;
 }) {
-  const params = useSearchParams();
+  const params = useUrlParams();
   const rads = useRadSet();
-  const all = useMemo(() => data ?? allData(), [data]);
+  const all = data;
   const [filter, setFilterState] = useState<DataFilter>(() => {
     const parsed = filterFromParams(new URLSearchParams(params.toString()), activePeriod);
     const rad = rads.forPeriod(periods.includes(parsed.period) ? parsed.period : activePeriod);

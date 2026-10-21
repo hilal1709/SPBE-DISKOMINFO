@@ -1,6 +1,9 @@
 "use client";
 import { useRef } from "react";
-import { MOTION_OK, ScrollTrigger, gsap, motion, useGSAP } from "./gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { MOTION_OK, gsap, motion, useGSAP } from "./gsap";
+
+gsap.registerPlugin(ScrollTrigger);
 
 /**
  * Menganimasikan setiap turunan bertanda `data-reveal` saat masuk viewport (stagger, sekali jalan).
@@ -11,20 +14,14 @@ export function Reveal({ stagger = motion.stagger, ...props }: React.ComponentPr
 
   useGSAP(
     () => {
-      const items = gsap.utils.toArray<HTMLElement>("[data-reveal]", ref.current);
       const mm = gsap.matchMedia();
       mm.add(MOTION_OK, () => {
-        const reveal = (batch: Element[]) => gsap.to(batch, { opacity: 1, y: 0, duration: 0.6, stagger, overwrite: true });
-        ScrollTrigger.batch(items, { start: "top 96%", once: true, onEnter: reveal });
-
-        // Elemen [data-reveal] yang dirender belakangan (mis. setelah filter berubah) langsung ditampilkan.
-        const observer = new MutationObserver((mutations) => {
-          const added = mutations.flatMap((m) => [...m.addedNodes]).filter((n): n is HTMLElement => n instanceof HTMLElement);
-          const fresh = added.flatMap((n) => [...(n.matches("[data-reveal]") ? [n] : []), ...n.querySelectorAll<HTMLElement>("[data-reveal]")]);
-          if (fresh.length) reveal(fresh);
-        });
-        observer.observe(ref.current!, { childList: true, subtree: true });
-        return () => observer.disconnect();
+        // Yang sudah terlihat dianimasikan CSS (globals.css); yang masih di bawah layar muncul saat digulir.
+        // Elemen yang dirender belakangan (mis. setelah filter berubah) juga memakai animasi CSS itu.
+        const below = gsap.utils.toArray<HTMLElement>("[data-reveal]", ref.current).filter((el) => el.getBoundingClientRect().top > window.innerHeight);
+        if (!below.length) return;
+        gsap.set(below, { opacity: 0, y: 14 });
+        ScrollTrigger.batch(below, { start: "top 96%", once: true, onEnter: (batch) => gsap.to(batch, { opacity: 1, y: 0, duration: 0.6, stagger, overwrite: true }) });
       });
     },
     { scope: ref },

@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { Infrastruktur } from "@/lib/types";
 import { RAI_JOIN, RAI_SQL } from "./cms-repo";
+import { cached, TAGS } from "@/lib/cache";
 
 /** Akses data Domain Infrastruktur untuk dashboard publik (server saja). */
 
@@ -25,7 +26,7 @@ const PUBLIC_LINKS = `
             where x.infrastructure_id = i.id and pb.status = 'approved'), '[]') as probis`;
 
 /** Komponen yang sudah divalidasi. Kosong bila modul CMS infrastruktur belum berisi data. */
-export async function listApprovedInfrastruktur(): Promise<{ rows: Infrastruktur[]; sample: boolean }> {
+async function loadListApprovedInfrastruktur(): Promise<{ rows: Infrastruktur[]; sample: boolean }> {
   const pool = getDb();
   if (!pool) throw new Error("Database belum dikonfigurasi (DATABASE_URL).");
   const { rows } = await pool.query(
@@ -61,3 +62,6 @@ export async function listApprovedInfrastruktur(): Promise<{ rows: Infrastruktur
   }));
   return { rows: mapped, sample: rows.some((r) => r.is_sample) };
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const listApprovedInfrastruktur = cached(loadListApprovedInfrastruktur, "infrastruktur/repo:listApprovedInfrastruktur", [TAGS.content]);

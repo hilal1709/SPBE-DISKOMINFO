@@ -1,6 +1,10 @@
+import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
+import { cached, TAGS } from "@/lib/cache";
+import { codeSequence, insertMany } from "@/lib/cms/batch";
 import { getDb } from "@/lib/db";
+import { pack, type Packed } from "@/lib/pack";
 import type { Probis, ProbisRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import type { ProbisValues } from "./schema";
 
@@ -76,8 +80,98 @@ export async function getReviews(id: string): Promise<ProbisReview[]> {
   return rows.map((r) => ({ id: r.id, actorName: r.actor_name, fromStatus: r.from_status, toStatus: r.to_status, note: r.note, createdAt: r.created_at.toISOString() }));
 }
 
-/** Probis yang sudah tervalidasi, dalam bentuk data dashboard publik. `sample` = masih berisi data contoh. */
-export async function listApproved(): Promise<{ rows: Probis[]; sample: boolean }> {
+export type ProbisTab = "all" | "review" | SubmissionStatus;
+export type ProbisPageQuery = {
+  opdId: string | null;
+  tab: ProbisTab;
+  pd: string[];
+  rab1: string[];
+  /** Nama periode, atau "__all". */
+  period: string;
+  q: string;
+  /** Halaman, mulai 0. */
+  page: number;
+  pageSize: number;
+  sort: { key: string; dir: 1 | -1 } | null;
+};
+
+/** Kolom yang boleh dipakai mengurutkan tabel CMS (kunci = `sortKey` kolom di components/cms/probis-table.tsx). */
+const PROBIS_SORT: Record<string, string> = {
+  status: "pb.status",
+  code: "pb.code",
+  name: "pb.name",
+  opd: "o.name",
+  rab3: "r3.code",
+  probisStatus: "pb.probis_status",
+  rab1: "r1.code",
+  rab2: "r2.code",
+  rabL4: "pb.rab_l4",
+  rabL5: "pb.rab_l5",
+  period: "ap.name",
+};
+
+/**
+ * Satu halaman tabel probis CMS beserta jumlah per tab status, dihitung di database (bukan seluruh probis
+ * dikirim ke browser). Dua query berjalan bersamaan; hasilnya di-cache per kombinasi filter.
+ */
+async function loadProbisPage(query: ProbisPageQuery) {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (query.opdId) where.push(`pb.opd_id = $${params.push(query.opdId)}`);
+  if (query.pd.length) where.push(`o.code = any($${params.push(query.pd)})`);
+  if (query.rab1.length) where.push(`r1.code = any($${params.push(query.rab1)})`);
+  if (query.period !== "__all") where.push(`ap.name = $${params.push(query.period)}`);
+  const q = query.q.trim();
+  if (q) where.push(`(pb.code ilike $${params.push(`%${q}%`)} or pb.name ilike $${params.length} or o.name ilike $${params.length})`);
+  const scoped = where.length ? `where ${where.join(" and ")}` : "";
+
+  const tabWhere = query.tab === "all" ? "" : query.tab === "review" ? "pb.rab_review" : `pb.status::text = $${params.length + 1}`;
+  const pageParams = query.tab === "all" || query.tab === "review" ? [...params] : [...params, query.tab];
+  const filter = [scoped, tabWhere && (scoped ? `and ${tabWhere}` : `where ${tabWhere}`)].join(" ");
+  const column = (query.sort && PROBIS_SORT[query.sort.key]) || null;
+  const order = column ? `${column} ${query.sort!.dir === 1 ? "asc" : "desc"} nulls last, pb.id` : "pb.updated_at desc, pb.id";
+
+  const [rows, counts] = await Promise.all([
+    db().query<Row>(`${SELECT} ${filter} order by ${order} limit ${query.pageSize} offset ${query.page * query.pageSize}`, pageParams),
+    db().query(
+      `select count(*)::int as "all", count(*) filter (where pb.rab_review)::int as review,
+              count(*) filter (where pb.status = 'draft')::int as draft, count(*) filter (where pb.status = 'submitted')::int as submitted,
+              count(*) filter (where pb.status = 'verified')::int as verified, count(*) filter (where pb.status = 'approved')::int as approved,
+              count(*) filter (where pb.status = 'rejected')::int as rejected
+       from process_businesses pb
+       join opd o on o.id = pb.opd_id
+       left join architecture_periods ap on ap.id = pb.period_id
+       left join rab_references r3 on r3.id = pb.rab_id
+       left join rab_references r2 on r2.id = r3.parent_id
+       left join rab_references r1 on r1.id = r2.parent_id
+       ${scoped}`,
+      params,
+    ),
+  ]);
+  const tabCounts = counts.rows[0] as Record<ProbisTab, number>;
+  return { rows: rows.rows.map(toRecord), counts: tabCounts, total: tabCounts[query.tab] ?? 0 };
+}
+
+export const probisPage = cached(loadProbisPage, "probis/repo:probisPage", [TAGS.content]);
+
+/** Ada probis sama sekali dalam cakupan pengguna (untuk keadaan kosong tabel CMS). */
+export const hasProbis = cached(
+  async (opdId: string | null) => (await db().query(`select exists (select 1 from process_businesses ${opdId ? "where opd_id = $1" : ""}) as found`, opdId ? [opdId] : [])).rows[0].found as boolean,
+  "probis/repo:hasProbis",
+  [TAGS.content],
+);
+
+/** Probis yang sudah tervalidasi, dikemas ringkas untuk dashboard publik. `sample` = masih berisi data contoh. */
+export const listApproved = cached(
+  async (): Promise<{ rows: Packed<Probis>; sample: boolean }> => {
+    const { rows, sample } = await loadApproved();
+    return { rows: pack(rows), sample };
+  },
+  "probis/repo:listApproved",
+  [TAGS.content],
+);
+
+async function loadApproved(): Promise<{ rows: Probis[]; sample: boolean }> {
   const { rows } = await db().query<Row>(`${SELECT} where pb.status = 'approved' and r3.code is not null`);
   const mapped = rows.map((r) => ({
     id: r.code!,
@@ -98,7 +192,7 @@ export async function listApproved(): Promise<{ rows: Probis[]; sample: boolean 
 }
 
 /** Ringkasan beranda CMS: jumlah per status dan aktivitas terbaru dalam cakupan pengguna. */
-export async function cmsSummary(opdId: string | null) {
+async function loadCmsSummary(opdId: string | null) {
   const scope = opdId ? "where pb.opd_id = $1" : "";
   const params = opdId ? [opdId] : [];
   const counts = await db().query(`select pb.status::text as status, count(*)::int as n from process_businesses pb ${scope} group by 1`, params);
@@ -240,36 +334,78 @@ export function transition(id: string, from: SubmissionStatus, to: SubmissionSta
   });
 }
 
-/** Simpan hasil impor dalam satu transaksi. Baris ber-ID yang sudah ada diperbarui bila `update` aktif. */
+/** OPD, periode, dan RAB L3 untuk semua baris impor dalam satu query; galat sama dengan `ids` untuk baris pertama yang gagal. */
+async function idsMany(client: PoolClient, rows: Pick<ProbisValues, "opd" | "period" | "rab3">[]) {
+  const { rows: found } = await client.query(
+    `select t.opd, t.period, t.rab3,
+            (select id from opd where code = t.opd) as opd_id,
+            (select id from architecture_periods where name = t.period) as period_id,
+            (select r.id from rab_references r join architecture_periods ap on ap.rab_version_id = r.version_id
+              where ap.name = t.period and r.code = t.rab3 and r.level = 3) as rab_id
+     from (select distinct * from unnest($1::text[], $2::text[], $3::text[])) t(opd, period, rab3)`,
+    [rows.map((r) => r.opd), rows.map((r) => r.period), rows.map((r) => r.rab3)],
+  );
+  const byKey = new Map(found.map((f) => [`${f.opd}|${f.period}|${f.rab3}`, f]));
+  // Diperiksa saat baris dipakai: baris yang dilewati (sudah ada, tanpa pembaruan) tidak menggagalkan impor.
+  return (values: Pick<ProbisValues, "opd" | "period" | "rab3">) => {
+    const ref = byKey.get(`${values.opd}|${values.period}|${values.rab3}`);
+    if (!ref?.opd_id) throw new Error("Perangkat Daerah tidak ditemukan.");
+    if (!ref.period_id) throw new Error(`Periode “${values.period}” belum terdaftar. Tambahkan di Pengaturan › Periode Arsitektur.`);
+    if (!ref.rab_id) throw new Error(`RAB Level 3 ${values.rab3} tidak ada di versi RAB periode ${values.period}.`);
+    return ref as { opd_id: string; period_id: string; rab_id: string };
+  };
+}
+
+const INSERT_COLUMNS = ["id", "code", "name", "description", "rab_l4", "rab_l5", "strategic_goal", "iku", "iku_target", "iku_realization", "probis_status", "opd_id", "period_id", "rab_id", "status", "created_by", "submitted_by"];
+const REVIEW_COLUMNS = ["process_business_id", "actor_id", "actor_name", "from_status", "to_status", "note"];
+
+/**
+ * Simpan hasil impor dalam satu transaksi. Baris ber-ID yang sudah ada diperbarui bila `update` aktif.
+ * Lookup, kode baru, baris baru, riwayat, dan penautan L4/L5 dikirim sekaligus, bukan per baris.
+ */
 export function importRows(rows: (ProbisValues & { code?: string | null })[], actor: Actor, status: SubmissionStatus, update: boolean) {
   return tx(async (client) => {
     let created = 0, updated = 0, skipped = 0;
+    const codes = rows.map((r) => r.code).filter((c): c is string => !!c);
+    const found = codes.length
+      ? (await client.query("select pb.id, pb.code, pb.status::text, ap.name as period from process_businesses pb join architecture_periods ap on ap.id = pb.period_id where pb.code = any($1)", [codes])).rows
+      : [];
+    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const refOf = await idsMany(client, rows);
+    const next = codeSequence(client, "process_businesses", codes);
+    const prefixOf = (row: ProbisValues) => `GSK-DAB ${row.rab3.slice(4)}.`;
+    await next.preload(rows.filter((r) => !r.code).map(prefixOf));
+    const inserts: unknown[][] = [];
+    const reviews: unknown[][] = [];
+    const touched: string[] = [];
     for (const row of rows) {
-      const existing = row.code
-        ? (await client.query(
-            "select pb.id, pb.status::text from process_businesses pb join architecture_periods ap on ap.id = pb.period_id where pb.code = $1 and ap.name = $2",
-            [row.code, row.period],
-          )).rows[0]
-        : undefined;
+      const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
+      if (existing && !update) {
+        skipped++;
+        continue;
+      }
+      const ref = refOf(row);
       if (existing) {
-        if (!update) {
-          skipped++;
-          continue;
-        }
-        const ref = await ids(client, row);
         await client.query(
           `update process_businesses set name=$2, description=$3, rab_l4=$4, rab_l5=$5, strategic_goal=$6, iku=$7, iku_target=$8, iku_realization=$9,
              probis_status=$10, opd_id=$11, period_id=$12, rab_id=$13, rab_review = false, updated_at = now() where id = $1`,
           [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.rab_id],
         );
-        await linkDeep(client, [existing.id]);
-        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor");
+        touched.push(existing.id);
+        reviews.push([existing.id, actor.id, actor.name, existing.status, existing.status, "Diperbarui lewat impor"]);
         updated++;
       } else {
-        await insert(client, row, actor, status, row.code ?? undefined);
+        const id = randomUUID();
+        const code = row.code || (await next(prefixOf(row)));
+        inserts.push([id, code, ...columns(row), ref.opd_id, ref.period_id, ref.rab_id, status, actor.id, status === "submitted" ? actor.id : null]);
+        touched.push(id);
+        reviews.push([id, actor.id, actor.name, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat"]);
         created++;
       }
     }
+    await insertMany(client, "process_businesses", INSERT_COLUMNS, inserts);
+    if (touched.length) await linkDeep(client, touched);
+    await insertMany(client, "probis_reviews", REVIEW_COLUMNS, reviews);
     return { created, updated, skipped };
   });
 }
@@ -296,7 +432,11 @@ export async function opdIdOf(code: string) {
   return (rows[0]?.id as string | undefined) ?? null;
 }
 
-export async function opdCodeOf(id: string) {
+async function loadOpdCodeOf(id: string) {
   const { rows } = await db().query("select code from opd where id = $1", [id]);
   return (rows[0]?.code as string | undefined) ?? null;
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const cmsSummary = cached(loadCmsSummary, "probis/repo:cmsSummary", [TAGS.content]);
+export const opdCodeOf = cached(loadOpdCodeOf, "probis/repo:opdCodeOf", [TAGS.reference]);

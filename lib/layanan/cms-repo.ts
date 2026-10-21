@@ -3,6 +3,8 @@ import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import type { LayananRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import type { LayananValues } from "./schema";
+import { cached, TAGS } from "@/lib/cache";
+import { importBatch, type ImportBatch } from "@/lib/cms/batch";
 
 /** Akses data CMS Domain Layanan (server saja). Pola sama dengan lib/probis/repo.ts. */
 
@@ -77,7 +79,7 @@ const toRecord = (r: Row): LayananRecord => ({
 });
 
 /** Daftar layanan sesuai cakupan: operator hanya OPD-nya; `statuses` opsional. */
-export async function listLayanan({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
+async function loadListLayanan({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
   const where: string[] = [];
   const params: unknown[] = [];
   if (opdId) where.push(`s.opd_id = $${params.push(opdId)}`);
@@ -100,7 +102,7 @@ export async function getReviews(id: string): Promise<ProbisReview[]> {
 }
 
 /** Ringkasan beranda CMS untuk layanan dalam cakupan pengguna. */
-export async function layananSummary(opdId: string | null) {
+async function loadLayananSummary(opdId: string | null) {
   const scope = opdId ? "where s.opd_id = $1" : "";
   const params = opdId ? [opdId] : [];
   const [counts, flags, recent] = await Promise.all([
@@ -138,8 +140,9 @@ export async function probisOptions(opd: string, period: string) {
   return rows.map((r) => ({ code: r.code as string, name: r.name as string }));
 }
 
-async function ids(client: PoolClient, v: Pick<LayananValues, "opd" | "period" | "ral3" | "rab2" | "probis">) {
-  const { rows } = await client.query(
+async function ids(client: PoolClient, v: Pick<LayananValues, "opd" | "period" | "ral3" | "rab2" | "probis">, batch?: ImportBatch) {
+  const read = batch?.lookup ?? ((sql: string, params: unknown[]) => client.query(sql, params));
+  const { rows } = await read(
     `select (select id from opd where code = $1) as opd_id,
             (select id from architecture_periods where name = $2) as period_id,
             (select r.id from ral_references r join architecture_periods ap on ap.ral_version_id = r.version_id
@@ -155,7 +158,7 @@ async function ids(client: PoolClient, v: Pick<LayananValues, "opd" | "period" |
   if (v.rab2 && !found.rab_id) throw new Error(`Urusan ${v.rab2} tidak ada di versi RAB periode ${v.period}.`);
   // Proses bisnis yang dilayani harus berada di periode yang sama.
   const probis = v.probis.length
-    ? (await client.query("select id, code from process_businesses where period_id = $1 and code = any($2)", [found.period_id, v.probis])).rows
+    ? (await read("select id, code from process_businesses where period_id = $1 and code = any($2)", [found.period_id, v.probis])).rows
     : [];
   const missing = v.probis.filter((code) => !probis.some((p) => p.code === code));
   if (missing.length) throw new Error(`Proses bisnis ${missing.slice(0, 3).join(", ")} tidak ada di periode ${v.period}.`);
@@ -163,14 +166,16 @@ async function ids(client: PoolClient, v: Pick<LayananValues, "opd" | "period" |
 }
 
 /** ID layanan otomatis: GSK-LYN {kode RAL L3 tanpa "RAL."}.{urutan}. */
-async function nextCode(client: PoolClient, ral3: string) {
+async function nextCode(client: PoolClient, ral3: string, batch?: ImportBatch) {
   const prefix = `GSK-LYN ${ral3.slice(4)}.`;
+  if (batch) return batch.code(prefix, 2);
   const { rows } = await client.query("select code from services where code like $1", [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(2, "0")}`;
 }
 
-async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null) {
+async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null, batch?: ImportBatch) {
+  if (batch) return batch.later("validation_history", ["service_id", "actor_id", "actor_name", "from_status", "to_status", "note"], [id, actor.id, actor.name, from, to, note ?? null]);
   await client.query("insert into validation_history (service_id, actor_id, actor_name, from_status, to_status, note) values ($1,$2,$3,$4,$5,$6)", [
     id,
     actor.id,
@@ -182,9 +187,10 @@ async function review(client: PoolClient, id: string, actor: Actor, from: Submis
 }
 
 /** Tautkan isian RAL L4/L5 ke referensi bila kodenya terdaftar di bawah induknya (selain itu tetap teks bebas). */
-async function linkDeep(client: PoolClient, id: string) {
-  await client.query("update services s set ral4_id = (select r.id from ral_references r where r.code = s.ral_l4 and r.level = 4 and r.parent_id = s.ral_id) where s.id = $1", [id]);
-  await client.query("update services s set ral5_id = (select r.id from ral_references r where r.code = s.ral_l5 and r.level = 5 and r.parent_id = s.ral4_id) where s.id = $1", [id]);
+async function linkDeep(client: PoolClient, id: string | string[], batch?: ImportBatch) {
+  if (batch) return void batch.touched.push(...[id].flat());
+  await client.query("update services s set ral4_id = (select r.id from ral_references r where r.code = s.ral_l4 and r.level = 4 and r.parent_id = s.ral_id) where s.id = any($1)", [[id].flat()]);
+  await client.query("update services s set ral5_id = (select r.id from ral_references r where r.code = s.ral_l5 and r.level = 5 and r.parent_id = s.ral4_id) where s.id = any($1)", [[id].flat()]);
 }
 
 async function linkProbis(client: PoolClient, id: string, probis: string[]) {
@@ -194,9 +200,9 @@ async function linkProbis(client: PoolClient, id: string, probis: string[]) {
 
 const columns = (v: LayananValues) => [v.name, v.tujuan, v.fungsi, v.unit, v.target, v.metode, v.ralL4, v.ralL5, v.manfaat, v.ekonomi, v.risiko, v.mitigasi, v.kl];
 
-async function insert(client: PoolClient, v: LayananValues, actor: Actor, status: SubmissionStatus, code?: string) {
-  const ref = await ids(client, v);
-  const finalCode = code || (await nextCode(client, v.ral3));
+async function insert(client: PoolClient, v: LayananValues, actor: Actor, status: SubmissionStatus, code?: string, batch?: ImportBatch) {
+  const ref = await ids(client, v, batch);
+  const finalCode = code || (await nextCode(client, v.ral3, batch));
   const { rows } = await client.query(
     `insert into services (code, name, purpose, function_name, unit, target, method, ral_l4, ral_l5, benefit, economic_potential, risk, mitigation, kl,
        opd_id, period_id, ral_id, rab_id, status, created_by, submitted_by)
@@ -204,9 +210,9 @@ async function insert(client: PoolClient, v: LayananValues, actor: Actor, status
     [finalCode, ...columns(v), ref.opd_id, ref.period_id, ref.ral_id, ref.rab_id, status, actor.id, status === "submitted" ? actor.id : null],
   );
   const id = rows[0].id as string;
-  await linkDeep(client, id);
+  await linkDeep(client, id, batch);
   await linkProbis(client, id, ref.probis);
-  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat");
+  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat", batch);
   return id;
 }
 
@@ -264,6 +270,7 @@ export function importRows(rows: (LayananValues & { code?: string | null })[], a
       ? (await client.query("select s.id, s.status::text, s.code, ap.name as period from services s join architecture_periods ap on ap.id = s.period_id where s.code = any($1)", [codes])).rows
       : [];
     const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const batch = importBatch(client, "services", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
       if (existing) {
@@ -271,17 +278,18 @@ export function importRows(rows: (LayananValues & { code?: string | null })[], a
           skipped++;
           continue;
         }
-        const ref = await ids(client, row);
+        const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.ral_id, ref.rab_id]);
-        await linkDeep(client, existing.id);
+        await linkDeep(client, existing.id, batch);
         await linkProbis(client, existing.id, ref.probis);
-        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor");
+        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor", batch);
         updated++;
       } else {
-        await insert(client, row, actor, status, row.code ?? undefined);
+        await insert(client, row, actor, status, row.code ?? undefined, batch);
         created++;
       }
     }
+    await batch.flush((touched) => linkDeep(client, touched));
     return { created, updated, skipped };
   });
 }
@@ -298,3 +306,7 @@ export async function clearSamples() {
   const { rowCount } = await db().query("delete from services where is_sample");
   return rowCount ?? 0;
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const layananSummary = cached(loadLayananSummary, "layanan/cms-repo:layananSummary", [TAGS.content]);
+export const listLayanan = cached(loadListLayanan, "layanan/cms-repo:listLayanan", [TAGS.content]);

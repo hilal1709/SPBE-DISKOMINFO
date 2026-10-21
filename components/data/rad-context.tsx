@@ -1,8 +1,7 @@
 "use client";
 import { createRefContext } from "@/components/reference/ref-context";
-import { sampleRadSet } from "@/lib/data/reference";
 
-const rad = createRefContext(sampleRadSet);
+const rad = createRefContext();
 
 /** Menyediakan referensi RAD (dari database, per versi) untuk komponen klien. */
 export const RadProvider = rad.Provider;

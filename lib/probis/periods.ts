@@ -1,3 +1,4 @@
+import { cached, TAGS } from "@/lib/cache";
 import { getDb } from "@/lib/db";
 import { sampleActivePeriod, samplePeriods, type PeriodOptions } from "./reference";
 
@@ -83,11 +84,21 @@ export async function listPeriods(): Promise<Period[]> {
   }));
 }
 
+/** Nama periode + periode aktif saja (tanpa hitungan isian), dibagi semua request. */
+const loadPeriodOptions = cached(
+  async (): Promise<PeriodOptions | null> => {
+    const { rows } = await db().query<{ name: string; active: boolean }>("select name, coalesce(is_active, false) as active from architecture_periods order by start_year");
+    return rows.length ? { periods: rows.map((p) => p.name), active: (rows.find((p) => p.active) ?? rows.at(-1)!).name } : null;
+  },
+  "period-options",
+  [TAGS.reference],
+);
+
 /** Daftar nama periode + periode aktif. Bila database belum tersedia, pakai periode data contoh. */
 export async function periodOptions(): Promise<PeriodOptions> {
   try {
-    const list = await listPeriods();
-    if (list.length) return { periods: list.map((p) => p.name), active: (list.find((p) => p.active) ?? list.at(-1)!).name };
+    const options = await loadPeriodOptions();
+    if (options) return options;
   } catch {
     // Database tidak tersedia: lanjut ke periode contoh.
   }

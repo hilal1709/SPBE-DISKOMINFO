@@ -1,9 +1,10 @@
 import { allLayanan } from "@/lib/layanan/generate";
-import { sampleRal } from "@/lib/layanan/reference";
+import { sampleRal } from "@/lib/layanan/sample-reference";
 import { mulberry32 } from "@/lib/probis/generate";
 import { pdByCode, perangkatDaerah, sampleActivePeriod as activePeriod, samplePeriods as periods } from "@/lib/probis/reference";
 import type { DataInfo, Layanan } from "@/lib/types";
-import { radForRal2, sampleRad, type Jenis, type Sifat } from "./reference";
+import type { Jenis, Sifat } from "./reference";
+import { radForRal2, sampleRad } from "./sample-reference";
 
 /** Pola nama data turunan sebuah layanan; pola pertama selalu dipakai. */
 const patterns = ["Data %", "Data Permohonan %", "Rekapitulasi %", "Data Penerima %", "Register %", "Data Capaian %"];

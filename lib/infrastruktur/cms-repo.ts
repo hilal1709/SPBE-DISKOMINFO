@@ -4,6 +4,8 @@ import { getDb } from "@/lib/db";
 import type { InfrastrukturRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import { infraTargets, jenisConfig, jenisLabel, type InfraJenis } from "./jenis";
 import type { InfrastrukturValues } from "./schema";
+import { cached, TAGS } from "@/lib/cache";
+import { importBatch, type ImportBatch } from "@/lib/cms/batch";
 
 /** Akses data CMS Domain Infrastruktur (server saja). Pola sama dengan lib/aplikasi/cms-repo.ts. */
 
@@ -112,7 +114,7 @@ const toRecord = (r: Row): InfrastrukturRecord => ({
 });
 
 /** Daftar komponen sesuai cakupan: operator hanya OPD-nya; `statuses` opsional. */
-export async function listInfrastruktur({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
+async function loadListInfrastruktur({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
   const where: string[] = [];
   const params: unknown[] = [];
   if (opdId) where.push(`i.opd_id = $${params.push(opdId)}`);
@@ -135,7 +137,7 @@ export async function getReviews(id: string): Promise<ProbisReview[]> {
 }
 
 /** Ringkasan beranda CMS untuk infrastruktur dalam cakupan pengguna. */
-export async function infrastrukturSummary(opdId: string | null) {
+async function loadInfrastrukturSummary(opdId: string | null) {
   const scope = opdId ? "where i.opd_id = $1" : "";
   const params = opdId ? [opdId] : [];
   const [counts, flags, recent] = await Promise.all([
@@ -184,8 +186,9 @@ export async function dependencyOptions(opd: string, period: string) {
   return { infra: infra.rows.map((r) => ({ code: r.code as string, name: r.name as string, opd: r.opd as string, jenis: r.kind as InfraJenis })), aplikasi: map(aplikasi.rows), data: map(data.rows), probis: map(probis.rows) };
 }
 
-async function ids(client: PoolClient, v: Pick<InfrastrukturValues, "opd" | "period" | "rai" | "jenis" | "relasi" | "aplikasi" | "data" | "probis">, self?: string) {
-  const { rows } = await client.query(
+async function ids(client: PoolClient, v: Pick<InfrastrukturValues, "opd" | "period" | "rai" | "jenis" | "relasi" | "aplikasi" | "data" | "probis">, self?: string, batch?: ImportBatch) {
+  const read = batch?.lookup ?? ((sql: string, params: unknown[]) => client.query(sql, params));
+  const { rows } = await read(
     `select (select id from opd where code = $1) as opd_id,
             (select id from architecture_periods where name = $2) as period_id,
             (select r.id from rai_references r join architecture_periods ap on ap.rai_version_id = r.version_id
@@ -197,7 +200,7 @@ async function ids(client: PoolClient, v: Pick<InfrastrukturValues, "opd" | "per
   if (!found.period_id) throw new Error(`Periode “${v.period}” belum terdaftar. Tambahkan di Pengaturan › Periode Arsitektur.`);
   if (!found.rai_id) throw new Error(`RAI ${v.rai} tidak ada di versi RAI periode ${v.period}.`);
   const pick = (table: string, codes: string[], cols = "id, code") =>
-    codes.length ? client.query(`select ${cols} from ${table} where period_id = $1 and code = any($2)`, [found.period_id, codes]) : Promise.resolve({ rows: [] as Record<string, string>[] });
+    codes.length ? read(`select ${cols} from ${table} where period_id = $1 and code = any($2)`, [found.period_id, codes]) : Promise.resolve({ rows: [] as Record<string, string>[] });
   // Berurutan: satu klien transaksi tidak boleh menjalankan kueri paralel.
   const infra = await pick("infrastructures", v.relasi, "id, code, kind");
   const aplikasi = await pick("applications", v.aplikasi);
@@ -228,14 +231,16 @@ async function ids(client: PoolClient, v: Pick<InfrastrukturValues, "opd" | "per
 }
 
 /** ID komponen otomatis: GSK-INF {kode RAI tanpa "RAI."}.{urutan 3 digit}. */
-async function nextCode(client: PoolClient, rai: string) {
+async function nextCode(client: PoolClient, rai: string, batch?: ImportBatch) {
   const prefix = `GSK-INF ${rai.slice(4)}.`;
+  if (batch) return batch.code(prefix, 3);
   const { rows } = await client.query("select code from infrastructures where code like $1", [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
-async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null) {
+async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null, batch?: ImportBatch) {
+  if (batch) return batch.later("validation_history", ["infrastructure_id", "actor_id", "actor_name", "from_status", "to_status", "note"], [id, actor.id, actor.name, from, to, note ?? null]);
   await client.query("insert into validation_history (infrastructure_id, actor_id, actor_name, from_status, to_status, note) values ($1,$2,$3,$4,$5,$6)", [
     id,
     actor.id,
@@ -263,9 +268,9 @@ async function linkDependencies(client: PoolClient, id: string, ref: { relasi: s
 const columns = (v: InfrastrukturValues) => [v.jenis, v.name, v.deskripsi, v.pemilik, v.kepemilikan, v.pengelola, JSON.stringify(v.atribut), JSON.stringify(v.security)];
 const COLS = "kind, name, description, owner_name, ownership, manager, attributes, security";
 
-async function insert(client: PoolClient, v: InfrastrukturValues, actor: Actor, status: SubmissionStatus, code?: string) {
-  const ref = await ids(client, v);
-  const finalCode = code || (await nextCode(client, v.rai));
+async function insert(client: PoolClient, v: InfrastrukturValues, actor: Actor, status: SubmissionStatus, code?: string, batch?: ImportBatch) {
+  const ref = await ids(client, v, undefined, batch);
+  const finalCode = code || (await nextCode(client, v.rai, batch));
   const { rows } = await client.query(
     `insert into infrastructures (code, ${COLS}, opd_id, period_id, rai_id, status, created_by, submitted_by)
      values (${Array.from({ length: 15 }, (_, i) => `$${i + 1}`).join(",")}) returning id`,
@@ -273,7 +278,7 @@ async function insert(client: PoolClient, v: InfrastrukturValues, actor: Actor, 
   );
   const id = rows[0].id as string;
   await linkDependencies(client, id, ref);
-  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat");
+  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat", batch);
   return id;
 }
 
@@ -333,6 +338,7 @@ export function importRows(rows: (InfrastrukturValues & { code?: string | null }
       ? (await client.query("select i.id, i.status::text, i.code, ap.name as period from infrastructures i join architecture_periods ap on ap.id = i.period_id where i.code = any($1)", [codes])).rows
       : [];
     const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const batch = importBatch(client, "infrastructures", codes);
     const saved: [string, InfrastrukturValues][] = [];
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
@@ -342,14 +348,14 @@ export function importRows(rows: (InfrastrukturValues & { code?: string | null }
           skipped++;
           continue;
         }
-        const ref = await ids(client, base);
+        const ref = await ids(client, base, undefined, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.rai_id]);
         await linkDependencies(client, existing.id, ref);
-        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor");
+        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor", batch);
         saved.push([existing.id, row]);
         updated++;
       } else {
-        saved.push([await insert(client, base, actor, status, row.code ?? undefined), row]);
+        saved.push([await insert(client, base, actor, status, row.code ?? undefined, batch), row]);
         created++;
       }
     }
@@ -364,6 +370,7 @@ export function importRows(rows: (InfrastrukturValues & { code?: string | null }
       await client.query("delete from infrastructure_links where infrastructure_id = $1", [id]);
       if (targets.length) await client.query("insert into infrastructure_links (infrastructure_id, target_id) select $1, unnest($2::uuid[])", [id, targets.map((t) => t.id)]);
     }
+    await batch.flush();
     return { created, updated, skipped };
   });
 }
@@ -380,3 +387,7 @@ export async function clearSamples() {
   const { rowCount } = await db().query("delete from infrastructures where is_sample");
   return rowCount ?? 0;
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const infrastrukturSummary = cached(loadInfrastrukturSummary, "infrastruktur/cms-repo:infrastrukturSummary", [TAGS.content]);
+export const listInfrastruktur = cached(loadListInfrastruktur, "infrastruktur/cms-repo:listInfrastruktur", [TAGS.content]);

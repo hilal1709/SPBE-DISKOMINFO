@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
 import { Illustration, type IllustrationName } from "@/components/illustrations/illustration";
-import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
+import { MOTION_OK, gsap } from "@/components/motion/gsap";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -26,7 +26,9 @@ export function ExploreHint({
   illustration?: IllustrationName;
   tips?: string[];
 }) {
-  const [show, setShow] = useState(false);
+  // Ikut dirender server agar tata letak tidak bergeser saat muncul; kartu yang pernah ditutup sudah
+  // disembunyikan sebelum tampil oleh HINT_SCRIPT (app/layout.tsx), lalu dilepas setelah mount.
+  const [show, setShow] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,22 +36,9 @@ export function ExploreHint({
     try {
       dismissed = localStorage.getItem(KEY) === "1";
     } catch {}
-    // Dibaca setelah mount agar render server dan klien sama.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!dismissed) setShow(true);
+    if (dismissed) setShow(false);
   }, [KEY]);
-
-  useGSAP(
-    () => {
-      if (!show) return;
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        gsap.from(ref.current, { opacity: 0, y: -10, duration: 0.5, ease: "power3.out" });
-        gsap.from("[data-tip]", { opacity: 0, x: -8, stagger: 0.08, delay: 0.2, duration: 0.4 });
-      });
-    },
-    { dependencies: [show], scope: ref },
-  );
 
   const close = () => {
     try {
@@ -66,7 +55,7 @@ export function ExploreHint({
   if (!show) return null;
 
   return (
-    <Card ref={ref} className="relative flex-row items-center gap-4 overflow-hidden border-0 bg-accent py-3 pr-12 pl-3 sm:gap-6">
+    <Card ref={ref} data-hint={KEY} data-reveal className="relative flex-row items-center gap-4 overflow-hidden border-0 bg-accent py-3 pr-12 pl-3 sm:gap-6">
       <Illustration name={illustration} className="hidden w-32 shrink-0 sm:block" />
       <div className="grid gap-1.5 text-sm text-accent-foreground">
         <p className="font-semibold">
@@ -75,7 +64,7 @@ export function ExploreHint({
         </p>
         <ul className="grid gap-1 text-xs">
           {tips.map((tip) => (
-            <li key={tip} data-tip>{tip}</li>
+            <li key={tip}>{tip}</li>
           ))}
         </ul>
       </div>

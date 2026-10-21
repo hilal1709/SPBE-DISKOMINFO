@@ -5,6 +5,8 @@ import type { KeamananRecord, ProbisReview, SubmissionStatus } from "@/lib/types
 import { kegiatanConfig, type Kegiatan } from "./jenis";
 import type { SecurityRef } from "./link";
 import type { KeamananValues } from "./schema";
+import { cached, TAGS } from "@/lib/cache";
+import { importBatch, type ImportBatch } from "@/lib/cms/batch";
 
 /** Akses data CMS Domain Keamanan (server saja). Pola sama dengan lib/infrastruktur/cms-repo.ts, tanpa referensi berversi. */
 
@@ -57,7 +59,7 @@ const toRecord = (r: Row): KeamananRecord => ({
 });
 
 /** Daftar kegiatan sesuai cakupan: operator hanya OPD-nya; `statuses` opsional. */
-export async function listKeamanan({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
+async function loadListKeamanan({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
   const where: string[] = [];
   const params: unknown[] = [];
   if (opdId) where.push(`s.opd_id = $${params.push(opdId)}`);
@@ -80,7 +82,7 @@ export async function getReviews(id: string): Promise<ProbisReview[]> {
 }
 
 /** Ringkasan beranda CMS untuk kegiatan keamanan dalam cakupan pengguna. */
-export async function keamananSummary(opdId: string | null) {
+async function loadKeamananSummary(opdId: string | null) {
   const scope = opdId ? "where s.opd_id = $1" : "";
   const params = opdId ? [opdId] : [];
   const [counts, flags, recent] = await Promise.all([
@@ -108,22 +110,25 @@ export async function keamananSummary(opdId: string | null) {
   };
 }
 
-async function ids(client: PoolClient, v: Pick<KeamananValues, "opd" | "period">) {
-  const { rows } = await client.query("select (select id from opd where code = $1) as opd_id, (select id from architecture_periods where name = $2) as period_id", [v.opd, v.period]);
+async function ids(client: PoolClient, v: Pick<KeamananValues, "opd" | "period">, batch?: ImportBatch) {
+  const read = batch?.lookup ?? ((sql: string, params: unknown[]) => client.query(sql, params));
+  const { rows } = await read("select (select id from opd where code = $1) as opd_id, (select id from architecture_periods where name = $2) as period_id", [v.opd, v.period]);
   if (!rows[0].opd_id) throw new Error("Instansi tidak ditemukan.");
   if (!rows[0].period_id) throw new Error(`Periode “${v.period}” belum terdaftar. Tambahkan di Pengaturan › Periode Arsitektur.`);
   return { opd_id: rows[0].opd_id as string, period_id: rows[0].period_id as string };
 }
 
 /** ID kegiatan otomatis: GSK-KAM {singkatan kegiatan}.{urutan 3 digit}. */
-async function nextCode(client: PoolClient, jenis: Kegiatan) {
+async function nextCode(client: PoolClient, jenis: Kegiatan, batch?: ImportBatch) {
   const prefix = `GSK-KAM ${kegiatanConfig[jenis].abbr}.`;
+  if (batch) return batch.code(prefix, 3);
   const { rows } = await client.query("select code from security_activities where code like $1", [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
-async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null) {
+async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null, batch?: ImportBatch) {
+  if (batch) return batch.later("validation_history", ["security_activity_id", "actor_id", "actor_name", "from_status", "to_status", "note"], [id, actor.id, actor.name, from, to, note ?? null]);
   await client.query("insert into validation_history (security_activity_id, actor_id, actor_name, from_status, to_status, note) values ($1,$2,$3,$4,$5,$6)", [
     id,
     actor.id,
@@ -138,16 +143,16 @@ async function review(client: PoolClient, id: string, actor: Actor, from: Submis
 const columns = (v: KeamananValues) => [v.jenis, v.name, v.deskripsi, v.tanggal, JSON.stringify(v.atribut)];
 const COLS = "kind, name, description, activity_date, attributes";
 
-async function insert(client: PoolClient, v: KeamananValues, actor: Actor, status: SubmissionStatus, code?: string) {
-  const ref = await ids(client, v);
-  const finalCode = code || (await nextCode(client, v.jenis));
+async function insert(client: PoolClient, v: KeamananValues, actor: Actor, status: SubmissionStatus, code?: string, batch?: ImportBatch) {
+  const ref = await ids(client, v, batch);
+  const finalCode = code || (await nextCode(client, v.jenis, batch));
   const { rows } = await client.query(
     `insert into security_activities (code, ${COLS}, opd_id, period_id, status, created_by, submitted_by)
      values (${Array.from({ length: 11 }, (_, i) => `$${i + 1}`).join(",")}) returning id`,
     [finalCode, ...columns(v), ref.opd_id, ref.period_id, status, actor.id, status === "submitted" ? actor.id : null],
   );
   const id = rows[0].id as string;
-  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat");
+  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat", batch);
   return id;
 }
 
@@ -203,6 +208,7 @@ export function importRows(rows: (KeamananValues & { code?: string | null })[], 
       ? (await client.query("select s.id, s.status::text, s.code, ap.name as period from security_activities s join architecture_periods ap on ap.id = s.period_id where s.code = any($1)", [codes])).rows
       : [];
     const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const batch = importBatch(client, "security_activities", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
       if (existing) {
@@ -210,15 +216,16 @@ export function importRows(rows: (KeamananValues & { code?: string | null })[], 
           skipped++;
           continue;
         }
-        const ref = await ids(client, row);
+        const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row), ref.opd_id, ref.period_id]);
-        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor");
+        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor", batch);
         updated++;
       } else {
-        await insert(client, row, actor, status, row.code ?? undefined);
+        await insert(client, row, actor, status, row.code ?? undefined, batch);
         created++;
       }
     }
+    await batch.flush();
     return { created, updated, skipped };
   });
 }
@@ -237,7 +244,7 @@ export async function clearSamples() {
 }
 
 /** Kegiatan tervalidasi sebagai pilihan tautan dependensi keamanan (semua periode). */
-export async function securityRefs(): Promise<SecurityRef[]> {
+async function loadSecurityRefs(): Promise<SecurityRef[]> {
   const { rows } = await db().query(
     "select s.code, s.name, s.kind, ap.name as period from security_activities s join architecture_periods ap on ap.id = s.period_id where s.status = 'approved' order by s.activity_date desc nulls last, s.code",
   );
@@ -246,3 +253,8 @@ export async function securityRefs(): Promise<SecurityRef[]> {
 
 /** Seperti `securityRefs`, tetapi kosong bila database belum siap (dipakai layout CMS). */
 export const securityRefsSafe = () => securityRefs().catch(() => []);
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const keamananSummary = cached(loadKeamananSummary, "keamanan/cms-repo:keamananSummary", [TAGS.content]);
+export const securityRefs = cached(loadSecurityRefs, "keamanan/cms-repo:securityRefs", [TAGS.content]);
+export const listKeamanan = cached(loadListKeamanan, "keamanan/cms-repo:listKeamanan", [TAGS.content]);

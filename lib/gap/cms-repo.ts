@@ -8,6 +8,7 @@ import type { GapRecord } from "@/lib/types";
 import { detectGaps } from "./detect";
 import { ruleConfig, type GapPriority, type GapStatus } from "./rules";
 import type { GapValues } from "./schema";
+import { cached, TAGS } from "@/lib/cache";
 
 /** Akses data Gap Analysis (server saja). Dikelola Diskominfo (Admin Operator), tanpa alur verifikasi. */
 
@@ -69,7 +70,7 @@ const toRecord = (r: Row): GapRecord => ({
 
 const order = "order by case g.priority when 'tinggi' then 0 when 'sedang' then 1 else 2 end, g.domain, g.subject_name";
 
-export async function listGaps() {
+async function loadListGaps() {
   const { rows } = await db().query<Row>(`${SELECT} ${order}`);
   return rows.map(toRecord);
 }
@@ -80,7 +81,7 @@ export async function getGap(id: string) {
 }
 
 /** Ringkasan periode aktif (beranda CMS & peringatan di Peta Rencana). */
-export async function gapSummary() {
+async function loadGapSummary() {
   const { rows } = await db().query(
     `select g.status, count(*)::int as n, count(*) filter (where g.priority = 'tinggi')::int as high, count(*) filter (where g.is_sample)::int as samples
      from gap_analyses g join architecture_periods ap on ap.id = g.period_id where ap.is_active group by 1`,
@@ -215,3 +216,7 @@ export async function clearSamples() {
   const { rowCount } = await db().query("delete from gap_analyses where is_sample");
   return rowCount ?? 0;
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const gapSummary = cached(loadGapSummary, "gap/cms-repo:gapSummary", [TAGS.content]);
+export const listGaps = cached(loadListGaps, "gap/cms-repo:listGaps", [TAGS.content]);

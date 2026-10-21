@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { allAplikasi } from "@/lib/aplikasi/generate";
 import { DashboardSkeleton } from "@/components/blocks/dashboard-skeleton";
 import { AplikasiDashboard } from "@/components/dashboards/aplikasi-dashboard";
 import { listApprovedAplikasi } from "@/lib/aplikasi/repo";
@@ -20,7 +21,7 @@ export default async function Page() {
   const periods = fromDb ? await periodOptions() : { periods: samplePeriods, active: sampleActivePeriod };
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <AplikasiDashboard data={fromDb ? approved.rows : null} sample={!fromDb || approved.sample} periods={periods} />
+      <AplikasiDashboard data={fromDb ? approved.rows : allAplikasi()} sample={!fromDb || approved.sample} periods={periods} />
     </Suspense>
   );
 }

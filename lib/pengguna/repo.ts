@@ -72,10 +72,12 @@ export async function listOpd(): Promise<OpdOption[]> {
   return rows;
 }
 
-/** Peran, OPD, dan status terkini (dibaca setiap request agar perubahan akun berlaku seketika). */
-export async function sessionUser(id: string) {
-  const { rows } = await db().query<{ name: string; role: Role; opd_id: string | null; active: boolean }>(
-    "select name, role, opd_id, coalesce(active, true) as active from users where id = $1",
+/** Akun sesi beserta label peran kustom dan hak akses tersimpan perannya (satu query). */
+export async function sessionAccess(id: string) {
+  const { rows } = await db().query<{ name: string; role: Role; opd_id: string | null; active: boolean; custom_label: string | null; permissions: string[] | null }>(
+    `select u.name, u.role, u.opd_id, coalesce(u.active, true) as active, cr.label as custom_label, ra.permissions
+     from users u left join custom_roles cr on cr.key = u.role left join role_access ra on ra.role = u.role
+     where u.id = $1`,
     [id],
   );
   return rows[0] ?? null;

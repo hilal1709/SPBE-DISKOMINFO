@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { allKeamanan, sampleCoverage } from "@/lib/keamanan/generate";
 import { auth } from "@/auth";
 import { DashboardSkeleton } from "@/components/blocks/dashboard-skeleton";
 import { EmptyState } from "@/components/blocks/empty-state";
@@ -34,8 +35,9 @@ export default async function Page() {
   let approved: { rows: KegiatanKeamanan[]; sample: boolean } = { rows: [], sample: true };
   let coverage: Coverage | null = null;
   try {
-    approved = await listApprovedKeamanan();
-    if (approved.rows.length) coverage = await securityCoverage();
+    // Keduanya ber-cache dan saling lepas: dibaca bersamaan.
+    [approved, coverage] = await Promise.all([listApprovedKeamanan(), securityCoverage()]);
+    if (!approved.rows.length) coverage = null;
   } catch (error) {
     console.warn("Dashboard keamanan memakai data contoh bawaan:", error instanceof Error ? error.message : error);
   }
@@ -43,7 +45,7 @@ export default async function Page() {
   const periods = fromDb ? await periodOptions() : { periods: samplePeriods, active: sampleActivePeriod };
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <KeamananDashboard data={fromDb ? approved.rows : null} coverage={coverage} sample={!fromDb || approved.sample} periods={periods} />
+      <KeamananDashboard data={fromDb ? approved.rows : allKeamanan()} coverage={coverage ?? sampleCoverage()} sample={!fromDb || approved.sample} periods={periods} />
     </Suspense>
   );
 }

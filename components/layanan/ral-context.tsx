@@ -1,8 +1,7 @@
 "use client";
 import { createRefContext } from "@/components/reference/ref-context";
-import { sampleRalSet } from "@/lib/layanan/reference";
 
-const ral = createRefContext(sampleRalSet);
+const ral = createRefContext();
 
 /** Menyediakan referensi RAL (dari database, per versi) untuk komponen klien. */
 export const RalProvider = ral.Provider;

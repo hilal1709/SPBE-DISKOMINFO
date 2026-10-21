@@ -1,5 +1,5 @@
 import { makeVersionedRef } from "@/lib/reference/versioned";
-import { sampleRadSet } from "./reference";
+import { sampleRadSet } from "./sample-reference";
 
 /** Referensi RAD berversi untuk data & informasi (server saja). Mesinnya sama dengan RAB/RAL: lib/reference/versioned.ts. */
 export const rad = makeVersionedRef({

@@ -5,6 +5,8 @@ import { pdByCode } from "@/lib/probis/reference";
 import type { AplikasiRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import { kepemilikanOf } from "./reference";
 import type { AplikasiValues } from "./schema";
+import { cached, TAGS } from "@/lib/cache";
+import { importBatch, type ImportBatch } from "@/lib/cms/batch";
 
 /** Akses data CMS Domain Aplikasi (server saja). Pola sama dengan lib/data/cms-repo.ts. */
 
@@ -121,7 +123,7 @@ const toRecord = (r: Row): AplikasiRecord => ({
 });
 
 /** Daftar aplikasi sesuai cakupan: operator hanya OPD-nya; `statuses` opsional. */
-export async function listAplikasi({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
+async function loadListAplikasi({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
   const where: string[] = [];
   const params: unknown[] = [];
   if (opdId) where.push(`a.opd_id = $${params.push(opdId)}`);
@@ -144,7 +146,7 @@ export async function getReviews(id: string): Promise<ProbisReview[]> {
 }
 
 /** Ringkasan beranda CMS untuk aplikasi dalam cakupan pengguna. */
-export async function aplikasiSummary(opdId: string | null) {
+async function loadAplikasiSummary(opdId: string | null) {
   const scope = opdId ? "where a.opd_id = $1" : "";
   const params = opdId ? [opdId] : [];
   const [counts, flags, recent] = await Promise.all([
@@ -198,8 +200,9 @@ export async function dependencyOptions(opd: string, period: string) {
   return { probis: map(probis.rows), layanan: map(layanan.rows), data: map(data.rows), infra: infra.rows.map((r) => ({ code: r.code as string, name: r.name as string, opd: r.opd as string, jenis: r.kind as string })) };
 }
 
-async function ids(client: PoolClient, v: Pick<AplikasiValues, "opd" | "period" | "raa" | "probis" | "layanan" | "data" | "pengembang">) {
-  const { rows } = await client.query(
+async function ids(client: PoolClient, v: Pick<AplikasiValues, "opd" | "period" | "raa" | "probis" | "layanan" | "data" | "pengembang">, batch?: ImportBatch) {
+  const read = batch?.lookup ?? ((sql: string, params: unknown[]) => client.query(sql, params));
+  const { rows } = await read(
     `select (select id from opd where code = $1) as opd_id,
             (select id from architecture_periods where name = $2) as period_id,
             (select r.id from raa_references r join architecture_periods ap on ap.raa_version_id = r.version_id
@@ -213,7 +216,7 @@ async function ids(client: PoolClient, v: Pick<AplikasiValues, "opd" | "period" 
   if (!found.raa_id) throw new Error(`RAA ${v.raa} tidak ada di versi RAA periode ${v.period}.`);
   // Dependensi harus berada di periode yang sama.
   const pick = (table: string, codes: string[], cols = "id, code") =>
-    codes.length ? client.query(`select ${cols} from ${table} where period_id = $1 and code = any($2)`, [found.period_id, codes]) : Promise.resolve({ rows: [] as Record<string, string>[] });
+    codes.length ? read(`select ${cols} from ${table} where period_id = $1 and code = any($2)`, [found.period_id, codes]) : Promise.resolve({ rows: [] as Record<string, string>[] });
   // Berurutan: satu klien transaksi tidak boleh menjalankan kueri paralel.
   const probis = await pick("process_businesses", v.probis, "id, code, status::text as status");
   const layanan = await pick("services", v.layanan);
@@ -240,14 +243,16 @@ async function ids(client: PoolClient, v: Pick<AplikasiValues, "opd" | "period" 
 }
 
 /** ID aplikasi otomatis: GSK-APL {kode RAA tanpa "RAA."}.{urutan 3 digit}. */
-async function nextCode(client: PoolClient, raa: string) {
+async function nextCode(client: PoolClient, raa: string, batch?: ImportBatch) {
   const prefix = `GSK-APL ${raa.slice(4)}.`;
+  if (batch) return batch.code(prefix, 3);
   const { rows } = await client.query("select code from applications where code like $1", [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
-async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null) {
+async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null, batch?: ImportBatch) {
+  if (batch) return batch.later("validation_history", ["application_id", "actor_id", "actor_name", "from_status", "to_status", "note"], [id, actor.id, actor.name, from, to, note ?? null]);
   await client.query("insert into validation_history (application_id, actor_id, actor_name, from_status, to_status, note) values ($1,$2,$3,$4,$5,$6)", [
     id,
     actor.id,
@@ -259,9 +264,10 @@ async function review(client: PoolClient, id: string, actor: Actor, from: Submis
 }
 
 /** Tautkan isian RAA L4/L5 ke referensi bila kodenya terdaftar di bawah induknya (selain itu tetap teks bebas). */
-async function linkDeep(client: PoolClient, id: string) {
-  await client.query("update applications a set raa4_id = (select r.id from raa_references r where r.code = a.raa_l4 and r.level = 4 and r.parent_id = a.raa_id) where a.id = $1", [id]);
-  await client.query("update applications a set raa5_id = (select r.id from raa_references r where r.code = a.raa_l5 and r.level = 5 and r.parent_id = a.raa4_id) where a.id = $1", [id]);
+async function linkDeep(client: PoolClient, id: string | string[], batch?: ImportBatch) {
+  if (batch) return void batch.touched.push(...[id].flat());
+  await client.query("update applications a set raa4_id = (select r.id from raa_references r where r.code = a.raa_l4 and r.level = 4 and r.parent_id = a.raa_id) where a.id = any($1)", [[id].flat()]);
+  await client.query("update applications a set raa5_id = (select r.id from raa_references r where r.code = a.raa_l5 and r.level = 5 and r.parent_id = a.raa4_id) where a.id = any($1)", [[id].flat()]);
 }
 
 async function linkDependencies(client: PoolClient, id: string, ref: { probis: string[]; layanan: string[]; data: string[] }) {
@@ -302,18 +308,18 @@ const columns = (v: AplikasiValues, ref: { developer_opd_id: string | null }) =>
 ];
 const COLS = "name, description, function_desc, output, db_engine, basis, license, language, framework, developer, input_data, output_data, supplier, customer, cloud, server, splp, jip, raa_l4, raa_l5, security";
 
-async function insert(client: PoolClient, v: AplikasiValues, actor: Actor, status: SubmissionStatus, code?: string) {
-  const ref = await ids(client, v);
-  const finalCode = code || (await nextCode(client, v.raa));
+async function insert(client: PoolClient, v: AplikasiValues, actor: Actor, status: SubmissionStatus, code?: string, batch?: ImportBatch) {
+  const ref = await ids(client, v, batch);
+  const finalCode = code || (await nextCode(client, v.raa, batch));
   const { rows } = await client.query(
     `insert into applications (code, ${COLS}, opd_id, developer_opd_id, period_id, raa_id, status, created_by, submitted_by)
      values (${Array.from({ length: 29 }, (_, i) => `$${i + 1}`).join(",")}) returning id`,
     [finalCode, ...columns(v, ref), ref.opd_id, ref.developer_opd_id, ref.period_id, ref.raa_id, status, actor.id, status === "submitted" ? actor.id : null],
   );
   const id = rows[0].id as string;
-  await linkDeep(client, id);
+  await linkDeep(client, id, batch);
   await linkDependencies(client, id, ref);
-  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat");
+  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat", batch);
   return id;
 }
 
@@ -382,6 +388,7 @@ export function importRows(rows: (AplikasiValues & { code?: string | null })[], 
       ? (await client.query("select a.id, a.status::text, a.code, ap.name as period from applications a join architecture_periods ap on ap.id = a.period_id where a.code = any($1)", [codes])).rows
       : [];
     const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const batch = importBatch(client, "applications", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
       if (existing) {
@@ -389,17 +396,18 @@ export function importRows(rows: (AplikasiValues & { code?: string | null })[], 
           skipped++;
           continue;
         }
-        const ref = await ids(client, row);
+        const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row, ref), ref.opd_id, ref.developer_opd_id, ref.period_id, ref.raa_id]);
-        await linkDeep(client, existing.id);
+        await linkDeep(client, existing.id, batch);
         await linkDependencies(client, existing.id, ref);
-        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor");
+        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor", batch);
         updated++;
       } else {
-        await insert(client, row, actor, status, row.code ?? undefined);
+        await insert(client, row, actor, status, row.code ?? undefined, batch);
         created++;
       }
     }
+    await batch.flush((touched) => linkDeep(client, touched));
     return { created, updated, skipped };
   });
 }
@@ -416,3 +424,7 @@ export async function clearSamples() {
   const { rowCount } = await db().query("delete from applications where is_sample");
   return rowCount ?? 0;
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const aplikasiSummary = cached(loadAplikasiSummary, "aplikasi/cms-repo:aplikasiSummary", [TAGS.content]);
+export const listAplikasi = cached(loadListAplikasi, "aplikasi/cms-repo:listAplikasi", [TAGS.content]);

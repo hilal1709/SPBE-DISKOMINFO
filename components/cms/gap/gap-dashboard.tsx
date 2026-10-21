@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { gapStatusConfig, gapStatusKeys, priorityConfig, priorityKeys, ruleConfig, type GapRule, type GapStatus as Status } from "@/lib/gap/rules";
 import { muatanConfig, muatanKeys, muatanOptions } from "@/lib/peta-rencana/muatan";
 import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { unpack, type Packed } from "@/lib/pack";
 import type { GapRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +34,9 @@ const tabs: { value: Tab; label: string }[] = [{ value: "all", label: "Semua" },
  * Gap Analysis: AS-IS (data tervalidasi semua domain) dibandingkan target arsitektur. Temuan dipindai otomatis dari
  * relasi antardomain atau ditambah manual, lalu diusulkan menjadi kegiatan Peta Rencana (notulen 1 Juli 2026).
  */
-export function GapDashboard({ rows, periods, canManage, canExport }: { rows: GapRecord[]; periods: PeriodOptions; canManage: boolean; canExport: boolean }) {
+export function GapDashboard({ data, periods, canManage, canExport }: { data: Packed<GapRecord>; periods: PeriodOptions; canManage: boolean; canExport: boolean }) {
+  // Ribuan temuan dikemas ringkas dari server; statistik dashboard tetap dihitung dari semua baris.
+  const rows = useMemo(() => unpack(data), [data]);
   const [period, setPeriod] = useState(periods.active);
   const [domain, setDomain] = useState<string[]>([]);
   const [priority, setPriority] = useState<string[]>([]);

@@ -1,6 +1,6 @@
-import { cache } from "react";
 import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/permissions";
+import { cached, TAGS } from "@/lib/cache";
 import { getDb } from "@/lib/db";
 import { makeRabIndex, type RabIndex, type RabLevel, type RabNode, type RabSet, type RabStatus } from "@/lib/probis/rab-index";
 
@@ -88,8 +88,8 @@ export function makeVersionedRef(cfg: Config) {
   const usedBy = (alias: string) => `${alias}.${U.col}_id = r.id or ${alias}.${U.col}4_id = r.id or ${alias}.${U.col}5_id = r.id`;
   const NODE_SELECT = `select r.id, r.code, r.name, r.level, p.code as parent, r.status, r.version_id from ${R} r left join ${R} p on p.id = r.parent_id`;
 
-  /** Versi yang dipakai periode + versi periode aktif (dibaca sekali per request). */
-  const loadSet = cache(async (): Promise<RabSet> => {
+  /** Versi yang dipakai periode + versi periode aktif (dibagi semua request sampai referensi berubah). */
+  const loadSet = cached(async (): Promise<RabSet> => {
     const periods = await db().query(`select name, ${P} as version, coalesce(is_active, false) as active from architecture_periods where ${P} is not null`);
     if (!periods.rows.length) return cfg.sampleSet;
     const ids = [...new Set(periods.rows.map((p) => p.version as string))];
@@ -103,7 +103,7 @@ export function makeVersionedRef(cfg: Config) {
       periodVersion: Object.fromEntries(periods.rows.map((p) => [p.name, p.version])),
       activeVersion: active.version,
     };
-  });
+  }, `ref-set:${R}`, [TAGS.reference]);
 
   /** Seperti `loadSet`, tetapi kembali ke referensi bawaan bila database tidak tersedia. */
   async function setSafe(): Promise<RabSet> {
@@ -136,12 +136,17 @@ export function makeVersionedRef(cfg: Config) {
   }
 
   async function versionNodes(versionId: string): Promise<ManagedNode[]> {
+    // Hitung pemakaian sekali untuk seluruh tabel pemakai (bukan subquery OR per node yang memindai tabel tiap node).
     const { rows } = await db().query(
-      `select r.id, r.code, r.name, r.level, r.status, r.parent_id, p.code as parent, o.code as origin_code,
-              (select count(*)::int from ${U.table} u where ${usedBy("u")}) as used
+      `with usage as (
+         select ref, count(*)::int as n from (
+           select ${U.col}_id as ref from ${U.table} union all select ${U.col}4_id from ${U.table} union all select ${U.col}5_id from ${U.table}
+         ) u where ref is not null group by ref)
+       select r.id, r.code, r.name, r.level, r.status, r.parent_id, p.code as parent, o.code as origin_code, coalesce(usage.n, 0) as used
        from ${R} r
        left join ${R} p on p.id = r.parent_id
        left join ${R} o on o.id = r.origin_id
+       left join usage on usage.ref = r.id
        where r.version_id = $1 order by r.code`,
       [versionId],
     );

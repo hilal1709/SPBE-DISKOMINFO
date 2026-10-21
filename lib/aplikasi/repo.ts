@@ -2,11 +2,12 @@ import { getDb } from "@/lib/db";
 import type { Aplikasi } from "@/lib/types";
 import { LINKS_SQL, RAA_JOIN, RAA_SQL } from "./cms-repo";
 import { kepemilikanOf } from "./reference";
+import { cached, TAGS } from "@/lib/cache";
 
 /** Akses data Domain Aplikasi untuk dashboard publik (server saja). */
 
 /** Aplikasi yang sudah divalidasi. Kosong bila modul CMS aplikasi belum berisi data. */
-export async function listApprovedAplikasi(): Promise<{ rows: Aplikasi[]; sample: boolean }> {
+async function loadListApprovedAplikasi(): Promise<{ rows: Aplikasi[]; sample: boolean }> {
   const pool = getDb();
   if (!pool) throw new Error("Database belum dikonfigurasi (DATABASE_URL).");
   const { rows } = await pool.query(
@@ -51,3 +52,6 @@ export async function listApprovedAplikasi(): Promise<{ rows: Aplikasi[]; sample
   }));
   return { rows: mapped, sample: rows.some((r) => r.is_sample) };
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const listApprovedAplikasi = cached(loadListApprovedAplikasi, "aplikasi/repo:listApprovedAplikasi", [TAGS.content]);

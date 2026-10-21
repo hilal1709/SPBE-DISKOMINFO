@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import type { Layanan } from "@/lib/types";
+import { cached, TAGS } from "@/lib/cache";
 
 /** Akses data Domain Layanan untuk dashboard publik (server saja). */
 
@@ -19,7 +20,7 @@ const toMetode = (text: string | null): Layanan["metode"] => {
 };
 
 /** Layanan yang sudah disetujui. Kosong bila modul CMS layanan belum berisi data. */
-export async function listApprovedServices(): Promise<{ rows: Layanan[]; sample: boolean }> {
+async function loadListApprovedServices(): Promise<{ rows: Layanan[]; sample: boolean }> {
   const pool = getDb();
   if (!pool) throw new Error("Database belum dikonfigurasi (DATABASE_URL).");
   const { rows } = await pool.query(
@@ -61,3 +62,6 @@ export async function listApprovedServices(): Promise<{ rows: Layanan[]; sample:
   }));
   return { rows: mapped, sample: rows.some((r) => r.is_sample) };
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const listApprovedServices = cached(loadListApprovedServices, "layanan/repo:listApprovedServices", [TAGS.content]);

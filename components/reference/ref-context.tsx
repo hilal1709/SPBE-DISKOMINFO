@@ -11,12 +11,13 @@ function build(set: RabSet): RefContext {
 }
 
 /**
- * Context referensi berversi untuk komponen klien (RAB atau RAL). Tanpa provider,
- * dipakai referensi bawaan `sampleSet`.
+ * Context referensi berversi untuk komponen klien (RAB, RAL, RAD, RAA, RAI). Set selalu dikirim server lewat
+ * provider (dari database, atau referensi bawaan bila database kosong), sehingga JSON referensi bawaan tidak
+ * ikut bundel klien. Tanpa provider, referensi kosong.
  */
-export function createRefContext(sampleSet: RabSet) {
+export function createRefContext() {
   const Context = createContext<RefContext | null>(null);
-  const fallback = build(sampleSet);
+  const fallback = build({ versions: [], periodVersion: {}, activeVersion: "" });
 
   function Provider({ set, children }: { set: RabSet; children: React.ReactNode }) {
     const value = useMemo(() => build(set), [set]);

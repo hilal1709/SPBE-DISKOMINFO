@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { SessionProvider, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { DashboardSquare01Icon, Login01Icon, Menu01Icon } from "@hugeicons/core-free-icons";
 import { Logo } from "@/components/brand/logo";
 import { Icon } from "@/components/icon";
+import { UrlParamsBoundary } from "@/hooks/use-url-params";
 import { AosInit } from "@/components/motion/aos";
 import { WordStagger } from "@/components/motion/word-stagger";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -13,9 +13,29 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { activeItem, portalSections, publicNav } from "@/lib/navigation";
 
+/** Sesi dibaca sekali per kunjungan (tanpa pustaka klien next-auth), setelah halaman tampil. */
+let session: Promise<boolean> | undefined;
+const readSession = () =>
+  (session ??= fetch("/api/auth/session")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((s) => !!s?.user)
+    .catch(() => false));
+
+function useSignedIn() {
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    let active = true;
+    readSession().then((value) => active && setSignedIn(value));
+    return () => {
+      active = false;
+    };
+  }, []);
+  return signedIn;
+}
+
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // Status login dibaca di klien agar halaman portal tetap statis.
-  const signedIn = useSession().status === "authenticated";
+  const signedIn = useSignedIn();
   return (
     <div className="flex min-h-full shrink-0 flex-col gap-8 px-4 py-6">
       <Logo className="px-1" />
@@ -32,14 +52,6 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 /** Kerangka portal publik: sidebar pastel, header ber-blur, area konten. */
 export function PublicShell({ children }: { children: React.ReactNode }) {
-  return (
-    <SessionProvider>
-      <Shell>{children}</Shell>
-    </SessionProvider>
-  );
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const section = activeItem(publicNav, pathname)?.section ?? portalSections[pathname] ?? "Arsitektur SPBE";
@@ -69,7 +81,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             <p className="hidden text-xs text-muted-foreground sm:block">Arsitektur SPBE Kabupaten Gresik 2025–2029</p>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1440px] px-4 pb-10 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1440px] px-4 pb-10 lg:px-8">
+          <UrlParamsBoundary>{children}</UrlParamsBoundary>
+        </main>
       </div>
       <AosInit />
     </div>

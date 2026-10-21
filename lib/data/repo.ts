@@ -1,10 +1,11 @@
 import { getDb } from "@/lib/db";
 import type { DataInfo } from "@/lib/types";
+import { cached, TAGS } from "@/lib/cache";
 
 /** Akses data Domain Data untuk dashboard publik (server saja). */
 
 /** Data yang sudah disetujui. Kosong bila modul CMS data belum berisi data. */
-export async function listApprovedData(): Promise<{ rows: DataInfo[]; sample: boolean }> {
+async function loadListApprovedData(): Promise<{ rows: DataInfo[]; sample: boolean }> {
   const pool = getDb();
   if (!pool) throw new Error("Database belum dikonfigurasi (DATABASE_URL).");
   const { rows } = await pool.query(
@@ -48,3 +49,6 @@ export async function listApprovedData(): Promise<{ rows: DataInfo[]; sample: bo
   }));
   return { rows: mapped, sample: rows.some((r) => r.is_sample) };
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const listApprovedData = cached(loadListApprovedData, "data/repo:listApprovedData", [TAGS.content]);

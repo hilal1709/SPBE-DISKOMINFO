@@ -44,7 +44,7 @@ const indexOf = (ral: RabIndex) => {
 /** RAL L2 yang menjadi urusan utama PD (dipetakan dari RAB L2 lewat nama). */
 function homeRal2(opd: string, ral: RabIndex, rab: RabIndex) {
   const pd = pdByCode.get(opd);
-  return new Set((pd?.rab2 ?? []).map((c) => ralForRab2(`RAB.${c}`, rab)).filter((c): c is string => !!c && ral.byCode.has(c)));
+  return new Set((pd?.rab2 ?? []).map((c) => ralForRab2(`RAB.${c}`, rab, ral)).filter((c): c is string => !!c && ral.byCode.has(c)));
 }
 
 function local({ name, opd, note }: LayananSuggestInput, ral: RabIndex, rab: RabIndex): LayananSuggestion {

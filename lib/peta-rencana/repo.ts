@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
+import { cached, TAGS } from "@/lib/cache";
 
 /** Akses data Peta Rencana untuk dashboard publik (server saja). */
 
@@ -10,7 +11,7 @@ function db() {
 }
 
 /** Seluruh kegiatan dan indikator. `sample` bila isinya data contoh. */
-export async function listPublicRencana(): Promise<{ rows: Rencana[]; indicators: RencanaIndicator[]; sample: boolean }> {
+async function loadListPublicRencana(): Promise<{ rows: Rencana[]; indicators: RencanaIndicator[]; sample: boolean }> {
   const [items, inds] = await Promise.all([
     db().query(
       `select r.code, r.name, o.code as opd, ap.name as period, r.year, r.sasaran, r.inisiatif, r.muatan, r.program, r.target, r.jumlah::float as jumlah,
@@ -32,3 +33,6 @@ export async function listPublicRencana(): Promise<{ rows: Rencana[]; indicators
     sample: items.rows.some((r) => r.is_sample),
   };
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const listPublicRencana = cached(loadListPublicRencana, "peta-rencana/repo:listPublicRencana", [TAGS.content]);

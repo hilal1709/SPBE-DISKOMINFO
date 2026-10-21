@@ -1,20 +1,9 @@
-import { makeRabIndex, type RabNode, type RabSet } from "@/lib/probis/rab-index";
-import { samplePeriods } from "@/lib/probis/reference";
-import ralReference from "./ral-reference.json";
+import type { RabIndex, RabNode } from "@/lib/probis/rab-index";
 
 /**
  * Referensi Domain Layanan (sumber: template analis "Domain Arsitektur Layanan.xlsx").
  * RAL disimpan sebagai node berbentuk RabNode agar indeksnya memakai makeRabIndex.
  */
-export const sampleRal = makeRabIndex(ralReference as RabNode[]);
-
-/** Kumpulan RAL cadangan (database tidak tersedia): satu versi bawaan untuk semua periode contoh. */
-export const sampleRalSet: RabSet = {
-  versions: [{ id: "bawaan", name: "Perpres 132/2022", nodes: sampleRal.nodes }],
-  periodVersion: Object.fromEntries(samplePeriods.map((p) => [p, "bawaan"])),
-  activeVersion: "bawaan",
-};
-
 export type Target = "masyarakat" | "usaha" | "asn" | "pemerintah";
 export const targetOptions: { value: Target; label: string }[] = [
   { value: "masyarakat", label: "Masyarakat" },
@@ -38,9 +27,9 @@ export const isDigital = (metode: Metode) => metode !== "tatap_muka";
 export const RAL_PUBLIK = "RAL.01";
 
 /** Urusan RAB L2 → RAL L2 (nama urusan sama di kedua referensi). */
-export function ralForRab2(rab2: string, rab: { byCode: Map<string, RabNode> }) {
+export function ralForRab2(rab2: string, rab: { byCode: Map<string, RabNode> }, ral: Pick<RabIndex, "nodes">) {
   const name = rab.byCode.get(rab2)?.name.toLowerCase();
-  return sampleRal.nodes.find((n) => n.level === 2 && n.name.toLowerCase() === name)?.code;
+  return ral.nodes.find((n) => n.level === 2 && n.name.toLowerCase() === name)?.code;
 }
 
 /** Kementerian/Lembaga pembina per RAL L2 (untuk data contoh). */

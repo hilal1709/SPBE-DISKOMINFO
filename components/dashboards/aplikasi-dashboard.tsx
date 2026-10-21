@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
@@ -23,7 +23,6 @@ import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { allAplikasi } from "@/lib/aplikasi/generate";
 import { activeFilterCount, countBy, emptyFilter, filterAplikasi, filterFromParams, filterToParams, raaOptions, sanitizeFilter, type AplikasiFilter } from "@/lib/aplikasi/query";
 import {
   basisLabel, basisOptions, infraFields, kepemilikanColor, kepemilikanLabel, kepemilikanOptions, lisensiLabel, lisensiOptions, sampleRaa,
@@ -54,12 +53,12 @@ export function AplikasiDashboard({
   periods: { periods, active: activePeriod },
 }: {
   /** Aplikasi disetujui dari database; null = data contoh bawaan. */
-  data: Aplikasi[] | null;
+  data: Aplikasi[];
   sample: boolean;
   periods: PeriodOptions;
 }) {
-  const params = useSearchParams();
-  const all = useMemo(() => data ?? allAplikasi(), [data]);
+  const params = useUrlParams();
+  const all = data;
   const [filter, setFilterState] = useState<AplikasiFilter>(() =>
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod), {
       periods,

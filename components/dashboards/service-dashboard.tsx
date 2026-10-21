@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
@@ -22,13 +22,13 @@ import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { allLayanan } from "@/lib/layanan/generate";
 import { activeFilterCount, countBy, emptyFilter, filterFromParams, filterLayanan, filterToParams, ralOptions, ralTree, sanitizeFilter, type LayananFilter } from "@/lib/layanan/query";
 import { colorByCount } from "@/lib/palette";
 import { useRalSet } from "@/components/layanan/ral-context";
 import { RAL_PUBLIK, isDigital, metodeLabel, metodeOptions, targetLabel, targetOptions, type Metode, type Target } from "@/lib/layanan/reference";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode, perangkatDaerah, sampleRab, type PeriodOptions } from "@/lib/probis/reference";
+import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { useRabSet } from "@/components/probis/rab-context";
 import type { Layanan } from "@/lib/types";
 
 const fmt = new Intl.NumberFormat("id-ID");
@@ -58,13 +58,14 @@ export function ServiceDashboard({
   periods: { periods, active: activePeriod },
 }: {
   /** Layanan disetujui dari database; null = data contoh bawaan. */
-  data: Layanan[] | null;
+  data: Layanan[];
   sample: boolean;
   periods: PeriodOptions;
 }) {
-  const params = useSearchParams();
+  const params = useUrlParams();
   const rals = useRalSet();
-  const all = useMemo(() => data ?? allLayanan(), [data]);
+  const rabs = useRabSet();
+  const all = data;
   const [filter, setFilterState] = useState<LayananFilter>(() => {
     const parsed = filterFromParams(new URLSearchParams(params.toString()), activePeriod);
     const ral = rals.forPeriod(periods.includes(parsed.period) ? parsed.period : activePeriod);
@@ -257,7 +258,7 @@ export function ServiceDashboard({
               { header: "RAL 1", hideable: true, defaultHidden: true, sortValue: (l) => l.ral1, cell: (l) => <span className="text-muted-foreground">{ralLabel(l.ral1)}</span> },
               { header: "RAL 2", hideable: true, defaultHidden: true, sortValue: (l) => l.ral2, cell: (l) => <span className="text-muted-foreground">{ralLabel(l.ral2)}</span> },
               { header: "RAL 3", hideable: true, sortValue: (l) => l.ral3, cell: (l) => <span className="text-muted-foreground">{ralLabel(l.ral3)}</span> },
-              { header: "Urusan (RAB 2)", hideable: true, defaultHidden: true, sortValue: (l) => l.rab2 ?? "", cell: (l) => <span className="text-muted-foreground">{l.rab2 ? sampleRab.label(l.rab2) : "—"}</span> },
+              { header: "Urusan (RAB 2)", hideable: true, defaultHidden: true, sortValue: (l) => l.rab2 ?? "", cell: (l) => <span className="text-muted-foreground">{l.rab2 ? rabs.forPeriod(l.period).label(l.rab2) : "—"}</span> },
             ]}
           />
         </>
@@ -290,7 +291,7 @@ export function ServiceDashboard({
           <div className="grid gap-2 sm:grid-cols-2">
             <DetailField label="Target layanan" value={targetLabel[selected.target]} />
             <DetailField label="Unit pelaksana" value={selected.unit || "—"} />
-            <DetailField label="Urusan pemerintahan" value={selected.rab2 ? sampleRab.label(selected.rab2) : "—"} />
+            <DetailField label="Urusan pemerintahan" value={selected.rab2 ? rabs.forPeriod(selected.period).label(selected.rab2) : "—"} />
             <DetailField label="Kementerian/Lembaga terkait" value={selected.kl ?? "—"} />
             <DetailField label="Potensi manfaat" value={selected.manfaat ?? "—"} />
             <DetailField label="Potensi ekonomi" value={selected.ekonomi ?? "—"} />

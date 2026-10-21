@@ -1,5 +1,5 @@
 import { makeVersionedRef } from "@/lib/reference/versioned";
-import { sampleRalSet } from "./reference";
+import { sampleRalSet } from "./sample-reference";
 
 /** Referensi RAL berversi untuk layanan (server saja). Mesinnya sama dengan RAB: lib/reference/versioned.ts. */
 export const ral = makeVersionedRef({

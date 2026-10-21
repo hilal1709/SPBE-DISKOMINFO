@@ -4,6 +4,8 @@ import { getDb } from "@/lib/db";
 import { pdByCode } from "@/lib/probis/reference";
 import type { DataRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import type { DataValues } from "./schema";
+import { cached, TAGS } from "@/lib/cache";
+import { importBatch, type ImportBatch } from "@/lib/cms/batch";
 
 /** Akses data CMS Domain Data (server saja). Pola sama dengan lib/layanan/cms-repo.ts. */
 
@@ -93,7 +95,7 @@ const toRecord = (r: Row): DataRecord => ({
 });
 
 /** Daftar data sesuai cakupan: operator hanya OPD-nya; `statuses` opsional. */
-export async function listData({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
+async function loadListData({ opdId, statuses }: { opdId?: string | null; statuses?: readonly string[] } = {}) {
   const where: string[] = [];
   const params: unknown[] = [];
   if (opdId) where.push(`d.opd_id = $${params.push(opdId)}`);
@@ -116,7 +118,7 @@ export async function getReviews(id: string): Promise<ProbisReview[]> {
 }
 
 /** Ringkasan beranda CMS untuk data dalam cakupan pengguna. */
-export async function dataSummary(opdId: string | null) {
+async function loadDataSummary(opdId: string | null) {
   const scope = opdId ? "where d.opd_id = $1" : "";
   const params = opdId ? [opdId] : [];
   const [counts, flags, recent] = await Promise.all([
@@ -164,8 +166,9 @@ export async function dependencyOptions(opd: string, period: string) {
   };
 }
 
-async function ids(client: PoolClient, v: Pick<DataValues, "opd" | "period" | "rad" | "probis" | "layanan" | "produsen">) {
-  const { rows } = await client.query(
+async function ids(client: PoolClient, v: Pick<DataValues, "opd" | "period" | "rad" | "probis" | "layanan" | "produsen">, batch?: ImportBatch) {
+  const read = batch?.lookup ?? ((sql: string, params: unknown[]) => client.query(sql, params));
+  const { rows } = await read(
     `select (select id from opd where code = $1) as opd_id,
             (select id from architecture_periods where name = $2) as period_id,
             (select r.id from rad_references r join architecture_periods ap on ap.rad_version_id = r.version_id
@@ -179,8 +182,8 @@ async function ids(client: PoolClient, v: Pick<DataValues, "opd" | "period" | "r
   if (!found.rad_id) throw new Error(`RAD ${v.rad} tidak ada di versi RAD periode ${v.period}.`);
   // Dependensi harus berada di periode yang sama.
   const [probis, layanan] = await Promise.all([
-    v.probis.length ? client.query("select id, code from process_businesses where period_id = $1 and code = any($2)", [found.period_id, v.probis]) : { rows: [] },
-    v.layanan.length ? client.query("select id, code from services where period_id = $1 and code = any($2)", [found.period_id, v.layanan]) : { rows: [] },
+    v.probis.length ? read("select id, code from process_businesses where period_id = $1 and code = any($2)", [found.period_id, v.probis]) : { rows: [] },
+    v.layanan.length ? read("select id, code from services where period_id = $1 and code = any($2)", [found.period_id, v.layanan]) : { rows: [] },
   ]);
   const missing = (codes: string[], rows: { code: string }[]) => codes.filter((code) => !rows.some((r) => r.code === code));
   const noProbis = missing(v.probis, probis.rows);
@@ -198,14 +201,16 @@ async function ids(client: PoolClient, v: Pick<DataValues, "opd" | "period" | "r
 }
 
 /** ID data otomatis: GSK-DAT {kode RAD tanpa "RAD."}.{urutan}. */
-async function nextCode(client: PoolClient, rad: string) {
+async function nextCode(client: PoolClient, rad: string, batch?: ImportBatch) {
   const prefix = `GSK-DAT ${rad.slice(4)}.`;
+  if (batch) return batch.code(prefix, 2);
   const { rows } = await client.query("select code from datasets where code like $1", [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(2, "0")}`;
 }
 
-async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null) {
+async function review(client: PoolClient, id: string, actor: Actor, from: SubmissionStatus | null, to: SubmissionStatus, note?: string | null, batch?: ImportBatch) {
+  if (batch) return batch.later("validation_history", ["dataset_id", "actor_id", "actor_name", "from_status", "to_status", "note"], [id, actor.id, actor.name, from, to, note ?? null]);
   await client.query("insert into validation_history (dataset_id, actor_id, actor_name, from_status, to_status, note) values ($1,$2,$3,$4,$5,$6)", [
     id,
     actor.id,
@@ -217,9 +222,10 @@ async function review(client: PoolClient, id: string, actor: Actor, from: Submis
 }
 
 /** Tautkan isian RAD L4/L5 ke referensi bila kodenya terdaftar di bawah induknya (selain itu tetap teks bebas). */
-async function linkDeep(client: PoolClient, id: string) {
-  await client.query("update datasets d set rad4_id = (select r.id from rad_references r where r.code = d.rad_l4 and r.level = 4 and r.parent_id = d.rad_id) where d.id = $1", [id]);
-  await client.query("update datasets d set rad5_id = (select r.id from rad_references r where r.code = d.rad_l5 and r.level = 5 and r.parent_id = d.rad4_id) where d.id = $1", [id]);
+async function linkDeep(client: PoolClient, id: string | string[], batch?: ImportBatch) {
+  if (batch) return void batch.touched.push(...[id].flat());
+  await client.query("update datasets d set rad4_id = (select r.id from rad_references r where r.code = d.rad_l4 and r.level = 4 and r.parent_id = d.rad_id) where d.id = any($1)", [[id].flat()]);
+  await client.query("update datasets d set rad5_id = (select r.id from rad_references r where r.code = d.rad_l5 and r.level = 5 and r.parent_id = d.rad4_id) where d.id = any($1)", [[id].flat()]);
 }
 
 async function linkDependencies(client: PoolClient, id: string, probis: string[], layanan: string[]) {
@@ -246,9 +252,9 @@ const columns = (v: DataValues, ref: { producer_opd_id: string | null }) => [
   JSON.stringify(v.security),
 ];
 
-async function insert(client: PoolClient, v: DataValues, actor: Actor, status: SubmissionStatus, code?: string) {
-  const ref = await ids(client, v);
-  const finalCode = code || (await nextCode(client, v.rad));
+async function insert(client: PoolClient, v: DataValues, actor: Actor, status: SubmissionStatus, code?: string, batch?: ImportBatch) {
+  const ref = await ids(client, v, batch);
+  const finalCode = code || (await nextCode(client, v.rad, batch));
   const { rows } = await client.query(
     `insert into datasets (code, name, description, purpose, producer, output_info, input_info, sifat, jenis, validitas, interoperable, rad_l4, rad_l5, security,
        opd_id, producer_opd_id, period_id, rad_id, status, created_by, submitted_by)
@@ -256,9 +262,9 @@ async function insert(client: PoolClient, v: DataValues, actor: Actor, status: S
     [finalCode, ...columns(v, ref), ref.opd_id, ref.producer_opd_id, ref.period_id, ref.rad_id, status, actor.id, status === "submitted" ? actor.id : null],
   );
   const id = rows[0].id as string;
-  await linkDeep(client, id);
+  await linkDeep(client, id, batch);
   await linkDependencies(client, id, ref.probis, ref.layanan);
-  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat");
+  await review(client, id, actor, null, status, status === "submitted" ? "Diajukan" : "Draf dibuat", batch);
   return id;
 }
 
@@ -315,6 +321,7 @@ export function importRows(rows: (DataValues & { code?: string | null })[], acto
       ? (await client.query("select d.id, d.status::text, d.code, ap.name as period from datasets d join architecture_periods ap on ap.id = d.period_id where d.code = any($1)", [codes])).rows
       : [];
     const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const batch = importBatch(client, "datasets", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
       if (existing) {
@@ -322,17 +329,18 @@ export function importRows(rows: (DataValues & { code?: string | null })[], acto
           skipped++;
           continue;
         }
-        const ref = await ids(client, row);
+        const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row, ref), ref.opd_id, ref.producer_opd_id, ref.period_id, ref.rad_id]);
-        await linkDeep(client, existing.id);
+        await linkDeep(client, existing.id, batch);
         await linkDependencies(client, existing.id, ref.probis, ref.layanan);
-        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor");
+        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor", batch);
         updated++;
       } else {
-        await insert(client, row, actor, status, row.code ?? undefined);
+        await insert(client, row, actor, status, row.code ?? undefined, batch);
         created++;
       }
     }
+    await batch.flush((touched) => linkDeep(client, touched));
     return { created, updated, skipped };
   });
 }
@@ -349,3 +357,7 @@ export async function clearSamples() {
   const { rowCount } = await db().query("delete from datasets where is_sample");
   return rowCount ?? 0;
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const dataSummary = cached(loadDataSummary, "data/cms-repo:dataSummary", [TAGS.content]);
+export const listData = cached(loadListData, "data/cms-repo:listData", [TAGS.content]);

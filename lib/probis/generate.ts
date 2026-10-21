@@ -1,5 +1,6 @@
 import type { Probis } from "@/lib/types";
-import { ikuBySasaran, perangkatDaerah, sampleActivePeriod as activePeriod, samplePeriods as periods, sampleRab, sasaranBySektor, sasaranStrategis, type ProbisStatus } from "./reference";
+import { ikuBySasaran, perangkatDaerah, sampleActivePeriod as activePeriod, samplePeriods as periods, sasaranBySektor, sasaranStrategis, type ProbisStatus } from "./reference";
+import { sampleRab } from "./sample-reference";
 
 /** PRNG deterministik agar data dummy sama di server dan klien. */
 export function mulberry32(seed: number) {

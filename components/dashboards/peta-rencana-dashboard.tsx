@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
@@ -23,7 +23,6 @@ import { RencanaBody, RencanaStatus, rencanaMeta } from "@/components/peta-renca
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { allRencana } from "@/lib/peta-rencana/generate";
 import { muatanConfig, muatanKeys, muatanOptions, statusConfig, statusKeys, statusOptions, type Muatan } from "@/lib/peta-rencana/muatan";
 import { activeFilterCount, emptyFilter, filterFromParams, filterRencana, filterToParams, sanitizeFilter, yearsOf, type RencanaFilter } from "@/lib/peta-rencana/query";
 import { pdByCode, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
@@ -42,13 +41,13 @@ export function PetaRencanaDashboard({
   periods: { periods, active: activePeriod },
 }: {
   /** Kegiatan & indikator dari database; null = data contoh bawaan. */
-  data: { rows: Rencana[]; indicators: RencanaIndicator[] } | null;
+  data: { rows: Rencana[]; indicators: RencanaIndicator[] };
   sample: boolean;
   currentYear: number;
   periods: PeriodOptions;
 }) {
-  const params = useSearchParams();
-  const source = useMemo(() => data ?? allRencana(), [data]);
+  const params = useUrlParams();
+  const source = data;
   const all = source.rows;
   const sasaranList = useMemo(() => [...new Set([...sasaranStrategis, ...all.map((r) => r.sasaran)])], [all]);
   const [filter, setFilterState] = useState<RencanaFilter>(() =>

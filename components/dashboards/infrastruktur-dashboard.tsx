@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
@@ -24,7 +24,6 @@ import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { allInfrastruktur } from "@/lib/infrastruktur/generate";
 import {
   formatMetric, jenisConfig, jenisKeys, jenisOptions, kepemilikanColor, kepemilikanLabel, kepemilikanOptions, layers, parseMetric,
   type InfraJenis, type InfraKepemilikan,
@@ -59,13 +58,13 @@ export function InfrastrukturDashboard({
   periods: { periods, active: activePeriod },
 }: {
   /** Komponen tervalidasi dari database; null = data contoh bawaan. */
-  data: Infrastruktur[] | null;
+  data: Infrastruktur[];
   sample: boolean;
   periods: PeriodOptions;
 }) {
-  const params = useSearchParams();
+  const params = useUrlParams();
   const rai = useRai();
-  const all = useMemo(() => data ?? allInfrastruktur(), [data]);
+  const all = data;
   const [filter, setFilterState] = useState<InfraFilter>(() =>
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod), {
       periods,

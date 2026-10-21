@@ -28,6 +28,14 @@ export async function listRoles(): Promise<RoleInfo[]> {
   }
 }
 
+/** Hak akses efektif dari baris custom_roles/role_access yang sudah dibaca. Null bila peran sudah tidak ada. */
+export function roleGrant(role: Role, customLabel: string | null, permissions: string[] | null): { label: string; perms: Permission[] } | null {
+  if (role === lockedRole) return { label: roleLabel.superadmin, perms: allPermissions };
+  const label = isBuiltinRole(role) ? roleLabel[role] : customLabel;
+  if (!label) return null;
+  return { label, perms: permissions ? clean(permissions) : defaultsFor(role) };
+}
+
 /** Peran beserta hak akses efektifnya, untuk sesi. Null bila peran sudah tidak ada. */
 export async function roleAccess(role: Role): Promise<{ label: string; perms: Permission[] } | null> {
   if (role === lockedRole) return { label: roleLabel.superadmin, perms: allPermissions };
@@ -38,9 +46,7 @@ export async function roleAccess(role: Role): Promise<{ label: string; perms: Pe
       "select (select label from custom_roles where key = $1) as label, (select permissions from role_access where role = $1) as permissions",
       [role],
     );
-    const label = isBuiltinRole(role) ? roleLabel[role] : rows[0]?.label;
-    if (!label) return null;
-    return { label, perms: rows[0]?.permissions ? clean(rows[0].permissions) : defaultsFor(role) };
+    return roleGrant(role, rows[0]?.label ?? null, rows[0]?.permissions ?? null);
   } catch {
     return isBuiltinRole(role) ? { label: roleLabel[role], perms: defaultsFor(role) } : null;
   }

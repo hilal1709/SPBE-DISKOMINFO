@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp01Icon, ArrowUpDownIcon, LayoutTable01Icon, Search01Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { Icon } from "@/components/icon";
@@ -22,6 +22,22 @@ export type Column<T> = {
   /** Kolom bisa disembunyikan lewat menu "Kolom". */
   hideable?: boolean;
   defaultHidden?: boolean;
+  /** Kunci urutan di server (mode `server`); jika ada, header menjadi tombol sort. */
+  sortKey?: string;
+};
+
+export type ServerSort = { key: string; dir: 1 | -1 };
+
+/** Paginasi, pencarian, dan urutan dikerjakan server: `rows` sudah berisi satu halaman. */
+export type ServerPaging = {
+  total: number;
+  /** Halaman aktif, mulai 0. */
+  page: number;
+  query: string;
+  sort: ServerSort | null;
+  /** Halaman berikutnya sedang dimuat. */
+  pending?: boolean;
+  onChange: (next: { page?: number; query?: string; sort?: ServerSort | null }) => void;
 };
 
 type Props<T> = {
@@ -41,14 +57,17 @@ type Props<T> = {
   /** Aktifkan paginasi dengan jumlah baris per halaman. */
   pageSize?: number;
   minWidth?: number;
+  server?: ServerPaging;
 };
 
 const collator = new Intl.Collator("id", { numeric: true });
 
 /** Tabel katalog dengan pencarian, sort, paginasi, pilihan kolom, aksi detail, dan empty state berilustrasi. */
-export function DataTable<T>({ title, description, rows, columns, rowId, searchText, searchPlaceholder = "Cari data", actions, onView, onRowClick, limit, pageSize, minWidth = 860 }: Props<T>) {
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<{ header: string; dir: 1 | -1 } | null>(null);
+export function DataTable<T>({ title, description, rows, columns, rowId, searchText, searchPlaceholder = "Cari data", actions, onView, onRowClick, limit, pageSize, minWidth = 860, server }: Props<T>) {
+  const [query, setQuery] = useState(server?.query ?? "");
+  const [localSort, setSort] = useState<{ header: string; dir: 1 | -1 } | null>(null);
+  const serverSortHeader = server?.sort && columns.find((c) => c.sortKey === server.sort!.key)?.header;
+  const sort = server ? (serverSortHeader ? { header: serverSortHeader, dir: server.sort!.dir } : null) : localSort;
   const [page, setPage] = useState(0);
   const body = useRef<HTMLTableSectionElement>(null);
   const phone = useIsPhone();
@@ -58,17 +77,31 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
 
   const visible = columns.filter((c) => !hidden.has(c.header));
   const sortColumn = sort && columns.find((c) => c.header === sort.header);
-  const matched = rows.filter((row) => searchText(row).toLowerCase().includes(query.trim().toLowerCase()));
-  if (sortColumn?.sortValue) {
+  // Mode server: baris sudah dicari, diurutkan, dan dipotong per halaman oleh server.
+  const matched = server ? rows : rows.filter((row) => searchText(row).toLowerCase().includes(query.trim().toLowerCase()));
+  if (!server && sortColumn?.sortValue) {
     const value = sortColumn.sortValue;
     matched.sort((a, b) => {
       const x = value(a), y = value(b);
       return (typeof x === "number" && typeof y === "number" ? x - y : collator.compare(String(x), String(y))) * sort!.dir;
     });
   }
-  const pages = pageSize ? Math.max(1, Math.ceil(matched.length / pageSize)) : 1;
-  const current = Math.min(page, pages - 1);
-  const filtered = pageSize ? matched.slice(current * pageSize, (current + 1) * pageSize) : matched.slice(0, limit);
+  const total = server ? server.total : matched.length;
+  const pages = pageSize ? Math.max(1, Math.ceil(total / pageSize)) : 1;
+  const current = server ? server.page : Math.min(page, pages - 1);
+  const filtered = server ? rows : pageSize ? matched.slice(current * pageSize, (current + 1) * pageSize) : matched.slice(0, limit);
+  const goTo = (next: number) => (server ? server.onChange({ page: next }) : setPage(next));
+
+  // Pencarian server dikirim setelah pengguna berhenti mengetik.
+  const latestServer = useRef(server);
+  useEffect(() => {
+    latestServer.current = server;
+  });
+  useEffect(() => {
+    if (!latestServer.current || query === latestServer.current.query) return;
+    const timer = setTimeout(() => latestServer.current?.onChange({ query, page: 0 }), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const mounted = useRef(false);
   /** Baris masuk berurutan saat pencarian, halaman, atau urutan berubah. */
@@ -87,7 +120,14 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
   );
 
   const toggleSort = (header: string) => {
-    setSort((s) => (s?.header !== header ? { header, dir: 1 } : s.dir === 1 ? { header, dir: -1 } : null));
+    const next = (s: { header: string; dir: 1 | -1 } | null) => (s?.header !== header ? { header, dir: 1 as const } : s.dir === 1 ? { header, dir: -1 as const } : null);
+    if (server) {
+      const value = next(sort);
+      const key = value && columns.find((c) => c.header === value.header)?.sortKey;
+      server.onChange({ sort: key ? { key, dir: value.dir } : null, page: 0 });
+      return;
+    }
+    setSort(next);
     setPage(0);
   };
   const toggleColumn = (header: string, show: boolean) =>
@@ -152,7 +192,7 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
                   aria-sort={sort?.header === column.header ? (sort.dir === 1 ? "ascending" : "descending") : undefined}
                   className={cn("h-10 px-4 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase", column.className)}
                 >
-                  {column.sortValue ? (
+                  {(server ? column.sortKey : column.sortValue) ? (
                     <button type="button" onClick={() => toggleSort(column.header)} className="-mx-1 inline-flex items-center gap-1 rounded px-1 uppercase hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
                       {column.header}
                       <Icon icon={sort?.header !== column.header ? ArrowUpDownIcon : sort.dir === 1 ? ArrowUp01Icon : ArrowDown01Icon} size={14} className={cn(sort?.header !== column.header && "opacity-50")} />
@@ -165,7 +205,7 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
               {onView && <TableHead className="w-16 px-4"><span className="sr-only">Aksi</span></TableHead>}
             </TableRow>
           </TableHeader>
-          <TableBody ref={body}>
+          <TableBody ref={body} className={cn(server?.pending && "opacity-60 transition-opacity")}>
             {filtered.map((row) => (
               <TableRow
                 key={rowId(row)}
@@ -210,17 +250,17 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
         </EmptyState>
       )}
 
-      {pageSize && matched.length > pageSize && (
+      {pageSize && total > pageSize && (
         <div className="flex items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground">
           <span className="tabular-nums">
-            {current * pageSize + 1}–{Math.min((current + 1) * pageSize, matched.length)} dari {matched.length.toLocaleString("id-ID")}
+            {current * pageSize + 1}–{Math.min((current + 1) * pageSize, total)} dari {total.toLocaleString("id-ID")}
           </span>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon-sm" aria-label="Halaman sebelumnya" disabled={current === 0} onClick={() => setPage(current - 1)}>
+            <Button variant="ghost" size="icon-sm" aria-label="Halaman sebelumnya" disabled={current === 0} onClick={() => goTo(current - 1)}>
               <Icon icon={ArrowLeft01Icon} size={16} />
             </Button>
             <span className="px-1 tabular-nums">{current + 1} / {pages}</span>
-            <Button variant="ghost" size="icon-sm" aria-label="Halaman berikutnya" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
+            <Button variant="ghost" size="icon-sm" aria-label="Halaman berikutnya" disabled={current >= pages - 1} onClick={() => goTo(current + 1)}>
               <Icon icon={ArrowRight01Icon} size={16} />
             </Button>
           </div>

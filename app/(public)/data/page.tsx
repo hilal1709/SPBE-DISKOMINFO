@@ -1,9 +1,10 @@
 import { Suspense } from "react";
+import { allData } from "@/lib/data/generate";
 import { DashboardSkeleton } from "@/components/blocks/dashboard-skeleton";
 import { DataDashboard } from "@/components/dashboards/data-dashboard";
 import { RadProvider } from "@/components/data/rad-context";
 import { radSetSafe } from "@/lib/data/rad";
-import { sampleRadSet } from "@/lib/data/reference";
+import { sampleRadSet } from "@/lib/data/sample-reference";
 import { listApprovedData } from "@/lib/data/repo";
 import { periodOptions } from "@/lib/probis/periods";
 import { sampleActivePeriod, samplePeriods } from "@/lib/probis/reference";
@@ -24,7 +25,7 @@ export default async function Page() {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <RadProvider set={radSet}>
-        <DataDashboard data={fromDb ? approved.rows : null} sample={!fromDb || approved.sample} periods={periods} />
+        <DataDashboard data={fromDb ? approved.rows : allData()} sample={!fromDb || approved.sample} periods={periods} />
       </RadProvider>
     </Suspense>
   );

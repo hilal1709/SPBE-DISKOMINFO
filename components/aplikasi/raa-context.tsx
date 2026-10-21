@@ -1,8 +1,7 @@
 "use client";
 import { createRefContext } from "@/components/reference/ref-context";
-import { sampleRaaSet } from "@/lib/aplikasi/reference";
 
-const raa = createRefContext(sampleRaaSet);
+const raa = createRefContext();
 
 /** Menyediakan referensi RAA (dari database, per versi) untuk komponen klien. */
 export const RaaProvider = raa.Provider;

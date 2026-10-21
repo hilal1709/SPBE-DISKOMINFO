@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { KegiatanKeamanan } from "@/lib/types";
 import type { Kegiatan } from "./jenis";
+import { cached, TAGS } from "@/lib/cache";
 
 /** Akses data Domain Keamanan untuk dashboard publik (server saja). */
 
@@ -21,7 +22,7 @@ function db() {
 }
 
 /** Kegiatan yang sudah divalidasi. Kosong bila modul CMS keamanan belum berisi data. */
-export async function listApprovedKeamanan(): Promise<{ rows: KegiatanKeamanan[]; sample: boolean }> {
+async function loadListApprovedKeamanan(): Promise<{ rows: KegiatanKeamanan[]; sample: boolean }> {
   const { rows } = await db().query(
     `select s.code, s.kind, s.name, s.description, to_char(s.activity_date, 'YYYY-MM-DD') as activity_date, s.attributes, o.code as opd, ap.name as period, s.is_sample
      from security_activities s
@@ -36,7 +37,7 @@ export async function listApprovedKeamanan(): Promise<{ rows: KegiatanKeamanan[]
 }
 
 /** Hitung dependensi Keamanan SPBE yang diisi pada data, aplikasi, dan infrastruktur tervalidasi. */
-export async function securityCoverage(): Promise<Coverage> {
+async function loadSecurityCoverage(): Promise<Coverage> {
   const coverage: Coverage = {};
   const slot = (period: string) => (coverage[period] ??= { totals: { data: 0, aplikasi: 0, infrastruktur: 0 }, byKey: {} });
   await Promise.all(
@@ -60,3 +61,7 @@ export async function securityCoverage(): Promise<Coverage> {
   );
   return coverage;
 }
+
+/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+export const listApprovedKeamanan = cached(loadListApprovedKeamanan, "keamanan/repo:listApprovedKeamanan", [TAGS.content]);
+export const securityCoverage = cached(loadSecurityCoverage, "keamanan/repo:securityCoverage", [TAGS.content]);
