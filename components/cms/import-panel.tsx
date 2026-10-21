@@ -115,7 +115,7 @@ export function ImportPanel<R extends PanelRow>({
         {canImport && !result && (
           <Card data-reveal>
             <CardHeader>
-              <CardTitle className="section-title">Impor template</CardTitle>
+              <CardTitle as="h2" className="section-title">Impor template</CardTitle>
               <CardDescription>Unggah “{copy.workbook}.xlsx” atau zip paket arsitektur. {copy.hint}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -237,7 +237,7 @@ export function ImportPanel<R extends PanelRow>({
 
       <Card data-reveal className="gap-3 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Template & ekspor</CardTitle>
+          <CardTitle as="h2" className="section-title">Template & ekspor</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2">
           <Illustration name="explore" className="mx-auto mb-2 w-36" />

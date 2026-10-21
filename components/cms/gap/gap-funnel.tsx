@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 import { animate, motionOk, stagger } from "@/components/motion/anime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInView } from "@/hooks/use-in-view";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 /**
  * Corong tindak lanjut gap (pola funnel 21st.dev): ditemukan → diusulkan ke Peta Rencana → ditindaklanjuti.
@@ -31,7 +31,7 @@ export function GapFunnel({ found, proposed, done, className }: { found: number;
   return (
     <Card data-reveal className={className}>
       <CardHeader>
-        <CardTitle className="section-title">Alur tindak lanjut</CardTitle>
+        <CardTitle as="h2" className="section-title">Alur tindak lanjut</CardTitle>
       </CardHeader>
       <CardContent ref={ref} className="flex flex-1 items-center justify-center">
         <svg ref={svg} viewBox="0 0 360 200" className="w-full max-w-md" role="img" aria-label={stages.map((s) => `${s.label} ${s.n}`).join(", ")}>
@@ -42,7 +42,7 @@ export function GapFunnel({ found, proposed, done, className }: { found: number;
             return (
               <g key={s.label} data-stage style={{ transformOrigin: "180px 0", transformBox: "view-box" }}>
                 <path d={`M ${180 - top / 2} ${y} L ${180 + top / 2} ${y} L ${180 + bottom / 2} ${y + 56} L ${180 - bottom / 2} ${y + 56} Z`} fill={`var(${s.tone})`} strokeLinejoin="round" stroke={`var(${s.tone})`} strokeWidth={6} />
-                <text x={180} y={y + 25} textAnchor="middle" className="fill-[var(--on-brand)] text-[18px] font-bold tabular-nums">{fmt.format(s.n)}</text>
+                <text x={180} y={y + 25} textAnchor="middle" className="fill-[var(--on-brand)] text-[18px] font-bold tabular-nums">{formatNumber(s.n)}</text>
                 <text x={180} y={y + 43} textAnchor="middle" className="fill-[var(--on-brand)] text-[10px] font-medium">{s.label}</text>
               </g>
             );

@@ -160,7 +160,7 @@ export function DesignSystemShowcase() {
         <Section id="grafik" title="Grafik (Chart.js)" description="Import dari @/components/charts. Warna seri lewat token (--brand-teal, …), tooltip pil charcoal, animasi saat terlihat.">
           <div className="grid gap-4 *:min-w-0 lg:grid-cols-[2fr_1fr]">
             <Card>
-              <CardHeader><CardTitle className="section-title">BarChart</CardTitle></CardHeader>
+              <CardHeader><CardTitle as="h2" className="section-title">BarChart</CardTitle></CardHeader>
               <CardContent className="h-64">
                 <BarChart
                   labels={["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"]}
@@ -173,7 +173,7 @@ export function DesignSystemShowcase() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="section-title">DoughnutChart</CardTitle></CardHeader>
+              <CardHeader><CardTitle as="h2" className="section-title">DoughnutChart</CardTitle></CardHeader>
               <CardContent className="h-64">
                 <DoughnutChart labels={["Layanan", "Data", "Aplikasi", "Infrastruktur"]} data={[128, 96, 72, 46]} caption="komponen" colors={["--brand-teal", "--brand-yellow", "--brand-orange", "--brand-sky"]} />
               </CardContent>

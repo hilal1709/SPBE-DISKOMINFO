@@ -201,7 +201,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
         )}
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Identitas</CardTitle>
+            <CardTitle as="h2" className="section-title">Identitas</CardTitle>
             <CardDescription>
               ID: <b className="tabular-nums">{record?.code ?? (values.raa ? `GSK-APL ${values.raa.slice(4)}.xxx (otomatis)` : "dibuat otomatis dari RAA")}</b>
               {record && <ReviewBadge status={record.status} />}
@@ -303,7 +303,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Klasifikasi RAA</CardTitle>
+            <CardTitle as="h2" className="section-title">Klasifikasi RAA</CardTitle>
             <CardDescription>Aplikasi Umum dipakai lintas instansi; Aplikasi Khusus spesifik urusan.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -317,7 +317,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Teknologi</CardTitle>
+            <CardTitle as="h2" className="section-title">Teknologi</CardTitle>
           </CardHeader>
           <CardContent>
             <FieldGroup>
@@ -361,7 +361,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Dependensi</CardTitle>
+            <CardTitle as="h2" className="section-title">Dependensi</CardTitle>
             <CardDescription>Proses bisnis tervalidasi, layanan, dan data pada periode {values.period}.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -489,7 +489,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
 
       <Card ref={panel} data-reveal className="gap-4 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Asisten AI</CardTitle>
+          <CardTitle as="h2" className="section-title">Asisten AI</CardTitle>
           <CardDescription>Menyusun uraian, fungsi, dan luaran, menyarankan RAA serta proses bisnis yang selaras dari nama aplikasi.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -598,7 +598,7 @@ export function Collapsible({ title, hint, filled, children }: { title: string; 
       <CardHeader>
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="group/sec flex w-full items-center justify-between gap-3 text-left">
           <span className="grid gap-1">
-            <CardTitle className="section-title">{title}</CardTitle>
+            <CardTitle as="h2" className="section-title">{title}</CardTitle>
             <CardDescription>
               Opsional · {filled ? `${filled} isian` : "belum diisi"} · {hint}
             </CardDescription>

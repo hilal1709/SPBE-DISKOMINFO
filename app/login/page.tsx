@@ -34,7 +34,7 @@ export default function Login() {
 
   return (
     <main className="grid min-h-svh lg:grid-cols-[1.05fr_1fr]">
-      <section className="relative m-3 hidden overflow-hidden rounded-3xl bg-brand-sky text-brand-charcoal lg:flex lg:flex-col">
+      <aside className="relative m-3 hidden overflow-hidden rounded-3xl bg-brand-sky text-brand-charcoal lg:flex lg:flex-col">
         <div aria-hidden className="absolute -top-32 -left-32 size-[440px] rounded-full bg-brand-yellow/40 blur-3xl" />
         <div aria-hidden className="absolute -right-24 -bottom-24 size-[380px] rounded-full bg-brand-teal/25 blur-3xl" />
         <Reveal className="relative flex flex-1 flex-col p-10">
@@ -43,13 +43,13 @@ export default function Login() {
           </div>
           <Illustration name="login-hero" className="mx-auto my-auto w-full max-w-md" />
           <div data-reveal>
-            <h2 className="max-w-md text-3xl leading-tight font-bold text-balance">Satu peta arsitektur untuk layanan digital Gresik.</h2>
+            <p className="max-w-md text-3xl leading-tight font-bold text-balance">Satu peta arsitektur untuk layanan digital Gresik.</p>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-brand-charcoal/75">
               Proses bisnis, layanan, data, aplikasi, dan infrastruktur seluruh Perangkat Daerah terhubung dalam satu sistem.
             </p>
           </div>
         </Reveal>
-      </section>
+      </aside>
 
       <section className="flex flex-col p-6 sm:p-10">
         <Button asChild variant="ghost" className="group -ml-2 self-start text-muted-foreground">

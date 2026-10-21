@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
-import { can, currentActor } from "@/lib/access";
+import { forbidden, xlsxResponse } from "@/lib/export/xlsx-response";
+import { can, currentActor, opdScope } from "@/lib/access";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { withSecurityLabels } from "@/lib/keamanan/link";
 import { listInfrastruktur } from "@/lib/infrastruktur/cms-repo";
@@ -11,8 +12,8 @@ import { refResolver } from "@/lib/reference/versioned";
 /** Ekspor komponen infrastruktur: satu sheet per komponen dengan kolom template analis (+ periode & status). */
 export async function GET() {
   const actor = await currentActor().catch(() => null);
-  if (!actor || !can.export(actor)) return new Response("Tidak diizinkan", { status: 403 });
-  const [records, raiSet, refs] = await Promise.all([listInfrastruktur({ opdId: can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000") }), rai.loadSet(), securityRefs()]);
+  if (!actor || !can.export(actor)) return forbidden();
+  const [records, raiSet, refs] = await Promise.all([listInfrastruktur({ opdId: opdScope(actor) }), rai.loadSet(), securityRefs()]);
   // Dependensi keamanan tertaut diekspor sebagai "kode nama" agar terbaca dan bisa diimpor ulang.
   const rows = withSecurityLabels(records, refs);
   const raiFor = refResolver(raiSet);
@@ -26,11 +27,5 @@ export async function GET() {
     sheet["!cols"] = cols.map((c) => ({ wch: c.width }));
     XLSX.utils.book_append_sheet(book, sheet, sheetName(jenis));
   }
-  const stamp = new Date().toISOString().slice(0, 10);
-  return new Response(XLSX.write(book, { type: "buffer", bookType: "xlsx" }), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="infrastruktur-${stamp}.xlsx"`,
-    },
-  });
+  return xlsxResponse(book, "infrastruktur");
 }

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { expire, TAGS } from "@/lib/cache";
+import { broadcastChange } from "@/lib/realtime/server";
 
 /** Hasil server action CMS: data, atau pesan galat (+ galat per kolom form). */
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string; fields?: Record<string, string> };
@@ -20,4 +21,5 @@ export function refresh({ reference = false }: { reference?: boolean } = {}) {
   revalidatePath("/infrastruktur");
   revalidatePath("/keamanan");
   revalidatePath("/peta-rencana");
+  broadcastChange(reference ? "reference" : "content");
 }

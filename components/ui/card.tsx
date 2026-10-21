@@ -32,9 +32,10 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+/** `as` = tingkat heading bila judul kartu menjadi judul bagian halaman (default `div`). */
+function CardTitle({ className, as: Tag = "div", ...props }: React.ComponentProps<"div"> & { as?: "div" | "h2" | "h3" }) {
   return (
-    <div
+    <Tag
       data-slot="card-title"
       className={cn(
         "font-heading text-base leading-snug font-semibold group-data-[size=sm]/card:text-sm",

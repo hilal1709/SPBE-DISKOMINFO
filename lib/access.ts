@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
 import { roleAccess, roleGrant } from "@/lib/pengguna/grants";
 import { sessionAccess } from "@/lib/pengguna/repo";
-import type { Actor } from "@/lib/permissions";
+import { NIL_UUID } from "@/lib/constants";
+import { can, type Actor } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
 
 type SessionLike = { id: string; name?: string | null; role: Role; opdId?: string | null };
@@ -42,3 +43,6 @@ export const currentActor = cache(async (): Promise<Actor> => {
 });
 
 export { can, reviewTeam, stageOf, stageStatus, type Actor, type Permission, type ReviewDomain, type ReviewStage } from "@/lib/permissions";
+
+/** Cakupan OPD untuk query daftar: `null` = semua OPD, selain itu OPD pengguna (tanpa OPD → tidak ada baris). */
+export const opdScope = (actor: Actor): string | null => (can.readAll(actor) ? null : (actor.opdId ?? NIL_UUID));

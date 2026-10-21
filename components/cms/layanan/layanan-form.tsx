@@ -166,7 +166,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
         )}
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Identitas</CardTitle>
+            <CardTitle as="h2" className="section-title">Identitas</CardTitle>
             <CardDescription>
               ID: <b className="tabular-nums">{record?.code ?? (values.ral3 ? `GSK-LYN ${values.ral3.slice(4)}.xx (otomatis)` : "dibuat otomatis dari RAL Level 3")}</b>
               {record && <ReviewBadge status={record.status} />}
@@ -236,7 +236,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Klasifikasi</CardTitle>
+            <CardTitle as="h2" className="section-title">Klasifikasi</CardTitle>
             <CardDescription>Cukup pilih RAL Level 3; Level 1 dan 2 mengikuti kodenya.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -304,7 +304,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Penyelenggaraan</CardTitle>
+            <CardTitle as="h2" className="section-title">Penyelenggaraan</CardTitle>
             <CardDescription>Metode Elektronik dan Hybrid dihitung sebagai layanan terdigitalisasi.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -325,7 +325,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Manfaat & risiko</CardTitle>
+            <CardTitle as="h2" className="section-title">Manfaat & risiko</CardTitle>
           </CardHeader>
           <CardContent>
             <FieldGroup>
@@ -354,7 +354,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Proses bisnis yang dilayani</CardTitle>
+            <CardTitle as="h2" className="section-title">Proses bisnis yang dilayani</CardTitle>
             <CardDescription>Proses bisnis {pdByCode.get(values.opd)?.name ?? "Perangkat Daerah"} pada periode {values.period}.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -381,7 +381,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
 
       <Card ref={panel} data-reveal className="gap-4 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Asisten AI</CardTitle>
+          <CardTitle as="h2" className="section-title">Asisten AI</CardTitle>
           <CardDescription>Menyusun tujuan, fungsi, manfaat, risiko, dan menyarankan RAL dari nama layanan.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
-import { can, currentActor } from "@/lib/access";
+import { forbidden, xlsxResponse } from "@/lib/export/xlsx-response";
+import { can, currentActor, opdScope } from "@/lib/access";
 import { listProbis } from "@/lib/probis/repo";
 import { loadRabSet, rabResolver } from "@/lib/probis/rab";
 import { reviewLabel, statusLabel } from "@/lib/probis/reference";
@@ -7,8 +8,8 @@ import { reviewLabel, statusLabel } from "@/lib/probis/reference";
 /** Ekspor probis dalam format kolom template "Domain Arsitektur Proses Bisnis.xlsx" (+ status & periode). */
 export async function GET() {
   const actor = await currentActor().catch(() => null);
-  if (!actor || !can.export(actor)) return new Response("Tidak diizinkan", { status: 403 });
-  const rows = await listProbis({ opdId: can.readAll(actor) ? null : actor.opdId ?? "00000000-0000-0000-0000-000000000000" });
+  if (!actor || !can.export(actor)) return forbidden();
+  const rows = await listProbis({ opdId: opdScope(actor) });
   const rabFor = rabResolver(await loadRabSet());
 
   const header = [
@@ -45,11 +46,5 @@ export async function GET() {
   sheet["!cols"] = [40, 22, 50, 32, 18, 18, 40, 30, 14, 14, 30, 30, 40, 12, 12, 16].map((wch) => ({ wch }));
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, "Proses Bisnis");
-  const stamp = new Date().toISOString().slice(0, 10);
-  return new Response(XLSX.write(book, { type: "buffer", bookType: "xlsx" }), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="proses-bisnis-${stamp}.xlsx"`,
-    },
-  });
+  return xlsxResponse(book, "proses-bisnis");
 }

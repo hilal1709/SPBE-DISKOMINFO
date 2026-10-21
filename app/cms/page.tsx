@@ -1,5 +1,5 @@
 import { CmsHome } from "@/components/cms/cms-home";
-import { can, currentActor } from "@/lib/access";
+import { can, currentActor, opdScope } from "@/lib/access";
 import { aplikasiSummary } from "@/lib/aplikasi/cms-repo";
 import { dataSummary } from "@/lib/data/cms-repo";
 import { infrastrukturSummary } from "@/lib/infrastruktur/cms-repo";
@@ -11,7 +11,7 @@ import { cmsSummary } from "@/lib/probis/repo";
 
 export default async function CmsPage() {
   const actor = await currentActor();
-  const scope = can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000");
+  const scope = opdScope(actor);
   const [probis, layanan, data, aplikasi, infrastruktur, keamanan, rencana, gaps] = await Promise.all([
     cmsSummary(scope),
     layananSummary(scope),

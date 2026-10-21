@@ -148,7 +148,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
         )}
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Identitas</CardTitle>
+            <CardTitle as="h2" className="section-title">Identitas</CardTitle>
             <CardDescription>
               ID: <b className="tabular-nums">{record?.code ?? (values.rab3 ? `GSK-DAB ${values.rab3.slice(4)}.xx (otomatis)` : "dibuat otomatis dari RAB Level 3")}</b>
               {record && <ReviewBadge status={record.status} />}
@@ -211,7 +211,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Klasifikasi RAB</CardTitle>
+            <CardTitle as="h2" className="section-title">Klasifikasi RAB</CardTitle>
             <CardDescription>Cukup pilih Level 3; Level 1 dan 2 mengikuti kodenya.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -247,7 +247,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Kinerja</CardTitle>
+            <CardTitle as="h2" className="section-title">Kinerja</CardTitle>
           </CardHeader>
           <CardContent>
             <FieldGroup>
@@ -306,7 +306,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
 
       <Card ref={panel} data-reveal className="gap-4 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Asisten AI</CardTitle>
+          <CardTitle as="h2" className="section-title">Asisten AI</CardTitle>
           <CardDescription>Menyusun uraian, sasaran, IKU, dan menyarankan RAB dari nama probis.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

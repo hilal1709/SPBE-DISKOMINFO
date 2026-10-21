@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { categoryColor } from "@/lib/palette";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
 export type TreemapItem = { code: string; label: string; value: number };
 type Rect = { x: number; y: number; w: number; h: number };
@@ -124,7 +125,6 @@ export function Treemap({
   const rects = squarify(sorted.map((i) => i.value), size.w, size.h);
   const max = sorted[0]?.value ?? 1;
   const total = sorted.reduce((sum, i) => sum + i.value, 0);
-  const fmt = new Intl.NumberFormat("id-ID");
 
   return (
     <div ref={box} onPointerMove={moveTip} onPointerLeave={() => setHover(null)} className={cn("relative overflow-hidden rounded-xl bg-card", className)}>
@@ -138,7 +138,7 @@ export function Treemap({
             key={item.code}
             data-tile
             type="button"
-            aria-label={`${item.code} ${item.label}: ${fmt.format(item.value)}`}
+            aria-label={`${item.code} ${item.label}: ${formatNumber(item.value)}`}
             aria-pressed={onToggle ? active : undefined}
             onClick={onToggle && (() => onToggle(item.code))}
             onPointerEnter={() => setHover(item)}
@@ -159,7 +159,7 @@ export function Treemap({
                 <span className="line-clamp-2 text-[11px] leading-snug font-semibold">{item.label}</span>
               </span>
             )}
-            {showValue && <span className={cn("font-bold tabular-nums", r.w >= 90 && r.h >= 70 ? "text-lg" : "text-xs")}>{fmt.format(item.value)}</span>}
+            {showValue && <span className={cn("font-bold tabular-nums", r.w >= 90 && r.h >= 70 ? "text-lg" : "text-xs")}>{formatNumber(item.value)}</span>}
           </button>
         );
       })}
@@ -177,7 +177,7 @@ export function Treemap({
             <p className="text-[10px] text-white/60 tabular-nums">{hover.code}</p>
             <p className="font-semibold">{hover.label}</p>
             <p className="mt-1 tabular-nums">
-              <b>{fmt.format(hover.value)}</b> probis · {((hover.value / total) * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%
+              <b>{formatNumber(hover.value)}</b> probis · {((hover.value / total) * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%
             </p>
           </>
         )}

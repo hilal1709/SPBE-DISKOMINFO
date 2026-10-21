@@ -6,12 +6,12 @@ import { useInView } from "@/hooks/use-in-view";
 import { kepemilikanColor, kepemilikanOptions, type Kepemilikan } from "@/lib/aplikasi/reference";
 import type { Aplikasi } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
 const W = 520;
 const H = 250;
 const NODE = 10;
 const GAP = 14;
-const fmt = new Intl.NumberFormat("id-ID");
 /** Label kiri dan kanan berbagi lebar W; dipotong agar tidak bertabrakan di tengah pada huruf besar ponsel. */
 const clip = (s: string) => (s.length > 22 ? `${s.slice(0, 21)}…` : s);
 
@@ -93,7 +93,7 @@ export function OwnershipFlowCard({
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Alur kepemilikan ke RAA</CardTitle>
+        <CardTitle as="h2" className="section-title">Alur kepemilikan ke RAA</CardTitle>
       </CardHeader>
       <CardContent ref={ref} className="flex-1">
         <svg ref={svg} viewBox={`-4 -4 ${W + 8} ${H + 8}`} className="w-full overflow-visible" role="group" aria-label="Alur jumlah aplikasi dari kepemilikan ke RAA Level 2">
@@ -113,7 +113,7 @@ export function OwnershipFlowCard({
                 strokeOpacity={lit ? (hover ? 0.75 : filtered ? 0.7 : 0.45) : 0.12}
                 role="button"
                 tabIndex={0}
-                aria-label={`${link.from.label} ke ${link.to.label}: ${fmt.format(link.value)} aplikasi`}
+                aria-label={`${link.from.label} ke ${link.to.label}: ${formatNumber(link.value)} aplikasi`}
                 aria-pressed={filtered && on}
                 className="cursor-pointer transition-[stroke-opacity] duration-200 outline-none focus-visible:stroke-opacity-90"
                 onMouseEnter={() => setHover(link.id)}
@@ -123,7 +123,7 @@ export function OwnershipFlowCard({
                 onClick={() => onSelect(link.from.code as Kepemilikan, link.to.code)}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect(link.from.code as Kepemilikan, link.to.code))}
               >
-                <title>{`${link.from.label} → ${link.to.label}: ${fmt.format(link.value)} aplikasi`}</title>
+                <title>{`${link.from.label} → ${link.to.label}: ${formatNumber(link.value)} aplikasi`}</title>
               </path>
             );
           })}
@@ -148,7 +148,7 @@ export function OwnershipFlowCard({
               >
                 <title>{n.label}</title>
                 {clip(n.label)}
-                <tspan className="fill-muted-foreground font-normal tabular-nums"> {fmt.format(n.count)}</tspan>
+                <tspan className="fill-muted-foreground font-normal tabular-nums"> {formatNumber(n.count)}</tspan>
               </text>
             </g>
           ))}

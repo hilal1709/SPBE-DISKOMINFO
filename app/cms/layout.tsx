@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CmsShell, type CmsUser } from "@/components/layout/cms-shell";
 import { CmsShellSkeleton } from "@/components/layout/cms-shell-skeleton";
 import { SampleBanner } from "@/components/cms/sample-banner";
-import { can, currentActor } from "@/lib/access";
+import { can, currentActor, opdScope } from "@/lib/access";
 import { cmsBadges } from "@/lib/cms/badges";
 import { opdCodeOf } from "@/lib/probis/repo";
+import { noIndex } from "@/lib/seo";
+
+export const metadata: Metadata = { title: "CMS", ...noIndex };
 
 /** Kerangka CMS tampil seketika; sesi dan lencana menu dimuat di baliknya. Referensi dipasang di layout tiap domain. */
 export default function CmsLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +21,7 @@ export default function CmsLayout({ children }: { children: React.ReactNode }) {
 
 async function CmsFrame({ children }: { children: React.ReactNode }) {
   const actor = await currentActor();
-  const scope = can.readAll(actor) ? null : actor.opdId ?? "00000000-0000-0000-0000-000000000000";
+  const scope = opdScope(actor);
   const [opdCode, badges] = await Promise.all([actor.opdId ? opdCodeOf(actor.opdId).catch(() => null) : null, cmsBadges(scope).catch(() => null)]);
   const n = (domain: keyof NonNullable<typeof badges>) => badges?.[domain] ?? { submitted: undefined, verified: undefined, samples: 0 };
   const [probis, layanan, data, aplikasi, infrastruktur, keamanan, rencana, gaps] = (["probis", "layanan", "data", "aplikasi", "infrastruktur", "keamanan", "rencana", "gap"] as const).map(n);

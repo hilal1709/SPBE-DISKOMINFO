@@ -181,7 +181,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
         )}
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Identitas</CardTitle>
+            <CardTitle as="h2" className="section-title">Identitas</CardTitle>
             <CardDescription>
               ID: <b className="tabular-nums">{record?.code ?? (values.rad ? `GSK-DAT ${values.rad.slice(4)}.xx (otomatis)` : "dibuat otomatis dari RAD")}</b>
               {record && <ReviewBadge status={record.status} />}
@@ -271,7 +271,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Klasifikasi RAD</CardTitle>
+            <CardTitle as="h2" className="section-title">Klasifikasi RAD</CardTitle>
             <CardDescription>Cukup pilih RAD Level 3; Level 1 dan 2 mengikuti kodenya.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -303,7 +303,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Karakteristik</CardTitle>
+            <CardTitle as="h2" className="section-title">Karakteristik</CardTitle>
             <CardDescription>Data interoperabel dapat dibagipakaikan antarsistem.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -345,7 +345,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Informasi terkait</CardTitle>
+            <CardTitle as="h2" className="section-title">Informasi terkait</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -363,7 +363,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Dependensi</CardTitle>
+            <CardTitle as="h2" className="section-title">Dependensi</CardTitle>
             <CardDescription>Proses bisnis {pdByCode.get(values.opd)?.name ?? "Perangkat Daerah"} dan layanan pada periode {values.period}.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -415,7 +415,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
 
       <Card ref={panel} data-reveal className="gap-4 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Asisten AI</CardTitle>
+          <CardTitle as="h2" className="section-title">Asisten AI</CardTitle>
           <CardDescription>Menyusun uraian dan tujuan, menyarankan RAD, sifat, jenis, dan validitas dari nama data.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -511,7 +511,7 @@ function SecurityCard({ period, value, onChange }: { period: string; value: Valu
       <CardHeader>
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="group/sec flex w-full items-center justify-between gap-3 text-left">
           <span className="grid gap-1">
-            <CardTitle className="section-title">Keamanan SPBE</CardTitle>
+            <CardTitle as="h2" className="section-title">Keamanan SPBE</CardTitle>
             <CardDescription>
               Opsional · {filled ? `${filled} tautan` : "belum diisi"} · kegiatan keamanan tervalidasi periode {period}
             </CardDescription>

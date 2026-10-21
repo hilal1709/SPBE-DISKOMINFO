@@ -112,7 +112,7 @@ export function RabTreeCard({
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">{title}</CardTitle>
+        <CardTitle as="h2" className="section-title">{title}</CardTitle>
         <CardAction>
           <Button
             variant="ghost"

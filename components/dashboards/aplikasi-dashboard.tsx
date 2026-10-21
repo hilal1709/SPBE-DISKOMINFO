@@ -32,9 +32,8 @@ import { colorByCount } from "@/lib/palette";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { Aplikasi } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatNumber, percent } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
-const pct = (part: number, whole: number) => Math.round((part / (whole || 1)) * 100);
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
@@ -176,8 +175,8 @@ export function AplikasiDashboard({
       ) : (
         <>
           <StatRow>
-            <StatCard tone="teal" label="Jumlah aplikasi" value={total} hint={`${fmt.format(umum)} umum · ${fmt.format(total - umum)} khusus`} />
-            <StatCard tone="orange" label="Aplikasi Pemda" value={owner.get("pemda") ?? 0} hint={`${pct(owner.get("pemda") ?? 0, total)}% dibangun Perangkat Daerah`} />
+            <StatCard tone="teal" label="Jumlah aplikasi" value={total} hint={`${formatNumber(umum)} umum · ${formatNumber(total - umum)} khusus`} />
+            <StatCard tone="orange" label="Aplikasi Pemda" value={owner.get("pemda") ?? 0} hint={`${percent(owner.get("pemda") ?? 0, total)}% dibangun Perangkat Daerah`} />
             <StatCard tone="yellow" label="Aplikasi Instansi Pusat" value={pusat.length} hint={`dioperasikan ${new Set(pusat.map((a) => a.operasional)).size} Perangkat Daerah`} />
             <StatCard tone="amber" label="Unit operasional" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
           </StatRow>
@@ -197,10 +196,10 @@ export function AplikasiDashboard({
             />
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Interoperabilitas aplikasi</CardTitle>
+                <CardTitle as="h2" className="section-title">Interoperabilitas aplikasi</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-center gap-5">
-                <Gauge value={pct(splp, total)} label="Persentase aplikasi terhubung SPLP" caption={`${fmt.format(splp)} dari ${fmt.format(total)} terhubung SPLP`} />
+                <Gauge value={percent(splp, total)} label="Persentase aplikasi terhubung SPLP" caption={`${formatNumber(splp)} dari ${formatNumber(total)} terhubung SPLP`} />
                 <div className="grid grid-cols-2 gap-2" role="group" aria-label="Filter basis aplikasi">
                   {basisOptions.map((o) => {
                     const on = filter.basis.includes(o.value);
@@ -219,7 +218,7 @@ export function AplikasiDashboard({
                         )}
                       >
                         <span className="font-medium">{o.label}</span>
-                        <span className="text-muted-foreground tabular-nums">{fmt.format(n)}</span>
+                        <span className="text-muted-foreground tabular-nums">{formatNumber(n)}</span>
                       </button>
                     );
                   })}
@@ -231,7 +230,7 @@ export function AplikasiDashboard({
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1fr_1.15fr]">
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">RAA Level 2 × kepemilikan</CardTitle>
+                <CardTitle as="h2" className="section-title">RAA Level 2 × kepemilikan</CardTitle>
               </CardHeader>
               <CardContent className="min-h-80 flex-1">
                 <BarChart
@@ -265,7 +264,7 @@ export function AplikasiDashboard({
             <div data-aos="fade-blur" suppressHydrationWarning>
               <Card className="h-full gap-3">
                 <CardHeader>
-                  <CardTitle className="section-title">Kesiapan infrastruktur</CardTitle>
+                  <CardTitle as="h2" className="section-title">Kesiapan infrastruktur</CardTitle>
                 </CardHeader>
                 <CardContent className="grid flex-1 content-start gap-4">
                   {[
@@ -276,10 +275,10 @@ export function AplikasiDashboard({
                       <div className="flex items-baseline justify-between gap-3 text-sm">
                         <span className="font-medium">{item.label}</span>
                         <span className="text-muted-foreground tabular-nums">
-                          {fmt.format(item.value)} <span className="text-xs">({pct(item.value, total)}%)</span>
+                          {formatNumber(item.value)} <span className="text-xs">({percent(item.value, total)}%)</span>
                         </span>
                       </div>
-                      <Meter value={pct(item.value, total)} label={item.label} indicatorClassName={item.key === "open" ? "bg-brand-teal" : undefined} />
+                      <Meter value={percent(item.value, total)} label={item.label} indicatorClassName={item.key === "open" ? "bg-brand-teal" : undefined} />
                     </div>
                   ))}
                   {mesin.length > 0 && (
@@ -289,7 +288,7 @@ export function AplikasiDashboard({
                         {mesin.map(([name, n]) => (
                           <li key={name}>
                             <Badge variant="muted" className="tabular-nums">
-                              {name} · {fmt.format(n)}
+                              {name} · {formatNumber(n)}
                             </Badge>
                           </li>
                         ))}
@@ -302,7 +301,7 @@ export function AplikasiDashboard({
             <div data-aos="fade-blur" data-aos-delay="80" suppressHydrationWarning>
               <Card className="h-full gap-3">
                 <CardHeader>
-                  <CardTitle className="section-title">Bahasa pemrograman</CardTitle>
+                  <CardTitle as="h2" className="section-title">Bahasa pemrograman</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1">
                   {bahasa.length ? (

@@ -7,10 +7,10 @@ import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
 export type PdRow = { code: string; name: string; count: number; sektor: [string, number][] };
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 /** Rekap jumlah per Perangkat Daerah. Klik nama untuk memfilter, panah untuk rincian sektor. */
 export function PdRankingCard({
@@ -54,7 +54,7 @@ export function PdRankingCard({
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">{title}</CardTitle>
+        <CardTitle as="h2" className="section-title">{title}</CardTitle>
       </CardHeader>
       <CardContent className="max-h-[26rem] overflow-y-auto px-3">
         <ol ref={list} className="grid gap-0.5">
@@ -97,7 +97,7 @@ export function PdRankingCard({
         </ol>
       </CardContent>
       <p className="mx-6 flex justify-between border-t pt-3 text-xs font-semibold">
-        {rows.length} Perangkat Daerah <span className="tabular-nums">{fmt.format(total)} {unit}</span>
+        {rows.length} Perangkat Daerah <span className="tabular-nums">{formatNumber(total)} {unit}</span>
       </p>
     </Card>
   );

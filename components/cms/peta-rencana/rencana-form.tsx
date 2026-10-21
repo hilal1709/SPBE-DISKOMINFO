@@ -124,7 +124,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
       <form ref={form} onSubmit={(e) => (e.preventDefault(), submit())} className="grid min-w-0 gap-5" noValidate>
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Muatan</CardTitle>
+            <CardTitle as="h2" className="section-title">Muatan</CardTitle>
             <CardDescription>Fokus arsitektur yang dituju kegiatan.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -157,7 +157,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Rincian</CardTitle>
+            <CardTitle as="h2" className="section-title">Rincian</CardTitle>
             <CardDescription>
               ID: <b className="tabular-nums">{record?.code ?? (values.muatan ? `GSK-PRN ${muatanConfig[values.muatan].abbr}.xxx (otomatis)` : "otomatis")}</b>
             </CardDescription>
@@ -254,7 +254,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Evaluasi & realisasi</CardTitle>
+            <CardTitle as="h2" className="section-title">Evaluasi & realisasi</CardTitle>
           </CardHeader>
           <CardContent>
             <FieldGroup>

@@ -27,8 +27,8 @@ import { muatanConfig, muatanKeys, muatanOptions, statusConfig, statusKeys, stat
 import { activeFilterCount, emptyFilter, filterFromParams, filterRencana, filterToParams, sanitizeFilter, yearsOf, type RencanaFilter } from "@/lib/peta-rencana/query";
 import { pdByCode, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -150,7 +150,7 @@ export function PetaRencanaDashboard({
             <StatCard tone="teal" label="Total kegiatan" value={rows.length} hint={`${new Set(rows.map((r) => r.program)).size} program`} />
             <StatCard tone="amber" label="Terlaksana" value={terlaksana} hint={`${Math.round((terlaksana / rows.length) * 100)}% dari rencana`} />
             <StatCard tone="yellow" label="Berjalan" value={count("berjalan")} />
-            <StatCard tone="orange" label="Ditunda" value={count("ditunda")} hint={`${fmt.format(dialihkan)} dialihkan ke tahun berikutnya`} />
+            <StatCard tone="orange" label="Ditunda" value={count("ditunda")} hint={`${formatNumber(dialihkan)} dialihkan ke tahun berikutnya`} />
             <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} PD`} />
           </StatRow>
 
@@ -158,10 +158,10 @@ export function PetaRencanaDashboard({
             <YearTrack stats={yearStats} current={currentYear} selected={filter.tahun} onToggle={(y) => clickFilter(`Tahun ${y}`, "tahun", y)} />
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Progres terlaksana</CardTitle>
+                <CardTitle as="h2" className="section-title">Progres terlaksana</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 items-center">
-                <Gauge value={Math.round((terlaksana / rows.length) * 100)} label="Kegiatan terlaksana" caption={`${fmt.format(terlaksana)} dari ${fmt.format(rows.length)} kegiatan`} className="w-full" />
+                <Gauge value={Math.round((terlaksana / rows.length) * 100)} label="Kegiatan terlaksana" caption={`${formatNumber(terlaksana)} dari ${formatNumber(rows.length)} kegiatan`} className="w-full" />
               </CardContent>
             </Card>
           </section>
@@ -172,7 +172,7 @@ export function PetaRencanaDashboard({
             </div>
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Status per tahun</CardTitle>
+                <CardTitle as="h2" className="section-title">Status per tahun</CardTitle>
               </CardHeader>
               <CardContent className="min-h-72 flex-1">
                 <BarChart

@@ -30,9 +30,8 @@ import { useRadSet } from "@/components/data/rad-context";
 import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { DataInfo } from "@/lib/types";
+import { formatNumber, percent } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
-const pct = (part: number, whole: number) => `${Math.round((part / (whole || 1)) * 100)}%`;
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
@@ -192,22 +191,22 @@ export function DataDashboard({
           <StatRow>
             <StatCard tone="teal" label="Jumlah data" value={rows.length} hint={`${tree.length} data pokok RAD`} />
             <StatCard tone="orange" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
-            <StatCard tone="yellow" label="Data terbuka" value={sifat.get("terbuka") ?? 0} hint={`${pct(sifat.get("terbuka") ?? 0, rows.length)} dari seluruh data`} />
+            <StatCard tone="yellow" label="Data terbuka" value={sifat.get("terbuka") ?? 0} hint={`${percent(sifat.get("terbuka") ?? 0, rows.length)}% dari seluruh data`} />
             <StatCard tone="amber" label="Produsen lintas PD" value={lintas} hint="produsen berbeda dari wali" />
           </StatRow>
 
           <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Interoperabilitas data</CardTitle>
+                <CardTitle as="h2" className="section-title">Interoperabilitas data</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-center gap-5">
-                <Gauge value={(interop / total) * 100} label="Persentase data interoperabel" caption={`${fmt.format(interop)} dari ${fmt.format(rows.length)} data`} />
+                <Gauge value={(interop / total) * 100} label="Persentase data interoperabel" caption={`${formatNumber(interop)} dari ${formatNumber(rows.length)} data`} />
                 <dl className="grid gap-2 text-center">
                   <div className="rounded-lg bg-brand-sky px-2 py-2 text-on-brand">
                     <dt className="text-xs font-medium">Diperbarui realtime</dt>
                     <dd className="font-semibold tabular-nums">
-                      {fmt.format(realtime)} <span className="text-xs font-normal opacity-80">({pct(realtime, rows.length)})</span>
+                      {formatNumber(realtime)} <span className="text-xs font-normal opacity-80">({percent(realtime, rows.length)}%)</span>
                     </dd>
                   </div>
                 </dl>
@@ -228,7 +227,7 @@ export function DataDashboard({
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1fr_1.15fr]">
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Frekuensi pemutakhiran (validitas)</CardTitle>
+                <CardTitle as="h2" className="section-title">Frekuensi pemutakhiran (validitas)</CardTitle>
               </CardHeader>
               <CardContent className="min-h-80 flex-1">
                 <BarChart
@@ -259,7 +258,7 @@ export function DataDashboard({
             <RabTreeCard tree={tree} total={rows.length} colorOf={tematikColor} colorLevel={2} title="Peta referensi data (RAD)" reference="RAD" levelLabel={radLevels} expandLabel="Buka data pokok" />
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Data tematik (RAD 2)</CardTitle>
+                <CardTitle as="h2" className="section-title">Data tematik (RAD 2)</CardTitle>
               </CardHeader>
               <CardContent className="flex-1">
                 <Treemap items={tematik} colorOf={(item) => tematikColor(item.code)} selected={filter.rad2} onToggle={(code) => clickFilter(radLabel(code), (c) => withRad(c, { rad2: toggle(c.rad2, code) }, rad), !filter.rad2.includes(code))} className="h-[22rem] sm:h-[26rem]" />

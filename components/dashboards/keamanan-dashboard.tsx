@@ -30,9 +30,8 @@ import { toneBgClass } from "@/lib/palette";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { KegiatanKeamanan } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatNumber, percent } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
-const pct = (part: number, whole: number) => Math.round((part / (whole || 1)) * 100);
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -155,7 +154,7 @@ export function KeamananDashboard({
         <>
           <StatRow>
             <StatCard tone="teal" label="Kegiatan keamanan" value={rows.length} hint={`${new Set(rows.map((r) => r.jenis)).size} dari 7 jenis kegiatan`} />
-            <StatCard tone="orange" label="Standar berlaku" value={berlaku} hint={`dari ${fmt.format(standar.length)} standar & prosedur`} />
+            <StatCard tone="orange" label="Standar berlaku" value={berlaku} hint={`dari ${formatNumber(standar.length)} standar & prosedur`} />
             <StatCard tone="yellow" label="Audit keamanan" value={audits.length} hint={`${new Set(audits.map((r) => r.opd)).size} instansi diaudit/mengaudit`} />
             <StatCard tone="amber" label="Insiden ditangani" value={insiden.length} hint={scores.length ? `kematangan rata-rata ${maturity.toFixed(1).replace(".", ",")} dari 5` : "belum ada nilai kematangan"} />
             <StatCard tone="sky" label="Instansi pelaksana" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
@@ -165,10 +164,10 @@ export function KeamananDashboard({
             <CycleRingCard counts={jenisCount} selected={filter.jenis} onToggle={toggleJenis} />
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Kegiatan terbaru</CardTitle>
+                <CardTitle as="h2" className="section-title">Kegiatan terbaru</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-start gap-4">
-                {scores.length > 0 && <Gauge value={Math.round((maturity / 5) * 100)} label="Kematangan penanganan insiden" caption={`rata-rata ${maturity.toFixed(1).replace(".", ",")} dari 5 (${fmt.format(scores.length)} insiden)`} />}
+                {scores.length > 0 && <Gauge value={Math.round((maturity / 5) * 100)} label="Kematangan penanganan insiden" caption={`rata-rata ${maturity.toFixed(1).replace(".", ",")} dari 5 (${formatNumber(scores.length)} insiden)`} />}
                 <ol className="relative grid gap-3 border-l pl-4">
                   {rows.slice(0, 5).map((r) => (
                     <li key={r.id} className="relative text-sm">
@@ -189,7 +188,7 @@ export function KeamananDashboard({
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.15fr_1fr]">
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Kegiatan per tahun</CardTitle>
+                <CardTitle as="h2" className="section-title">Kegiatan per tahun</CardTitle>
               </CardHeader>
               <CardContent className="min-h-72 flex-1">
                 <BarChart
@@ -207,13 +206,13 @@ export function KeamananDashboard({
             <div data-aos="fade-blur" suppressHydrationWarning>
               <Card className="h-full gap-3">
                 <CardHeader>
-                  <CardTitle className="section-title">Cakupan dependensi keamanan</CardTitle>
+                  <CardTitle as="h2" className="section-title">Cakupan dependensi keamanan</CardTitle>
                 </CardHeader>
                 <CardContent className="grid flex-1 content-start gap-4">
                   {coverage && domains.length ? (
                     <>
                       <p className="text-xs text-muted-foreground">
-                        Persentase entri tervalidasi yang mencantumkan tiap kegiatan keamanan: {domains.map((d) => `${fmt.format(coverage.totals[d])} ${domainLabel[d]}`).join(", ")}.
+                        Persentase entri tervalidasi yang mencantumkan tiap kegiatan keamanan: {domains.map((d) => `${formatNumber(coverage.totals[d])} ${domainLabel[d]}`).join(", ")}.
                       </p>
                       {kegiatanKeys.map((k) => {
                         const hit = coverage.byKey[k];
@@ -223,9 +222,9 @@ export function KeamananDashboard({
                           <div key={k} className="grid gap-1.5">
                             <div className="flex items-baseline justify-between gap-3 text-sm">
                               <span className="font-medium">{kegiatanConfig[k].short}</span>
-                              <span className="text-xs text-muted-foreground tabular-nums">{domains.map((d) => `${domainLabel[d]} ${pct(hit?.[d] ?? 0, coverage.totals[d])}%`).join(" · ")}</span>
+                              <span className="text-xs text-muted-foreground tabular-nums">{domains.map((d) => `${domainLabel[d]} ${percent(hit?.[d] ?? 0, coverage.totals[d])}%`).join(" · ")}</span>
                             </div>
-                            <Meter value={pct(sum, total)} label={`Cakupan ${kegiatanConfig[k].short}`} indicatorClassName={toneBgClass[kegiatanConfig[k].tone]} />
+                            <Meter value={percent(sum, total)} label={`Cakupan ${kegiatanConfig[k].short}`} indicatorClassName={toneBgClass[kegiatanConfig[k].tone]} />
                           </div>
                         );
                       })}
@@ -242,7 +241,7 @@ export function KeamananDashboard({
             <div data-aos="fade-blur" suppressHydrationWarning>
               <Card className="h-full gap-3">
                 <CardHeader>
-                  <CardTitle className="section-title">Standar & prosedur</CardTitle>
+                  <CardTitle as="h2" className="section-title">Standar & prosedur</CardTitle>
                 </CardHeader>
                 <CardContent className="grid max-h-[26rem] content-start gap-2 overflow-y-auto">
                   {standar.length ? (
@@ -267,7 +266,7 @@ export function KeamananDashboard({
             </div>
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Kegiatan per instansi</CardTitle>
+                <CardTitle as="h2" className="section-title">Kegiatan per instansi</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col">
                 <Treemap

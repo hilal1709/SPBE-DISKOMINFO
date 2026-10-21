@@ -13,7 +13,7 @@ export function MuatanBento({ counts, selected, onToggle, className }: { counts:
   return (
     <Card className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Muatan rencana</CardTitle>
+        <CardTitle as="h2" className="section-title">Muatan rencana</CardTitle>
       </CardHeader>
       <CardContent className="grid flex-1 auto-rows-[minmax(5.5rem,auto)] grid-cols-2 gap-2 sm:grid-cols-4">
         {counts.map(([k, n], i) => {

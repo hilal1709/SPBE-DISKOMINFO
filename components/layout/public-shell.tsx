@@ -9,9 +9,13 @@ import { UrlParamsBoundary } from "@/hooks/use-url-params";
 import { AosInit } from "@/components/motion/aos";
 import { WordStagger } from "@/components/motion/word-stagger";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SkipLink } from "@/components/layout/skip-link";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { activeItem, portalSections, publicNav } from "@/lib/navigation";
+import { MAIN_CONTENT_ID } from "@/lib/constants";
+import { siteConfig } from "@/lib/site";
 
 /** Sesi dibaca sekali per kunjungan (tanpa pustaka klien next-auth), setelah halaman tampil. */
 let session: Promise<boolean> | undefined;
@@ -50,7 +54,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Kerangka portal publik: sidebar pastel, header ber-blur, area konten. */
+/** Kerangka portal publik: tautan lewati menu, sidebar pastel, header ber-blur, area konten, footer. */
 export function PublicShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -58,12 +62,13 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-svh lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
-      <aside className="hidden bg-sidebar lg:block">
+      <SkipLink />
+      <aside aria-label="Menu portal" className="hidden bg-sidebar lg:block">
         <div className="sticky top-0 h-svh overflow-y-auto overscroll-contain">
           <Sidebar />
         </div>
       </aside>
-      <div className="min-w-0">
+      <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-background/80 px-4 backdrop-blur-md lg:px-8">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -78,12 +83,13 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           </Sheet>
           <div className="min-w-0">
             <WordStagger as="h1" text={section} className="truncate text-lg font-bold tracking-tight" />
-            <p className="hidden text-xs text-muted-foreground sm:block">Arsitektur SPBE Kabupaten Gresik 2025–2029</p>
+            <p className="hidden text-xs text-muted-foreground sm:block">{siteConfig.tagline}</p>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1440px] px-4 pb-10 lg:px-8">
+        <main id={MAIN_CONTENT_ID} tabIndex={-1} className="mx-auto w-full max-w-[1440px] flex-1 px-4 pb-10 outline-none lg:px-8">
           <UrlParamsBoundary>{children}</UrlParamsBoundary>
         </main>
+        <SiteFooter />
       </div>
       <AosInit />
     </div>

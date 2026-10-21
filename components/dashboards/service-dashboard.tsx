@@ -30,8 +30,8 @@ import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import { useRabSet } from "@/components/probis/rab-context";
 import type { Layanan } from "@/lib/types";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
@@ -175,7 +175,7 @@ export function ServiceDashboard({
       ) : (
         <>
           <StatRow>
-            <StatCard tone="teal" label="Jumlah layanan" value={rows.length} hint={`${fmt.format(rows.length - publik)} administrasi pemerintahan`} />
+            <StatCard tone="teal" label="Jumlah layanan" value={rows.length} hint={`${formatNumber(rows.length - publik)} administrasi pemerintahan`} />
             <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Terdigitalisasi" value={digital} hint="elektronik + hybrid" />
             <StatCard tone="amber" label="Layanan publik" value={publik} />
@@ -184,10 +184,10 @@ export function ServiceDashboard({
           <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Digitalisasi layanan</CardTitle>
+                <CardTitle as="h2" className="section-title">Digitalisasi layanan</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-center gap-5">
-                <Gauge value={(digital / total) * 100} label="Persentase layanan terdigitalisasi" caption={`${fmt.format(digital)} dari ${fmt.format(rows.length)} layanan`} />
+                <Gauge value={(digital / total) * 100} label="Persentase layanan terdigitalisasi" caption={`${formatNumber(digital)} dari ${formatNumber(rows.length)} layanan`} />
                 <div className="grid gap-2">
                   <div className="flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
                     {metodeOptions.map((m) => (
@@ -198,7 +198,7 @@ export function ServiceDashboard({
                     {metodeOptions.map((m) => (
                       <span key={m.value} className="inline-flex items-center gap-1.5 text-muted-foreground">
                         <span className={`size-2 rounded-full ${metodeTone[m.value]}`} />
-                        {m.label} <b className="text-foreground tabular-nums">{fmt.format(metode.get(m.value) ?? 0)}</b>
+                        {m.label} <b className="text-foreground tabular-nums">{formatNumber(metode.get(m.value) ?? 0)}</b>
                       </span>
                     ))}
                   </p>
@@ -232,7 +232,7 @@ export function ServiceDashboard({
 
           <Card data-reveal className="gap-3">
             <CardHeader>
-              <CardTitle className="section-title">Urusan layanan (RAL 2)</CardTitle>
+              <CardTitle as="h2" className="section-title">Urusan layanan (RAL 2)</CardTitle>
             </CardHeader>
             <CardContent>
               <Treemap items={urusan} colorOf={(item) => urusanColor(item.code)} selected={filter.ral2} onToggle={(code) => clickFilter(ralLabel(code), (c) => withRal(c, { ral2: toggle(c.ral2, code) }, ral), !filter.ral2.includes(code))} className="h-[22rem] sm:h-[26rem]" />

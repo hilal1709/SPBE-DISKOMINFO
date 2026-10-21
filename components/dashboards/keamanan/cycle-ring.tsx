@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInView } from "@/hooks/use-in-view";
 import { kegiatanConfig, kegiatanKeys, type Kegiatan } from "@/lib/keamanan/jenis";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 const C = 180;
 const R = 104;
 const WIDTH = 30;
@@ -53,7 +53,7 @@ export function CycleRingCard({ counts, selected, onToggle, className }: { count
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Siklus keamanan</CardTitle>
+        <CardTitle as="h2" className="section-title">Siklus keamanan</CardTitle>
       </CardHeader>
       <CardContent ref={ref} className="flex flex-1 items-center justify-center">
         <svg ref={svg} viewBox="-70 0 500 360" className="w-full max-w-[32rem] overflow-visible" role="group" aria-label="Jumlah kegiatan per tahap siklus keamanan SPBE">
@@ -72,7 +72,7 @@ export function CycleRingCard({ counts, selected, onToggle, className }: { count
                 role="button"
                 tabIndex={0}
                 aria-pressed={on}
-                aria-label={`${cfg.label}: ${fmt.format(s.n)} kegiatan`}
+                aria-label={`${cfg.label}: ${formatNumber(s.n)} kegiatan`}
                 className="cursor-pointer outline-none"
                 onMouseEnter={() => setHover(s.k)}
                 onMouseLeave={() => setHover(null)}
@@ -94,13 +94,13 @@ export function CycleRingCard({ counts, selected, onToggle, className }: { count
                 />
                 <text x={lx} y={ly} dy="0.35em" textAnchor={anchor} className={cn("fill-foreground text-[15px] font-medium sm:text-[12px]", dim && "fill-muted-foreground")}>
                   {cfg.short}
-                  <tspan className="fill-muted-foreground font-normal tabular-nums"> {fmt.format(s.n)}</tspan>
+                  <tspan className="fill-muted-foreground font-normal tabular-nums"> {formatNumber(s.n)}</tspan>
                 </text>
               </g>
             );
           })}
           <text x={C} y={C - 6} textAnchor="middle" className="fill-foreground text-[34px] font-bold tabular-nums">
-            {fmt.format(focus ? (counts.get(focus) ?? 0) : total)}
+            {formatNumber(focus ? (counts.get(focus) ?? 0) : total)}
           </text>
           <text x={C} y={C + 20} textAnchor="middle" className="fill-muted-foreground text-[13px]">
             {focus ? kegiatanConfig[focus].short.toLowerCase() : "kegiatan"}

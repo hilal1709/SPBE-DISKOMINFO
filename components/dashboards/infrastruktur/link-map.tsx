@@ -6,10 +6,10 @@ import { useInView } from "@/hooks/use-in-view";
 import { jenisConfig, type InfraJenis } from "@/lib/infrastruktur/jenis";
 import type { Infrastruktur } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
 const W = 560;
 const H = 300;
-const fmt = new Intl.NumberFormat("id-ID");
 
 type NodeKey = InfraJenis | "aplikasi" | "data";
 /** Kolom dari pengguna (aplikasi & data) ke fasilitas fisik: sistem integrasi → platform → fasilitas & perangkat. */
@@ -90,7 +90,7 @@ export function LinkMapCard({ rows, selected, onToggle, className }: { rows: Inf
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Peta keterhubungan</CardTitle>
+        <CardTitle as="h2" className="section-title">Peta keterhubungan</CardTitle>
       </CardHeader>
       <CardContent ref={ref} className="flex-1">
         <svg ref={svg} viewBox={`-40 -14 ${W + 100} ${H + 40}`} className="w-full overflow-visible" role="group" aria-label="Keterhubungan aplikasi, data, dan komponen infrastruktur">
@@ -108,7 +108,7 @@ export function LinkMapCard({ rows, selected, onToggle, className }: { rows: Inf
               strokeOpacity={lit(e) ? (hover ? 0.8 : 0.5) : 0.1}
               className="transition-[stroke-opacity] duration-200"
             >
-              <title>{`${label(e.a)} ↔ ${label(e.b)}: ${fmt.format(e.n)} relasi`}</title>
+              <title>{`${label(e.a)} ↔ ${label(e.b)}: ${formatNumber(e.n)} relasi`}</title>
             </path>
           ))}
           {nodes.map((n) => {
@@ -121,7 +121,7 @@ export function LinkMapCard({ rows, selected, onToggle, className }: { rows: Inf
                 role={clickable ? "button" : undefined}
                 tabIndex={clickable ? 0 : undefined}
                 aria-pressed={clickable ? on : undefined}
-                aria-label={`${label(n.key)}: ${fmt.format(n.n)}`}
+                aria-label={`${label(n.key)}: ${formatNumber(n.n)}`}
                 className={cn("outline-none", clickable && "cursor-pointer")}
                 onMouseEnter={() => setHover(n.key)}
                 onMouseLeave={() => setHover(null)}
@@ -136,7 +136,7 @@ export function LinkMapCard({ rows, selected, onToggle, className }: { rows: Inf
                 </g>
                 <text y={n.r + 15} textAnchor="middle" className="fill-foreground stroke-card text-[17px] font-medium sm:text-[12px] [paint-order:stroke] [stroke-width:4px]">
                   {label(n.key)}
-                  <tspan className="fill-muted-foreground font-normal tabular-nums"> {fmt.format(n.n)}</tspan>
+                  <tspan className="fill-muted-foreground font-normal tabular-nums"> {formatNumber(n.n)}</tspan>
                 </text>
               </g>
             );

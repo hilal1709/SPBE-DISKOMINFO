@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
-import { can, currentActor } from "@/lib/access";
+import { forbidden, xlsxResponse } from "@/lib/export/xlsx-response";
+import { can, currentActor, opdScope } from "@/lib/access";
 import { listLayanan } from "@/lib/layanan/cms-repo";
 import { ral } from "@/lib/layanan/ral";
 import { metodeLabel, targetLabel } from "@/lib/layanan/reference";
@@ -10,8 +11,8 @@ import { refResolver } from "@/lib/reference/versioned";
 /** Ekspor layanan dalam format kolom template "Domain Arsitektur Layanan.xlsx" (+ periode & status). */
 export async function GET() {
   const actor = await currentActor().catch(() => null);
-  if (!actor || !can.export(actor)) return new Response("Tidak diizinkan", { status: 403 });
-  const [rows, ralSet, rabSet] = await Promise.all([listLayanan({ opdId: can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000") }), ral.loadSet(), rab.loadSet()]);
+  if (!actor || !can.export(actor)) return forbidden();
+  const [rows, ralSet, rabSet] = await Promise.all([listLayanan({ opdId: opdScope(actor) }), ral.loadSet(), rab.loadSet()]);
   const ralFor = refResolver(ralSet);
   const rabFor = refResolver(rabSet);
 
@@ -57,11 +58,5 @@ export async function GET() {
   sheet["!cols"] = [36, 22, 46, 40, 30, 16, 36, 36, 18, 18, 14, 28, 30, 30, 40, 32, 30, 30, 44, 12, 16].map((wch) => ({ wch }));
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, "Layanan");
-  const stamp = new Date().toISOString().slice(0, 10);
-  return new Response(XLSX.write(book, { type: "buffer", bookType: "xlsx" }), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="layanan-${stamp}.xlsx"`,
-    },
-  });
+  return xlsxResponse(book, "layanan");
 }

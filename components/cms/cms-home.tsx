@@ -132,7 +132,7 @@ export function CmsHome({
       <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.2fr_1fr]">
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Langkah berikutnya</CardTitle>
+            <CardTitle as="h2" className="section-title">Langkah berikutnya</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             {next.length ? (
@@ -177,7 +177,7 @@ export function CmsHome({
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Aktivitas terbaru</CardTitle>
+            <CardTitle as="h2" className="section-title">Aktivitas terbaru</CardTitle>
           </CardHeader>
           <CardContent>
             {recent.length ? (

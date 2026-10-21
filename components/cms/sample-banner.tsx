@@ -4,8 +4,8 @@ import { toast } from "sonner";
 import { clearSamples } from "@/app/cms/actions";
 import { Banner } from "@/components/blocks/banner";
 import { Button } from "@/components/ui/button";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 /** Pemberitahuan data contoh aktif; tim Diskominfo dapat menghapusnya sebelum data asli diimpor. */
 export function SampleBanner({
@@ -37,7 +37,7 @@ export function SampleBanner({
     start(async () => {
       const result = await clearSamples();
       if (!result.ok) return void toast.error(result.error);
-      toast.success("Data contoh dihapus", { description: `${fmt.format(result.data.removed)} data contoh dihapus.` });
+      toast.success("Data contoh dihapus", { description: `${formatNumber(result.data.removed)} data contoh dihapus.` });
     });
 
   return (
@@ -53,7 +53,7 @@ export function SampleBanner({
         )
       }
     >
-      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`, data && `${fmt.format(data)} data`, aplikasi && `${fmt.format(aplikasi)} aplikasi`, infrastruktur && `${fmt.format(infrastruktur)} infrastruktur`, keamanan && `${fmt.format(keamanan)} kegiatan keamanan`, rencana && `${fmt.format(rencana)} peta rencana`, gap && `${fmt.format(gap)} temuan gap`].filter(Boolean).join(", ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
+      {[probis && `${formatNumber(probis)} probis`, layanan && `${formatNumber(layanan)} layanan`, data && `${formatNumber(data)} data`, aplikasi && `${formatNumber(aplikasi)} aplikasi`, infrastruktur && `${formatNumber(infrastruktur)} infrastruktur`, keamanan && `${formatNumber(keamanan)} kegiatan keamanan`, rencana && `${formatNumber(rencana)} peta rencana`, gap && `${formatNumber(gap)} temuan gap`].filter(Boolean).join(", ") || formatNumber(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
     </Banner>
   );
 }

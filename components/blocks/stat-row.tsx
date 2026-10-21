@@ -44,7 +44,7 @@ export function StatRow({ children, className }: { children: React.ReactNode; cl
   }, []);
 
   return (
-    <section className={cn("stat-row -mx-1 min-w-0", Carousel && "stat-row-live", className)}>
+    <section aria-label="Ringkasan angka" className={cn("stat-row -mx-1 min-w-0", Carousel && "stat-row-live", className)}>
       {Carousel ? (
         <Carousel slides={slides} />
       ) : (

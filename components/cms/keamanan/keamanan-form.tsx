@@ -151,7 +151,7 @@ export function KeamananForm({
       <form ref={form} onSubmit={(e) => (e.preventDefault(), submit("draft"))} className="grid min-w-0 gap-5" noValidate>
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Kegiatan</CardTitle>
+            <CardTitle as="h2" className="section-title">Kegiatan</CardTitle>
             <CardDescription>Kolom isian mengikuti template analis kegiatan yang dipilih.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -192,7 +192,7 @@ export function KeamananForm({
         {cfg && (
           <Card data-reveal>
             <CardHeader>
-              <CardTitle className="section-title">Rincian</CardTitle>
+              <CardTitle as="h2" className="section-title">Rincian</CardTitle>
               <CardDescription>
                 ID: <b className="tabular-nums">{record?.code ?? `GSK-KAM ${cfg.abbr}.xxx (otomatis)`}</b>
                 {record && <ReviewBadge status={record.status} />}
@@ -274,7 +274,7 @@ export function KeamananForm({
 
       <Card ref={panel} data-reveal className="gap-4 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Asisten AI</CardTitle>
+          <CardTitle as="h2" className="section-title">Asisten AI</CardTitle>
           <CardDescription>Menebak jenis kegiatan dari nama dan menyusun deskripsinya.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

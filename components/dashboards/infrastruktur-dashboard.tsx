@@ -33,9 +33,8 @@ import { categoryColor, toneBgClass } from "@/lib/palette";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { Infrastruktur } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatNumber, percent } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
-const pct = (part: number, whole: number) => Math.round((part / (whole || 1)) * 100);
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
@@ -177,7 +176,7 @@ export function InfrastrukturDashboard({
             <StatCard tone="teal" label="Komponen infrastruktur" value={total} hint={`${countBy(rows, "jenis").size} dari 10 jenis komponen`} />
             <StatCard tone="orange" label="Kapasitas penyimpanan" value={Math.round(storage / 1024)} suffix=" TB" hint="server dan media penyimpan" />
             <StatCard tone="yellow" label="Bandwidth internet" value={internet / 1000} decimals={1} suffix=" Gbps" hint="seluruh fasilitas komputasi" />
-            <StatCard tone="amber" label="Milik sendiri" value={pct(rows.filter((r) => r.kepemilikan === "milik_sendiri").length, owned)} suffix="%" hint={`${fmt.format(owned)} komponen berstatus kepemilikan`} />
+            <StatCard tone="amber" label="Milik sendiri" value={percent(rows.filter((r) => r.kepemilikan === "milik_sendiri").length, owned)} suffix="%" hint={`${formatNumber(owned)} komponen berstatus kepemilikan`} />
             <StatCard tone="sky" label="Aplikasi terlayani" value={apps} hint={`oleh ${countBy(rows, "opd").size} instansi pemilik komponen`} />
           </StatRow>
 
@@ -191,9 +190,9 @@ export function InfrastrukturDashboard({
                   <Card className="h-full gap-3">
                     <CardHeader>
                       <p className="eyebrow">{layer.code}</p>
-                      <CardTitle className="section-title flex items-baseline justify-between gap-2">
+                      <CardTitle as="h2" className="section-title flex items-baseline justify-between gap-2">
                         {layer.label}
-                        <span className="text-sm font-normal text-muted-foreground tabular-nums">{fmt.format(sum)}</span>
+                        <span className="text-sm font-normal text-muted-foreground tabular-nums">{formatNumber(sum)}</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="grid content-start gap-2">
@@ -217,7 +216,7 @@ export function InfrastrukturDashboard({
                           >
                             <span className="flex items-baseline justify-between gap-2 text-sm">
                               <span className="font-medium">{c.label}</span>
-                              <span className="font-semibold tabular-nums">{fmt.format(n)}</span>
+                              <span className="font-semibold tabular-nums">{formatNumber(n)}</span>
                             </span>
                             <span className="h-1.5 overflow-hidden rounded-full bg-muted">
                               <span className="block h-full rounded-full bg-(--tone) transition-[width] duration-700" style={{ width: `${(n / max) * 100}%` }} />
@@ -236,7 +235,7 @@ export function InfrastrukturDashboard({
             <LinkMapCard rows={rows} selected={filter.jenis} onToggle={toggleJenis} />
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Status kepemilikan</CardTitle>
+                <CardTitle as="h2" className="section-title">Status kepemilikan</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-start gap-4">
                 <div className="h-52">
@@ -265,7 +264,7 @@ export function InfrastrukturDashboard({
                         )}
                       >
                         <span className="font-medium">{o.label}</span>
-                        <span className="text-muted-foreground tabular-nums">{fmt.format(n)}</span>
+                        <span className="text-muted-foreground tabular-nums">{formatNumber(n)}</span>
                       </button>
                     );
                   })}
@@ -287,24 +286,24 @@ export function InfrastrukturDashboard({
             <div data-aos="fade-blur" suppressHydrationWarning>
               <Card className="h-full gap-3">
                 <CardHeader>
-                  <CardTitle className="section-title">Server & platform</CardTitle>
+                  <CardTitle as="h2" className="section-title">Server & platform</CardTitle>
                 </CardHeader>
                 <CardContent className="grid flex-1 content-start gap-5">
                   {platforms.length > 0 && (
-                    <Gauge value={pct(openSource, platforms.length)} label="Persentase perangkat lunak platform open source" caption={`${fmt.format(openSource)} dari ${fmt.format(platforms.length)} platform open source`} />
+                    <Gauge value={percent(openSource, platforms.length)} label="Persentase perangkat lunak platform open source" caption={`${formatNumber(openSource)} dari ${formatNumber(platforms.length)} platform open source`} />
                   )}
                   {servers.length > 0 ? (
                     <div className="grid gap-3">
                       <p className="text-xs font-medium text-muted-foreground">
-                        {fmt.format(servers.length)} server · memori {formatMetric(sumMetric(servers, "memory"), "memory")} · penyimpanan {formatMetric(sumMetric(servers, "storage"), "storage")}
+                        {formatNumber(servers.length)} server · memori {formatMetric(sumMetric(servers, "memory"), "memory")} · penyimpanan {formatMetric(sumMetric(servers, "storage"), "storage")}
                       </p>
                       {usage.map(([name, n], i) => (
                         <div key={name} className="grid gap-1.5">
                           <div className="flex items-baseline justify-between gap-3 text-sm">
                             <span className="font-medium">{name}</span>
-                            <span className="text-muted-foreground tabular-nums">{fmt.format(n)}</span>
+                            <span className="text-muted-foreground tabular-nums">{formatNumber(n)}</span>
                           </div>
-                          <Meter value={pct(n, servers.length)} label={`Server ${name}`} indicatorClassName={toneBgClass[categoryColor(i)]} />
+                          <Meter value={percent(n, servers.length)} label={`Server ${name}`} indicatorClassName={toneBgClass[categoryColor(i)]} />
                         </div>
                       ))}
                     </div>

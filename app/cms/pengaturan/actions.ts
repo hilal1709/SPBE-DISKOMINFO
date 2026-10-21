@@ -4,6 +4,7 @@ import { can, currentActor } from "@/lib/access";
 import { fail, type ActionResult } from "@/lib/cms/result";
 import * as grants from "@/lib/pengguna/grants";
 import * as users from "@/lib/pengguna/repo";
+import { broadcastChange } from "@/lib/realtime/server";
 import type { Role } from "@/lib/types";
 
 async function userAdmin() {
@@ -12,8 +13,11 @@ async function userAdmin() {
   return actor;
 }
 
-/** Menu dan izin semua halaman CMS ikut berubah. */
-const done = () => revalidatePath("/cms", "layout");
+/** Menu dan izin semua halaman CMS ikut berubah, juga di perangkat lain yang sedang membuka CMS. */
+const done = () => {
+  revalidatePath("/cms", "layout");
+  broadcastChange("access");
+};
 
 type Invalid = { ok: false; error: string; fields: Record<string, string> };
 const invalid = (fields: Record<string, string>): Invalid => ({ ok: false, error: "Periksa kembali isian akun.", fields });

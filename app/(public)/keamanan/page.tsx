@@ -10,8 +10,12 @@ import { Card } from "@/components/ui/card";
 import { listApprovedKeamanan, securityCoverage, type Coverage } from "@/lib/keamanan/repo";
 import { actorFor, can } from "@/lib/access";
 import { periodOptions } from "@/lib/probis/periods";
-import { sampleActivePeriod, samplePeriods } from "@/lib/probis/reference";
+import { samplePeriodOptions } from "@/lib/portal/load";
+import { pageMetadata } from "@/lib/seo";
 import type { KegiatanKeamanan } from "@/lib/types";
+
+// Wajib login: tidak diindeks mesin pencari.
+export const metadata = pageMetadata("/keamanan");
 
 /**
  * Dashboard Keamanan: wajib login (proxy.ts mengarahkan pengunjung ke /login) dan hanya untuk tim Diskominfo & pimpinan.
@@ -42,7 +46,7 @@ export default async function Page() {
     console.warn("Dashboard keamanan memakai data contoh bawaan:", error instanceof Error ? error.message : error);
   }
   const fromDb = approved.rows.length > 0;
-  const periods = fromDb ? await periodOptions() : { periods: samplePeriods, active: sampleActivePeriod };
+  const periods = fromDb ? await periodOptions() : samplePeriodOptions;
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <KeamananDashboard data={fromDb ? approved.rows : allKeamanan()} coverage={coverage ?? sampleCoverage()} sample={!fromDb || approved.sample} periods={periods} />

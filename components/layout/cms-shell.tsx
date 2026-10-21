@@ -11,10 +11,12 @@ import { Icon } from "@/components/icon";
 import { AosInit } from "@/components/motion/aos";
 import { WordStagger } from "@/components/motion/word-stagger";
 import { SidebarNav, type NavBadges } from "@/components/layout/sidebar-nav";
+import { SkipLink } from "@/components/layout/skip-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { MAIN_CONTENT_ID } from "@/lib/constants";
 import { activeItem, cmsNav, flattenNav, navFor } from "@/lib/navigation";
 import type { Permission } from "@/lib/permissions";
 import { initials } from "@/lib/roles";
@@ -96,7 +98,8 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
 
   return (
     <div data-theme="cms" className="min-h-svh bg-background lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
-      <aside className="hidden bg-sidebar lg:block">
+      <SkipLink />
+      <aside aria-label="Menu CMS" className="hidden bg-sidebar lg:block">
         <div ref={rail} className="sticky top-0 h-svh overflow-y-auto overscroll-contain">
           <Sidebar user={user} />
         </div>
@@ -125,7 +128,7 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
             </Link>
           </Button>
         </header>
-        <main className="mx-auto grid w-full max-w-[1280px] gap-5 px-4 pb-10 lg:px-8">
+        <main id={MAIN_CONTENT_ID} tabIndex={-1} className="mx-auto grid w-full max-w-[1280px] gap-5 px-4 pb-10 outline-none lg:px-8">
           {user.demo && (
             <Banner variant="warning" label="Demo">
               Login belum diwajibkan (<b>AUTH_REQUIRED</b> nonaktif), jadi CMS bisa dibuka tanpa akun.

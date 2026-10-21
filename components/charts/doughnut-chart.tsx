@@ -3,8 +3,8 @@ import type { Plugin } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { useInView } from "@/hooks/use-in-view";
 import { configureCharts, fontFamily, prefersReducedMotion, resolveColor, seriesColors, token } from "./theme";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 /** Plugin kecil: total & keterangan di tengah donat (seperti "342" pada referensi). */
 const centerLabel = (value: string, caption: string): Plugin<"doughnut"> => ({
@@ -45,7 +45,7 @@ export default function DoughnutChart({ labels, data, caption = "Total", colors 
             animation: prefersReducedMotion() ? false : { animateRotate: true, duration: 1000 },
             plugins: { legend: { position: "bottom" } },
           }}
-          plugins={[centerLabel(fmt.format(total), caption)]}
+          plugins={[centerLabel(formatNumber(total), caption)]}
         />
       )}
     </div>

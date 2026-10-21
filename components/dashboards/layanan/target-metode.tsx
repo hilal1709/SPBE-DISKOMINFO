@@ -29,7 +29,7 @@ export function TargetMetodeCard({
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Target × metode layanan</CardTitle>
+        <CardTitle as="h2" className="section-title">Target × metode layanan</CardTitle>
       </CardHeader>
       <CardContent className="min-h-72 flex-1">
         <BarChart

@@ -32,13 +32,13 @@ export const isGroup = (entry: NavEntry): entry is NavGroup => "children" in ent
 
 /** Navigasi portal publik — satu entri per domain arsitektur SPBE. */
 export const publicNav: NavItem[] = [
-  { href: "/", label: "Proses Bisnis", icon: FlowConnectionIcon, section: "Domain Proses Bisnis" },
-  { href: "/layanan", label: "Layanan", icon: CustomerService01Icon, section: "Domain Layanan" },
-  { href: "/data", label: "Data", icon: Database01Icon, section: "Domain Data" },
-  { href: "/aplikasi", label: "Aplikasi", icon: ComputerIcon, section: "Domain Aplikasi" },
-  { href: "/infrastruktur", label: "Infrastruktur", icon: ServerStack01Icon, section: "Domain Infrastruktur" },
-  { href: "/keamanan", label: "Keamanan", icon: ShieldKeyIcon, section: "Domain Keamanan", locked: true },
-  { href: "/peta-rencana", label: "Peta Rencana", icon: Route01Icon, section: "Peta Rencana" },
+  { href: "/", label: "Proses Bisnis", icon: FlowConnectionIcon, section: "Domain Proses Bisnis", description: "Peta proses bisnis seluruh perangkat daerah Kabupaten Gresik berdasarkan Referensi Arsitektur Bisnis (RAB) SPBE." },
+  { href: "/layanan", label: "Layanan", icon: CustomerService01Icon, section: "Domain Layanan", description: "Daftar layanan publik dan layanan administrasi pemerintahan Kabupaten Gresik yang dipetakan ke Referensi Arsitektur Layanan (RAL)." },
+  { href: "/data", label: "Data", icon: Database01Icon, section: "Domain Data", description: "Katalog data dan informasi perangkat daerah Kabupaten Gresik beserta sifat, format, dan Referensi Arsitektur Data (RAD)." },
+  { href: "/aplikasi", label: "Aplikasi", icon: ComputerIcon, section: "Domain Aplikasi", description: "Inventaris aplikasi SPBE Kabupaten Gresik: aplikasi umum dan khusus, pengelola, serta keterhubungannya dengan layanan." },
+  { href: "/infrastruktur", label: "Infrastruktur", icon: ServerStack01Icon, section: "Domain Infrastruktur", description: "Infrastruktur SPBE Kabupaten Gresik: pusat data, jaringan intra pemerintah, dan sistem penghubung layanan." },
+  { href: "/keamanan", label: "Keamanan", icon: ShieldKeyIcon, section: "Domain Keamanan", locked: true, description: "Arsitektur keamanan SPBE Kabupaten Gresik (khusus pengguna yang masuk)." },
+  { href: "/peta-rencana", label: "Peta Rencana", icon: Route01Icon, section: "Peta Rencana", description: "Peta rencana SPBE Kabupaten Gresik 2025–2029: program, kegiatan, target, dan realisasi tiap tahun." },
 ];
 
 /** Halaman portal di luar menu tetap mendapat judul section yang benar. */

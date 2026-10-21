@@ -1,32 +1,29 @@
-import { Suspense } from "react";
 import { allData } from "@/lib/data/generate";
-import { DashboardSkeleton } from "@/components/blocks/dashboard-skeleton";
 import { DataDashboard } from "@/components/dashboards/data-dashboard";
 import { RadProvider } from "@/components/data/rad-context";
+import { DashboardPage } from "@/components/portal/dashboard-page";
 import { radSetSafe } from "@/lib/data/rad";
 import { sampleRadSet } from "@/lib/data/sample-reference";
 import { listApprovedData } from "@/lib/data/repo";
 import { periodOptions } from "@/lib/probis/periods";
-import { sampleActivePeriod, samplePeriods } from "@/lib/probis/reference";
-import type { DataInfo } from "@/lib/types";
+import { readApproved, samplePeriodOptions } from "@/lib/portal/load";
+import { pageMetadata } from "@/lib/seo";
+
+const PATH = "/data";
+export const metadata = pageMetadata(PATH);
 
 // Data disetujui dibaca ulang paling lama tiap menit.
 export const revalidate = 60;
 
 export default async function Page() {
-  let approved: { rows: DataInfo[]; sample: boolean } = { rows: [], sample: true };
-  try {
-    approved = await listApprovedData();
-  } catch (error) {
-    console.warn("Dashboard data memakai data contoh bawaan:", error instanceof Error ? error.message : error);
-  }
-  const fromDb = approved.rows.length > 0;
-  const [periods, radSet] = fromDb ? await Promise.all([periodOptions(), radSetSafe()]) : [{ periods: samplePeriods, active: sampleActivePeriod }, sampleRadSet];
+  const approved = await readApproved("data", listApprovedData);
+  const fromDb = !!approved?.rows.length;
+  const [periods, radSet] = fromDb ? await Promise.all([periodOptions(), radSetSafe()]) : [samplePeriodOptions, sampleRadSet];
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <DashboardPage path={PATH}>
       <RadProvider set={radSet}>
-        <DataDashboard data={fromDb ? approved.rows : allData()} sample={!fromDb || approved.sample} periods={periods} />
+        <DataDashboard data={fromDb ? approved!.rows : allData()} sample={!fromDb || approved!.sample} periods={periods} />
       </RadProvider>
-    </Suspense>
+    </DashboardPage>
   );
 }

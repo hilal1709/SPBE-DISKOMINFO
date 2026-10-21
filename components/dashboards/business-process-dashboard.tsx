@@ -27,8 +27,8 @@ import { useRabSet } from "@/components/probis/rab-context";
 import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, statusLabel, statusOptions, type PeriodOptions } from "@/lib/probis/reference";
 import type { Probis } from "@/lib/types";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
@@ -155,7 +155,7 @@ export function BusinessProcessDashboard({
       ) : (
         <>
           <StatRow>
-            <StatCard tone="teal" label="Jumlah proses bisnis" value={rows.length} hint={`${fmt.format(statusCount.get("as_is") ?? 0)} AS-IS`} />
+            <StatCard tone="teal" label="Jumlah proses bisnis" value={rows.length} hint={`${formatNumber(statusCount.get("as_is") ?? 0)} AS-IS`} />
             <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Rencana upgrade" value={statusCount.get("upgrade") ?? 0} hint="pengembangan dari AS-IS" />
             <StatCard tone="amber" label="Probis baru" value={statusCount.get("new") ?? 0} hint={`${tree.length} sektor RAB terisi`} />
@@ -165,7 +165,7 @@ export function BusinessProcessDashboard({
             <RabTreeCard tree={tree} total={rows.length} colorOf={sectorColor} />
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Sektor pemerintahan (RAB 1)</CardTitle>
+                <CardTitle as="h2" className="section-title">Sektor pemerintahan (RAB 1)</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col">
                 <Treemap items={sektor} colorOf={(item) => sectorColor(item.code)} selected={filter.rab1} onToggle={(code) => clickFilter(rabLabel(code), (c) => withRab(c, { rab1: toggle(c.rab1, code) }, rab), !filter.rab1.includes(code))} className="min-h-80 flex-1" />
@@ -177,7 +177,7 @@ export function BusinessProcessDashboard({
             <PdRankingCard label={rabLabel} rows={pdRows} colorOf={sectorColor} selected={filter.pd} onToggle={(code) => clickFilter(pdName(code), (c) => ({ ...c, pd: toggle(c.pd, code) }), !filter.pd.includes(code))} />
             <Card data-reveal className="gap-3">
               <CardHeader>
-                <CardTitle className="section-title">Urusan pemerintahan (RAB 2)</CardTitle>
+                <CardTitle as="h2" className="section-title">Urusan pemerintahan (RAB 2)</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col">
                 <Treemap items={urusan} colorOf={(item) => sectorColor(rab.byCode.get(item.code)?.parent)} selected={filter.rab2} onToggle={(code) => clickFilter(rabLabel(code), (c) => withRab(c, { rab2: toggle(c.rab2, code) }, rab), !filter.rab2.includes(code))} className="min-h-[26rem] flex-1" />

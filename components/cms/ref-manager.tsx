@@ -216,7 +216,7 @@ export function RefManager({ kind, versions, current, nodes, changes }: { kind: 
 
         <Card data-reveal className="gap-3">
           <CardHeader className="flex flex-wrap items-center gap-3">
-            <CardTitle className="section-title">Pohon {t.ref}</CardTitle>
+            <CardTitle as="h2" className="section-title">Pohon {t.ref}</CardTitle>
             <InputGroup className="ml-auto sm:w-72">
               <InputGroupAddon>
                 <Icon icon={Search01Icon} size={16} />
@@ -253,7 +253,7 @@ export function RefManager({ kind, versions, current, nodes, changes }: { kind: 
 
       <Card data-reveal className="gap-3 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Riwayat perubahan</CardTitle>
+          <CardTitle as="h2" className="section-title">Riwayat perubahan</CardTitle>
         </CardHeader>
         <CardContent className="max-h-[36rem] overflow-y-auto">
           {changes.length ? (

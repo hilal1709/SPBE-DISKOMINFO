@@ -232,7 +232,7 @@ export function InfrastrukturForm({
 
         <Card data-reveal>
           <CardHeader>
-            <CardTitle className="section-title">Komponen</CardTitle>
+            <CardTitle as="h2" className="section-title">Komponen</CardTitle>
             <CardDescription>Kolom isian mengikuti template analis komponen yang dipilih.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -275,7 +275,7 @@ export function InfrastrukturForm({
           <>
             <Card data-reveal>
               <CardHeader>
-                <CardTitle className="section-title">Identitas</CardTitle>
+                <CardTitle as="h2" className="section-title">Identitas</CardTitle>
                 <CardDescription>
                   ID: <b className="tabular-nums">{record?.code ?? (values.rai ? `GSK-INF ${values.rai.slice(4)}.xxx (otomatis)` : "dibuat otomatis dari RAI")}</b>
                   {record && <ReviewBadge status={record.status} />}
@@ -356,7 +356,7 @@ export function InfrastrukturForm({
 
             <Card data-reveal>
               <CardHeader>
-                <CardTitle className="section-title">Klasifikasi RAI</CardTitle>
+                <CardTitle as="h2" className="section-title">Klasifikasi RAI</CardTitle>
                 <CardDescription>Bawaan {cfg.label}: {cfg.rai}. Ubah bila perlu.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -371,7 +371,7 @@ export function InfrastrukturForm({
             {cfg.attrs.length > 0 && (
               <Card data-reveal>
                 <CardHeader>
-                  <CardTitle className="section-title">Spesifikasi</CardTitle>
+                  <CardTitle as="h2" className="section-title">Spesifikasi</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -385,7 +385,7 @@ export function InfrastrukturForm({
 
             <Card data-reveal>
               <CardHeader>
-                <CardTitle className="section-title">Relasi</CardTitle>
+                <CardTitle as="h2" className="section-title">Relasi</CardTitle>
                 <CardDescription>Komponen dan entri domain lain pada periode {values.period}.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -433,7 +433,7 @@ export function InfrastrukturForm({
 
       <Card ref={panel} data-reveal className="gap-4 xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Asisten AI</CardTitle>
+          <CardTitle as="h2" className="section-title">Asisten AI</CardTitle>
           <CardDescription>Menebak komponen dari nama, menyusun deskripsi, menyarankan RAI, spesifikasi, dan komponen terkait.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

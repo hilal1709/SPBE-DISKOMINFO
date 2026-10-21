@@ -16,8 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Period } from "@/lib/probis/periods";
 import type { RefKind } from "@/lib/reference/versioned";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 type Version = { id: string; name: string };
 
@@ -99,7 +99,7 @@ export function PeriodManager({
       if (!result.ok) return void toast.error(result.error);
       const { mapped, review } = result.data;
       toast.success(`Periode ${p.name} memakai ${r.ref} ${target.name}`, {
-        description: review ? `${fmt.format(mapped)} ${r.unit} dipetakan otomatis, ${fmt.format(review)} perlu dipetakan ulang (lihat ${r.list}).` : `${fmt.format(mapped)} ${r.unit} dipetakan otomatis.`,
+        description: review ? `${formatNumber(mapped)} ${r.unit} dipetakan otomatis, ${formatNumber(review)} perlu dipetakan ulang (lihat ${r.list}).` : `${formatNumber(mapped)} ${r.unit} dipetakan otomatis.`,
       });
     });
   };
@@ -126,7 +126,7 @@ export function PeriodManager({
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {p.end - p.start + 1} tahun · {fmt.format(p.count)} proses bisnis · {fmt.format(p.services)} layanan · {fmt.format(p.datasets)} data · {fmt.format(p.applications)} aplikasi · {fmt.format(p.infrastructures)} infrastruktur
+                  {p.end - p.start + 1} tahun · {formatNumber(p.count)} proses bisnis · {formatNumber(p.services)} layanan · {formatNumber(p.datasets)} data · {formatNumber(p.applications)} aplikasi · {formatNumber(p.infrastructures)} infrastruktur
                 </p>
               </div>
               <div className="grid gap-1.5">
@@ -170,7 +170,7 @@ export function PeriodManager({
 
       <Card data-reveal className="xl:sticky xl:top-20">
         <CardHeader>
-          <CardTitle className="section-title">Tambah periode</CardTitle>
+          <CardTitle as="h2" className="section-title">Tambah periode</CardTitle>
           <CardDescription>Arsitektur di-versioning tiap {min}–{max} tahun, mengikuti perubahan SOTK.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -211,7 +211,7 @@ export function PeriodManager({
             </DialogTitle>
             {switching && (
               <DialogDescription>
-                {refs[switching.kind].ref} {fmt.format(refs[switching.kind].used(switching.period))} {refs[switching.kind].unit} dipetakan ulang ke “
+                {refs[switching.kind].ref} {formatNumber(refs[switching.kind].used(switching.period))} {refs[switching.kind].unit} dipetakan ulang ke “
                 {versions[switching.kind].find((v) => v.id === switching.versionId)?.name}” mengikuti asal-usul tiap {refs[switching.kind].ref}. Yang tidak punya padanan ditandai “Perlu pemetaan{" "}
                 {refs[switching.kind].ref}”.
               </DialogDescription>

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
-import { can, currentActor } from "@/lib/access";
+import { forbidden, xlsxResponse } from "@/lib/export/xlsx-response";
+import { can, currentActor, opdScope } from "@/lib/access";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { withSecurityLabels } from "@/lib/keamanan/link";
 import { listAplikasi } from "@/lib/aplikasi/cms-repo";
@@ -17,8 +18,8 @@ const securityLabel = Object.fromEntries(securityFields.map((f) => [f.key, f.lab
 /** Ekspor aplikasi dalam format 32 kolom template "Domain Arsitektur Aplikasi.xlsx" (+ periode & status). */
 export async function GET() {
   const actor = await currentActor().catch(() => null);
-  if (!actor || !can.export(actor)) return new Response("Tidak diizinkan", { status: 403 });
-  const [records, raaSet, refs] = await Promise.all([listAplikasi({ opdId: can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000") }), raa.loadSet(), securityRefs()]);
+  if (!actor || !can.export(actor)) return forbidden();
+  const [records, raaSet, refs] = await Promise.all([listAplikasi({ opdId: opdScope(actor) }), raa.loadSet(), securityRefs()]);
   // Dependensi keamanan tertaut diekspor sebagai "kode nama" agar terbaca dan bisa diimpor ulang.
   const rows = withSecurityLabels(records, refs);
   const raaFor = refResolver(raaSet);
@@ -73,11 +74,5 @@ export async function GET() {
   sheet["!cols"] = [32, 18, 44, 44, 30, 16, 12, 14, 16, 26, 36, 40, 40, 44, 28, 28, 28, 22, 22, 26, 22, 22, 16, 32, 32, 28, 28, 28, 28, 28, 28, 28, 12, 16].map((wch) => ({ wch }));
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, "Aplikasi");
-  const stamp = new Date().toISOString().slice(0, 10);
-  return new Response(XLSX.write(book, { type: "buffer", bookType: "xlsx" }), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="aplikasi-${stamp}.xlsx"`,
-    },
-  });
+  return xlsxResponse(book, "aplikasi");
 }

@@ -10,8 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { muatanConfig, muatanKeys, statusConfig, statusKeys } from "@/lib/peta-rencana/muatan";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 /** Batang bertumpuk per status pelaksanaan (warna sama dengan grafik status per tahun); panjangnya relatif ke sasaran terbanyak. */
 function StatusBar({ list, width }: { list: Rencana[]; width: number }) {
@@ -49,7 +49,7 @@ export function SasaranPanel({ rows, indicators, years, selected, onFilter, clas
   return (
     <Card className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Sasaran strategis</CardTitle>
+        <CardTitle as="h2" className="section-title">Sasaran strategis</CardTitle>
       </CardHeader>
       <CardContent className="grid max-h-[30rem] content-start gap-1 overflow-y-auto">
         {groups.map((g) => (
@@ -61,7 +61,7 @@ export function SasaranPanel({ rows, indicators, years, selected, onFilter, clas
           >
             <span className="flex items-baseline justify-between gap-3 text-sm">
               <span className="line-clamp-2 font-medium">{g.sasaran}</span>
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{fmt.format(g.list.length)}</span>
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{formatNumber(g.list.length)}</span>
             </span>
             <StatusBar list={g.list} width={(g.list.length / max) * 100} />
           </button>
@@ -82,7 +82,7 @@ export function SasaranPanel({ rows, indicators, years, selected, onFilter, clas
           onOpenChange={(o) => !o && setOpen(null)}
           eyebrow="Sasaran strategis"
           title={detail.sasaran}
-          meta={<span className="text-sm text-muted-foreground">{fmt.format(detail.list.length)} kegiatan · {Math.round((detail.done / (detail.list.length || 1)) * 100)}% terlaksana</span>}
+          meta={<span className="text-sm text-muted-foreground">{formatNumber(detail.list.length)} kegiatan · {Math.round((detail.done / (detail.list.length || 1)) * 100)}% terlaksana</span>}
         >
           <div className="flex flex-wrap gap-2">
             {muatanKeys.map((k) => {

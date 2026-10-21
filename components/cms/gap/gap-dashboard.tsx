@@ -24,8 +24,8 @@ import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import { unpack, type Packed } from "@/lib/pack";
 import type { GapRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 type Tab = "all" | Status;
 const tabs: { value: Tab; label: string }[] = [{ value: "all", label: "Semua" }, ...gapStatusKeys.map((k) => ({ value: k, label: gapStatusConfig[k].label }))];
@@ -77,7 +77,7 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
       const request = scanGapAction(period);
       toast.promise(request.then((r) => (r.ok ? r : Promise.reject(new Error(r.error)))), {
         loading: "Memindai kesenjangan semua domain…",
-        success: (r) => ({ message: `${fmt.format(r.data.created)} temuan baru`, description: `${fmt.format(r.data.total)} kesenjangan terdeteksi · ${fmt.format(r.data.closed)} tertutup otomatis` }),
+        success: (r) => ({ message: `${formatNumber(r.data.created)} temuan baru`, description: `${formatNumber(r.data.total)} kesenjangan terdeteksi · ${formatNumber(r.data.closed)} tertutup otomatis` }),
         error: (e: Error) => e.message,
       });
       await request;
@@ -145,7 +145,7 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
             <div data-aos="fade-blur" suppressHydrationWarning>
               <Card className="h-full gap-3">
                 <CardHeader>
-                  <CardTitle className="section-title">Peta kesenjangan terbuka</CardTitle>
+                  <CardTitle as="h2" className="section-title">Peta kesenjangan terbuka</CardTitle>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
                   {domains.length ? (
@@ -164,7 +164,7 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
                               <HeatTile
                                 key={p}
                                 label={`${muatanConfig[d].label} · ${priorityConfig[p].label}`}
-                                value={fmt.format(n)}
+                                value={formatNumber(n)}
                                 intensity={n / maxCell}
                                 onClick={n ? () => pickCell(d, p) : undefined}
                                 active={on}

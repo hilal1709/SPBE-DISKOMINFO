@@ -124,7 +124,7 @@ export function AccessMatrix({ grants, users }: { grants: RoleGrant[]; users: Re
       <Card data-reveal>
         <CardHeader className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
-            <CardTitle className="section-title">{info.label}</CardTitle>
+            <CardTitle as="h2" className="section-title">{info.label}</CardTitle>
             <CardDescription>{locked ? "Superadmin selalu memegang semua hak akses." : (info.description ?? "Centang hak akses peran ini.")}</CardDescription>
           </div>
           {!locked && (

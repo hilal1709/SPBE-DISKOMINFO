@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInView } from "@/hooks/use-in-view";
 import { muatanConfig, muatanKeys, type Muatan } from "@/lib/peta-rencana/muatan";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
-const fmt = new Intl.NumberFormat("id-ID");
 
 export type YearStat = { year: string; total: number; terlaksana: number; muatan: Partial<Record<Muatan, number>> };
 
@@ -37,7 +37,7 @@ export function YearTrack({ stats, current, selected, onToggle, className }: { s
   return (
     <Card data-reveal className={cn("gap-3", className)}>
       <CardHeader>
-        <CardTitle className="section-title">Lini waktu rencana</CardTitle>
+        <CardTitle as="h2" className="section-title">Lini waktu rencana</CardTitle>
       </CardHeader>
       <CardContent ref={ref} className="flex-1">
         <div ref={root} className="relative">
@@ -58,7 +58,7 @@ export function YearTrack({ stats, current, selected, onToggle, className }: { s
                     data-node
                     onClick={() => onToggle(s.year)}
                     aria-pressed={on}
-                    aria-label={`${s.year}: ${fmt.format(s.total)} kegiatan, ${pct}% terlaksana`}
+                    aria-label={`${s.year}: ${formatNumber(s.total)} kegiatan, ${pct}% terlaksana`}
                     className={cn(
                       "group/node grid w-full grid-cols-[4rem_1fr] items-center gap-3 rounded-2xl p-2 text-left transition-all duration-200 md:grid-cols-1 md:justify-items-center md:text-center",
                       "hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
@@ -78,7 +78,7 @@ export function YearTrack({ stats, current, selected, onToggle, className }: { s
                         <span className="font-heading text-lg font-bold tabular-nums">{s.year}</span>
                         {now && <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-semibold text-on-brand">berjalan</span>}
                       </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">{fmt.format(s.total)} kegiatan</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{formatNumber(s.total)} kegiatan</span>
                       <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
                         {muatanKeys.map((k) =>
                           s.muatan[k] ? <span key={k} className="h-full transition-[width] duration-500" style={{ width: `${(s.muatan[k]! / (s.total || 1)) * 100}%`, background: `var(${muatanConfig[k].tone})` }} /> : null,
