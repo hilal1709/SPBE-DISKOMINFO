@@ -2,7 +2,26 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authRequired } from "@/lib/auth-mode";
 
+/**
+ * Lapis CSRF kedua untuk server action & form: request yang mengubah data (POST dsb.) wajib membawa Origin yang sama
+ * dengan host situs. Next.js sendiri hanya memberi peringatan bila Origin tidak ada; di sini ditolak. Peramban modern
+ * selalu mengirim Origin pada POST, jadi pengguna sah tidak terdampak.
+ */
+function crossSite(request: Request) {
+  if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return false;
+  if (request.headers.get("sec-fetch-site") === "cross-site") return true;
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (!origin || !host) return true;
+  try {
+    return new URL(origin).host !== host;
+  } catch {
+    return true; // Origin "null" (iframe sandbox, file://) atau rusak.
+  }
+}
+
 export const proxy = auth((request) => {
+  if (crossSite(request)) return new NextResponse("Forbidden", { status: 403 });
   // Showcase design system hanya untuk pengembang (loading.tsx membuat notFound() di halaman tetap berstatus 200).
   if (request.nextUrl.pathname === "/design-system" && process.env.NODE_ENV === "production") {
     return new NextResponse("Not Found", { status: 404 });
@@ -24,4 +43,5 @@ export const proxy = auth((request) => {
   return NextResponse.next();
 });
 
-export const config = { matcher: ["/cms/:path*", "/akun/:path*", "/keamanan/:path*", "/keamanan", "/design-system"] };
+// Semua halaman yang memuat server action (CMS, akun, login) melewati pemeriksaan Origin di atas.
+export const config = { matcher: ["/cms", "/cms/:path*", "/akun/:path*", "/keamanan/:path*", "/keamanan", "/login", "/design-system"] };

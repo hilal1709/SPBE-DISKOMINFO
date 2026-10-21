@@ -1,6 +1,9 @@
 "use server";
+import { assertUploadFile } from "@/lib/security/upload";
+import { z } from "zod";
+import { arg, idSchema, importOptions, importRows, isValid, noteSchema, refCode, refName, reviewArgs, saveOptions, yearSchema } from "@/lib/security/schemas";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
-import { assertAiInput, assertAiQuota } from "@/lib/security/rate-limit";
+import { assertAiInput, assertAiQuota, assertImportQuota } from "@/lib/security/rate-limit";
 import { suggestProbis as suggest, type ProbisSuggestion } from "@/lib/ai/probis-suggest";
 import { can, currentActor, stageOf, reviewTarget } from "@/lib/access";
 import * as periods from "@/lib/probis/periods";
@@ -39,6 +42,7 @@ async function rabFor() {
 }
 
 export async function saveProbis(input: ProbisInput, options: { id?: string; submit: boolean }): Promise<ActionResult<{ id: string }>> {
+  if (!isValid(saveOptions, options)) return { ok: false, error: "Data tidak valid." };
   const parsed = makeProbisInput((await rabFor())(input.period)).safeParse(input);
   if (!parsed.success) {
     const fields = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
@@ -65,6 +69,7 @@ export async function saveProbis(input: ProbisInput, options: { id?: string; sub
 
 export async function deleteProbis(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     const actor = await currentActor();
     const current = await repo.getProbis(id);
     if (!current) throw new Error("Probis tidak ditemukan.");
@@ -83,6 +88,7 @@ export async function deleteProbis(id: string): Promise<ActionResult> {
  */
 export async function reviewProbis(id: string, decision: "submit" | "verify" | "validate" | "reject", note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
   try {
+    ({ id, decision, note } = arg(reviewArgs, { id, decision, note }));
     const actor = await currentActor();
     const current = await repo.getProbis(id);
     if (!current) throw new Error("Probis tidak ditemukan.");
@@ -115,6 +121,7 @@ export async function reviewProbis(id: string, decision: "submit" | "verify" | "
 }
 
 export async function getProbisReviews(id: string) {
+  if (!isValid(idSchema, id)) return [];
   const actor = await currentActor();
   const current = await repo.getProbis(id);
   if (!current || !can.read(actor, current.opdId)) return [];
@@ -138,8 +145,9 @@ export async function previewImport(form: FormData): Promise<ActionResult<Import
   try {
     const actor = await currentActor();
     if (!can.import(actor)) throw new Error("Peran Anda tidak dapat mengimpor data.");
+    await assertImportQuota(actor.id);
     const file = form.get("file");
-    if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx atau .zip.");
+    assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const locked = can.lockedOpd(actor);
     const [lockedOpd, existing, options, resolve] = await Promise.all([
@@ -157,6 +165,9 @@ export async function previewImport(form: FormData): Promise<ActionResult<Import
 /** Langkah 2 impor: simpan baris tanpa galat. Validasi diulang di server. */
 export async function commitImport(rows: ImportRow[], options: { status: "draft" | "submitted"; update: boolean }): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   try {
+    arg(importRows, rows);
+    arg(importOptions, options);
+    await assertImportQuota((await currentActor()).id);
     const actor = await currentActor();
     if (!can.import(actor)) throw new Error("Peran Anda tidak dapat mengimpor data.");
     const locked = can.lockedOpd(actor);
@@ -202,6 +213,8 @@ async function periodAdmin() {
 
 export async function createPeriod(start: number, end: number): Promise<ActionResult<{ name: string }>> {
   try {
+    arg(yearSchema, start);
+    arg(yearSchema, end);
     await periodAdmin();
     const name = await periods.createPeriod(start, end);
     refresh({ reference: true });
@@ -213,6 +226,7 @@ export async function createPeriod(start: number, end: number): Promise<ActionRe
 
 export async function setActivePeriod(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     await periodAdmin();
     await periods.setActivePeriod(id);
     refresh({ reference: true });
@@ -224,6 +238,7 @@ export async function setActivePeriod(id: string): Promise<ActionResult> {
 
 export async function deletePeriod(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     await periodAdmin();
     await periods.deletePeriod(id);
     refresh({ reference: true });
@@ -257,9 +272,12 @@ async function refAdmin(kind: RefKind) {
   return actor;
 }
 
+const versionName = z.string("Data tidak valid.").trim().min(3, "Nama versi minimal 3 karakter.").max(120, "Nama versi maksimal 120 karakter.");
+const nodePatch = z.object({ code: refCode.optional(), name: refName.optional(), parentId: idSchema.nullable().optional() }).strict();
+
 const run = async <T,>(kind: RefKind, task: (ref: VersionedRef, actor: Awaited<ReturnType<typeof refAdmin>>) => Promise<T>): Promise<ActionResult<T>> => {
   try {
-    if (!Object.hasOwn(refs, kind)) throw new Error("Jenis referensi tidak dikenal.");
+    if (typeof kind !== "string" || !Object.hasOwn(refs, kind)) throw new Error("Jenis referensi tidak dikenal.");
     const actor = await refAdmin(kind);
     const data = await task(refs[kind], actor);
     refresh({ reference: true });
@@ -270,37 +288,37 @@ const run = async <T,>(kind: RefKind, task: (ref: VersionedRef, actor: Awaited<R
 };
 
 export async function createRefVersion(kind: RefKind, fromId: string, name: string, note?: string) {
-  return run(kind, (ref, actor) => ref.createVersion(fromId, name, note ?? null, actor));
+  return run(kind, (ref, actor) => ref.createVersion(arg(idSchema, fromId), arg(versionName, name), note == null ? null : arg(noteSchema, note), actor));
 }
 
 export async function updateRefNode(kind: RefKind, id: string, patch: { code?: string; name?: string; parentId?: string | null }) {
-  return run(kind, (ref, actor) => ref.updateNode(id, patch, actor));
+  return run(kind, (ref, actor) => ref.updateNode(arg(idSchema, id), arg(nodePatch, patch), actor));
 }
 
 export async function addRefNode(kind: RefKind, versionId: string, parentId: string | null, code: string, name: string) {
-  return run(kind, (ref, actor) => ref.addNode(versionId, parentId, code, name, actor));
+  return run(kind, (ref, actor) => ref.addNode(arg(idSchema, versionId), arg(idSchema.nullable(), parentId), arg(refCode, code), arg(refName, name), actor));
 }
 
 export async function deleteRefNode(kind: RefKind, id: string) {
-  return run(kind, (ref, actor) => ref.deleteNode(id, actor));
+  return run(kind, (ref, actor) => ref.deleteNode(arg(idSchema, id), actor));
 }
 
 export async function setRefNodeStatus(kind: RefKind, id: string, status: RabStatus) {
   return run(kind, (ref, actor) => {
     if (status !== "berlaku" && status !== "tidak_berlaku") throw new Error("Status referensi tidak valid.");
-    return ref.setNodeStatus(id, status, actor);
+    return ref.setNodeStatus(arg(idSchema, id), status, actor);
   });
 }
 
 export async function publishRefVersion(kind: RefKind, id: string) {
-  return run(kind, (ref, actor) => ref.publishVersion(id, actor));
+  return run(kind, (ref, actor) => ref.publishVersion(arg(idSchema, id), actor));
 }
 
 export async function deleteRefVersion(kind: RefKind, id: string) {
-  return run(kind, (ref) => ref.deleteVersion(id));
+  return run(kind, (ref) => ref.deleteVersion(arg(idSchema, id)));
 }
 
 /** Pakai versi referensi lain untuk satu periode; RAB tiap probis / RAL tiap layanan dipetakan ulang otomatis. */
 export async function setPeriodRefVersion(kind: RefKind, periodId: string, versionId: string) {
-  return run(kind, (ref, actor) => ref.remapPeriod(periodId, versionId, actor));
+  return run(kind, (ref, actor) => ref.remapPeriod(arg(idSchema, periodId), arg(idSchema, versionId), actor));
 }

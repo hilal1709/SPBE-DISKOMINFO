@@ -1,16 +1,20 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { can, currentActor } from "@/lib/access";
 import { fail, type ActionResult } from "@/lib/cms/result";
 import * as grants from "@/lib/pengguna/grants";
 import * as users from "@/lib/pengguna/repo";
 import { broadcastChange } from "@/lib/realtime/server";
 import { logAuthEvent } from "@/lib/security/audit";
+import { assertAdminQuota } from "@/lib/security/rate-limit";
+import { arg, idSchema, roleKey } from "@/lib/security/schemas";
 import type { Role } from "@/lib/types";
 
 async function userAdmin() {
   const actor = await currentActor();
   if (!can.manageUsers(actor)) throw new Error("Hanya Superadmin yang dapat mengelola akun dan hak akses.");
+  await assertAdminQuota(actor.id);
   return actor;
 }
 
@@ -77,6 +81,7 @@ export async function createAccount(input: unknown): Promise<ActionResult<{ name
 
 export async function updateAccount(id: string, input: unknown): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     const actor = await userAdmin();
     const parsed = await parse(input);
     if (!parsed.ok) return parsed;
@@ -97,6 +102,8 @@ export async function updateAccount(id: string, input: unknown): Promise<ActionR
 
 export async function setAccountActive(id: string, active: boolean): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
+    arg(z.boolean("Data tidak valid."), active);
     const actor = await userAdmin();
     const target = await users.getUser(id);
     if (!target) throw new Error("Akun tidak ditemukan.");
@@ -115,6 +122,7 @@ export async function setAccountActive(id: string, active: boolean): Promise<Act
 
 export async function resetAccountPassword(id: string): Promise<ActionResult<{ password: string }>> {
   try {
+    arg(idSchema, id);
     const actor = await userAdmin();
     const target = await users.getUser(id);
     if (!target) throw new Error("Akun tidak ditemukan.");
@@ -131,6 +139,8 @@ export async function resetAccountPassword(id: string): Promise<ActionResult<{ p
 
 export async function saveRoleAccess(role: Role, perms: string[]): Promise<ActionResult> {
   try {
+    arg(roleKey, role);
+    arg(permList, perms);
     const actor = await roleAdmin();
     await grants.saveGrants(role, perms, actor.id);
     done();
@@ -142,6 +152,7 @@ export async function saveRoleAccess(role: Role, perms: string[]): Promise<Actio
 
 export async function resetRoleAccess(role: Role): Promise<ActionResult> {
   try {
+    arg(roleKey, role);
     await roleAdmin();
     await grants.resetGrants(role);
     done();
@@ -154,16 +165,21 @@ export async function resetRoleAccess(role: Role): Promise<ActionResult> {
 /* ---------- Peran kustom ---------- */
 
 type RoleInput = { label: string; description?: string | null };
-function roleInput(input: RoleInput) {
-  const label = input.label.trim().replace(/\s+/g, " ");
-  if (label.length < 3 || label.length > 60) throw new Error("Nama peran 3–60 karakter.");
-  return { label, description: input.description?.trim() || null };
-}
+const roleSchema = z.object({
+  label: z.string("Nama peran 3–60 karakter.").trim().transform((v) => v.replace(/\s+/g, " ")).pipe(z.string().min(3, "Nama peran 3–60 karakter.").max(60, "Nama peran 3–60 karakter.")),
+  description: z.string("Data tidak valid.").trim().max(200, "Keterangan maksimal 200 karakter.").nullish().transform((v) => v || null),
+  copyFrom: roleKey.nullish(),
+});
+const permList = z.array(z.string("Data tidak valid.").max(64, "Data tidak valid."), "Data tidak valid.").max(100, "Data tidak valid.");
+const roleInput = (input: RoleInput) => {
+  const { label, description } = arg(roleSchema, input);
+  return { label, description };
+};
 
 export async function createRole(input: RoleInput & { copyFrom?: Role | null }): Promise<ActionResult<{ key: Role }>> {
   try {
     const actor = await roleAdmin();
-    const key = await grants.createRole({ ...roleInput(input), copyFrom: input.copyFrom ?? null }, actor.id);
+    const key = await grants.createRole({ ...roleInput(input), copyFrom: arg(roleSchema.shape.copyFrom, input.copyFrom) ?? null }, actor.id);
     done();
     return { ok: true, data: { key } };
   } catch (error) {
@@ -173,6 +189,7 @@ export async function createRole(input: RoleInput & { copyFrom?: Role | null }):
 
 export async function updateRole(key: Role, input: RoleInput): Promise<ActionResult> {
   try {
+    arg(roleKey, key);
     await roleAdmin();
     await grants.updateRole(key, roleInput(input));
     done();
@@ -184,6 +201,7 @@ export async function updateRole(key: Role, input: RoleInput): Promise<ActionRes
 
 export async function deleteRole(key: Role): Promise<ActionResult> {
   try {
+    arg(roleKey, key);
     await roleAdmin();
     await grants.deleteRole(key);
     done();

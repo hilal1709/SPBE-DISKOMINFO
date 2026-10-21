@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Alert02Icon, ArrowLeft01Icon, CheckmarkCircle02Icon, Logout01Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, ArrowLeft01Icon, Logout01Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { changePassword } from "@/app/actions/akun";
 import { logout } from "@/app/actions/auth";
 import { Banner } from "@/components/blocks/banner";
@@ -13,9 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { passwordRules } from "@/lib/security/password";
-import { cn } from "@/lib/utils";
 
-function PasswordInput({ id, autoComplete, invalid, onChange }: { id: string; autoComplete: string; invalid?: boolean; onChange?: (value: string) => void }) {
+function PasswordInput({ id, autoComplete, invalid }: { id: string; autoComplete: string; invalid?: boolean }) {
   const [show, setShow] = useState(false);
   return (
     <InputGroup>
@@ -25,9 +24,6 @@ function PasswordInput({ id, autoComplete, invalid, onChange }: { id: string; au
         type={show ? "text" : "password"}
         autoComplete={autoComplete}
         aria-invalid={invalid || undefined}
-        maxLength={200}
-        required
-        onChange={onChange && ((e) => onChange(e.target.value))}
       />
       <InputGroupAddon align="inline-end">
         <InputGroupButton size="icon-xs" onClick={() => setShow((v) => !v)} aria-label={show ? "Sembunyikan sandi" : "Tampilkan sandi"}>
@@ -41,7 +37,7 @@ function PasswordInput({ id, autoComplete, invalid, onChange }: { id: string; au
 /** Ganti sandi sendiri. `forced` = masih memakai sandi sementara dari admin; CMS terkunci sampai diganti. */
 export function ChangePasswordForm({ forced, email, name }: { forced: boolean; email: string; name: string }) {
   const [state, formAction, pending] = useActionState(changePassword, undefined);
-  const [next, setNext] = useState("");
+  // Syarat hanya ditampilkan sebagai petunjuk; pemeriksaannya di server (app/actions/akun.ts).
   const rules = passwordRules({ email, name });
 
   return (
@@ -77,8 +73,7 @@ export function ChangePasswordForm({ forced, email, name }: { forced: boolean; e
           </Banner>
         )}
 
-        {/* React mengosongkan isian setelah aksi selesai; daftar syarat ikut kembali kosong. */}
-        <form action={formAction} onSubmit={() => setNext("")} className="mt-8" data-reveal>
+        <form action={formAction} noValidate className="mt-8" data-reveal>
           <FieldGroup className="gap-5">
             {state?.error && (
               <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-1">
@@ -87,7 +82,7 @@ export function ChangePasswordForm({ forced, email, name }: { forced: boolean; e
               </Alert>
             )}
             {/* Bantu pengelola sandi peramban menyimpan sandi baru untuk akun yang benar. */}
-            <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
+            <input type="text" name="username" autoComplete="username" value={email} readOnly hidden />
             <Field data-invalid={!!state?.fields?.current || undefined}>
               <FieldLabel htmlFor="current">Sandi saat ini</FieldLabel>
               <PasswordInput id="current" autoComplete="current-password" invalid={!!state?.fields?.current} />
@@ -95,19 +90,12 @@ export function ChangePasswordForm({ forced, email, name }: { forced: boolean; e
             </Field>
             <Field data-invalid={!!state?.fields?.next || undefined}>
               <FieldLabel htmlFor="next">Sandi baru</FieldLabel>
-              <PasswordInput id="next" autoComplete="new-password" invalid={!!state?.fields?.next} onChange={setNext} />
+              <PasswordInput id="next" autoComplete="new-password" invalid={!!state?.fields?.next} />
               <FieldError>{state?.fields?.next}</FieldError>
-              <ul className="grid gap-1 text-xs" aria-label="Syarat sandi">
-                {rules.map((rule) => {
-                  const met = rule.test(next);
-                  return (
-                    <li key={rule.key} className={cn("flex items-center gap-1.5 transition-colors", met ? "text-foreground" : "text-muted-foreground")}>
-                      <Icon icon={CheckmarkCircle02Icon} size={14} className={cn("transition-colors", met ? "text-brand-teal" : "opacity-40")} />
-                      {rule.label}
-                      <span className="sr-only">{met ? "terpenuhi" : "belum terpenuhi"}</span>
-                    </li>
-                  );
-                })}
+              <ul className="grid list-disc gap-1 pl-4 text-xs text-muted-foreground" aria-label="Syarat sandi">
+                {rules.map((rule) => (
+                  <li key={rule.key}>{rule.label}</li>
+                ))}
               </ul>
             </Field>
             <Field data-invalid={!!state?.fields?.confirm || undefined}>
