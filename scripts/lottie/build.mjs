@@ -621,9 +621,48 @@ function roadmap() {
   });
 }
 
+/* 16. Gap analysis — dua tebing (AS-IS & target) dipisah jurang, balok jembatan tersusun satu per satu, lalu bendera berkibar. */
+function gapBridge() {
+  const frames = 180;
+  const cliff = (points, color) => group([path(points, true), fill(color), stroke(c.charcoal, 2.5)]);
+  // Balok jembatan jatuh dari atas lalu mengunci di tempatnya.
+  const plank = (x, t, color) =>
+    layer("balok", group([rect(16, 8, 2), fill(color), stroke(c.charcoal, 2)]), {
+      p: anim([[0, [x, 40]], [t, [x, 40]], [t + 14, [x, 92], ease.back], [frames, [x, 92]]]),
+      o: anim([[0, 0], [t, 0], [t + 4, 100], [158, 100], [168, 0], [frames, 0]], ease.linear),
+    });
+  return composition("gap-bridge", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("blob", group([ellipse(224, 144), fill(c.amberPale)]), { p: [120, 82], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("tebing-kiri", cliff([[8, 96], [78, 96], [70, 150], [8, 150]], c.sky)),
+      layer("tebing-kanan", cliff([[162, 96], [232, 96], [232, 150], [170, 150]], c.teal)),
+      layer("jurang", group([path([[78, 112], [92, 104], [106, 114], [120, 104], [134, 114], [148, 104], [162, 112]]), stroke(c.slate, 2, { dash: [3, 4] })]), {
+        o: anim([[0, 100], [60, 100], [90, 30], [frames, 30]], ease.linear),
+      }),
+      plank(87, 20, c.yellow),
+      plank(104, 34, c.amber),
+      plank(121, 48, c.yellow),
+      plank(138, 62, c.amber),
+      plank(155, 76, c.yellow),
+      layer("orang", [
+        group([ellipse(10, 10, [0, -18]), fill(c.charcoal)]),
+        group([rect(10, 16, 4, [0, -4]), fill(c.orange), stroke(c.charcoal, 2)]),
+      ], {
+        p: anim([[0, [40, 92]], [92, [40, 92]], [140, [196, 92], ease.inOut], [frames, [196, 92]]]),
+        o: anim([[0, 100], [158, 100], [168, 0], [frames, 0]], ease.linear),
+      }),
+      layer("bendera", [
+        group([path([[0, 0], [20, 6], [0, 12]], true), fill(c.orange), stroke(c.charcoal, 2)], { p: [0, -34], r: pingPong(0, -8, 40, 0) }),
+        group([path([[0, 0], [0, -34]]), stroke(c.charcoal, 3)]),
+      ], { p: [214, 96], s: anim([[0, [0, 0]], [138, [0, 0]], [150, [100, 100], ease.back], [158, [100, 100]], [168, [0, 0]], [frames, [0, 0]]]) }),
+    ],
+  });
+}
+
 const builds = {
   loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty,
-  "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem, "data-center": dataCenter, "security-shield": securityShield, roadmap,
+  "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem, "data-center": dataCenter, "security-shield": securityShield, roadmap, "gap-bridge": gapBridge,
 };
 for (const [name, build] of Object.entries(builds)) {
   const json = JSON.stringify(build());

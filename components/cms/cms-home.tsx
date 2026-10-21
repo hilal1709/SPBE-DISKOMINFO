@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Add01Icon, ArrowRight01Icon, FileImportIcon, Target02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, ArrowRight01Icon, FileImportIcon, GitCompareIcon, Target02Icon } from "@hugeicons/core-free-icons";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { Segmented } from "@/components/blocks/segmented";
 import { StatCard } from "@/components/blocks/stat-card";
@@ -53,9 +53,11 @@ const dotTone: Record<SubmissionStatus, string> = {
 };
 
 /** Kegiatan Peta Rencana periode aktif yang perlu diperbarui pengelolanya. */
-function rencanaSteps(actor: Actor, rencana: { counts: Partial<Record<RencanaStatus, number>> } | null | undefined) {
+function rencanaSteps(actor: Actor, rencana: { counts: Partial<Record<RencanaStatus, number>>; openHighGaps?: number } | null | undefined) {
   if (!rencana || !can.manageRencana(actor)) return [];
   const list: { text: string; href: string; label: string }[] = [];
+  // Notulen: gap analysis diselesaikan sebelum peta rencana.
+  if (rencana.openHighGaps) list.push({ text: `${rencana.openHighGaps} kesenjangan prioritas tinggi belum ditindaklanjuti.`, href: "/cms/gap-analysis", label: "Buka gap" });
   if (rencana.counts.berjalan) list.push({ text: `${rencana.counts.berjalan} kegiatan peta rencana sedang berjalan; perbarui realisasi dan catatan evaluasinya.`, href: "/cms/peta-rencana", label: "Perbarui" });
   if (rencana.counts.ditunda) list.push({ text: `${rencana.counts.ditunda} kegiatan peta rencana ditunda.`, href: "/cms/peta-rencana", label: "Tinjau" });
   return list;
@@ -83,7 +85,7 @@ export function CmsHome({
   infrastruktur: Summary;
   keamanan: Summary;
   /** Ringkasan Peta Rencana periode aktif (status pelaksanaan), bila tersedia. */
-  rencana?: { counts: Partial<Record<RencanaStatus, number>> } | null;
+  rencana?: { counts: Partial<Record<RencanaStatus, number>>; openHighGaps?: number } | null;
   recent: Activity[];
 }) {
   const timeline = useRef<HTMLOListElement>(null);
@@ -152,6 +154,7 @@ export function CmsHome({
               <div className="grid gap-3 sm:grid-cols-2">
                 <QuickLink tone="bg-brand-teal" href="/cms/peta-rencana/baru" icon={Add01Icon} title="Tambah kegiatan rencana" text="Target arsitektur per tahun" />
                 <QuickLink tone="bg-brand-yellow" href="/cms/peta-rencana/indikator" icon={Target02Icon} title="Indikator & target" text="Target sasaran tiap tahun" />
+                <QuickLink tone="bg-brand-orange" href="/cms/gap-analysis" icon={GitCompareIcon} title="Gap analysis" text="Pindai kesenjangan AS-IS & target" />
               </div>
             )}
             {can.create(actor) && (

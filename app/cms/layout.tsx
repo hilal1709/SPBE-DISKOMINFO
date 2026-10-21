@@ -16,6 +16,7 @@ import { SecurityProvider } from "@/components/keamanan/security-context";
 import { dataSummary } from "@/lib/data/cms-repo";
 import { radSetSafe } from "@/lib/data/rad";
 import { layananSummary } from "@/lib/layanan/cms-repo";
+import { gapSummary } from "@/lib/gap/cms-repo";
 import { rencanaSummary } from "@/lib/peta-rencana/cms-repo";
 import { ralSetSafe } from "@/lib/layanan/ral";
 import { rabSetSafe } from "@/lib/probis/rab";
@@ -35,7 +36,7 @@ export default function CmsLayout({ children }: { children: React.ReactNode }) {
 async function CmsFrame({ children }: { children: React.ReactNode }) {
   const actor = await currentActor();
   const scope = can.readAll(actor) ? null : actor.opdId ?? "00000000-0000-0000-0000-000000000000";
-  const [opdCode, summary, layanan, data, aplikasi, infrastruktur, keamanan, rencana, rabSet, ralSet, radSet, raaSet, raiSet, securityRefs] = await Promise.all([
+  const [opdCode, summary, layanan, data, aplikasi, infrastruktur, keamanan, rencana, gaps, rabSet, ralSet, radSet, raaSet, raiSet, securityRefs] = await Promise.all([
     actor.opdId ? opdCodeOf(actor.opdId).catch(() => null) : null,
     cmsSummary(scope).catch(() => null),
     layananSummary(scope).catch(() => null),
@@ -44,6 +45,7 @@ async function CmsFrame({ children }: { children: React.ReactNode }) {
     infrastrukturSummary(scope).catch(() => null),
     keamananSummary(scope).catch(() => null),
     rencanaSummary().catch(() => null),
+    gapSummary().catch(() => null),
     rabSetSafe(),
     ralSetSafe(),
     radSetSafe(),
@@ -51,7 +53,7 @@ async function CmsFrame({ children }: { children: React.ReactNode }) {
     raiSetSafe(),
     securityRefsSafe(),
   ]);
-  const samples = (summary?.samples ?? 0) + (layanan?.samples ?? 0) + (data?.samples ?? 0) + (aplikasi?.samples ?? 0) + (infrastruktur?.samples ?? 0) + (keamanan?.samples ?? 0) + (rencana?.samples ?? 0);
+  const samples = (summary?.samples ?? 0) + (layanan?.samples ?? 0) + (data?.samples ?? 0) + (aplikasi?.samples ?? 0) + (infrastruktur?.samples ?? 0) + (keamanan?.samples ?? 0) + (rencana?.samples ?? 0) + (gaps?.samples ?? 0);
   const user: CmsUser = {
     name: actor.name,
     role: actor.role,
@@ -75,7 +77,7 @@ async function CmsFrame({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <CmsShell user={user} notice={samples ? <SampleBanner count={samples} probis={summary?.samples ?? 0} layanan={layanan?.samples ?? 0} data={data?.samples ?? 0} aplikasi={aplikasi?.samples ?? 0} infrastruktur={infrastruktur?.samples ?? 0} keamanan={keamanan?.samples ?? 0} rencana={rencana?.samples ?? 0} canClear={can.managePeriods(actor)} /> : null}>
+    <CmsShell user={user} notice={samples ? <SampleBanner count={samples} probis={summary?.samples ?? 0} layanan={layanan?.samples ?? 0} data={data?.samples ?? 0} aplikasi={aplikasi?.samples ?? 0} infrastruktur={infrastruktur?.samples ?? 0} keamanan={keamanan?.samples ?? 0} rencana={rencana?.samples ?? 0} gap={gaps?.samples ?? 0} canClear={can.managePeriods(actor)} /> : null}>
       <RabProvider set={rabSet}>
         <RalProvider set={ralSet}>
           <RadProvider set={radSet}>

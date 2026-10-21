@@ -341,3 +341,28 @@ export type RencanaRecord = Omit<Rencana, "id" | "opd"> & {
 
 /** Indikator sasaran beserta target per tahun (kunci = tahun). */
 export type RencanaIndicator = { id: string; period: string; sasaran: string; inisiatif: string | null; indikator: string; targets: Record<string, string> };
+
+/** Temuan Gap Analysis (satu baris tabel gap_analyses). `rule` null = temuan manual. */
+export type GapRecord = {
+  id: string;
+  code: string;
+  period: string;
+  opdId: string | null;
+  opdName: string | null;
+  domain: Rencana["muatan"];
+  rule: string | null;
+  subjectCode: string | null;
+  subjectName: string;
+  sasaran: string | null;
+  asIs: string;
+  target: string;
+  rekomendasi: string;
+  priority: "tinggi" | "sedang" | "rendah";
+  status: "terbuka" | "diusulkan" | "ditindaklanjuti" | "diabaikan";
+  note: string | null;
+  roadmapId: string | null;
+  roadmapCode: string | null;
+  roadmapStatus: Rencana["status"] | null;
+  updatedAt: string;
+  isSample: boolean;
+};

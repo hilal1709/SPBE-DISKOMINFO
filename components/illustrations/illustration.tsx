@@ -28,6 +28,7 @@ const catalog = {
   "data-center": { load: () => import("./data/data-center.json"), ratio: "3 / 2", still: 120 },
   "security-shield": { load: () => import("./data/security-shield.json"), ratio: "3 / 2", still: 140 },
   roadmap: { load: () => import("./data/roadmap.json"), ratio: "3 / 2", still: 130 },
+  "gap-bridge": { load: () => import("./data/gap-bridge.json"), ratio: "3 / 2", still: 150 },
 } as const;
 
 export type IllustrationName = keyof typeof catalog;

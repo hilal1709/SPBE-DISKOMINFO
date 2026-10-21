@@ -5,13 +5,14 @@ import { dataSummary } from "@/lib/data/cms-repo";
 import { infrastrukturSummary } from "@/lib/infrastruktur/cms-repo";
 import { keamananSummary } from "@/lib/keamanan/cms-repo";
 import { layananSummary } from "@/lib/layanan/cms-repo";
+import { gapSummary } from "@/lib/gap/cms-repo";
 import { rencanaSummary } from "@/lib/peta-rencana/cms-repo";
 import { cmsSummary } from "@/lib/probis/repo";
 
 export default async function CmsPage() {
   const actor = await currentActor();
   const scope = can.readAll(actor) ? null : (actor.opdId ?? "00000000-0000-0000-0000-000000000000");
-  const [probis, layanan, data, aplikasi, infrastruktur, keamanan, rencana] = await Promise.all([
+  const [probis, layanan, data, aplikasi, infrastruktur, keamanan, rencana, gaps] = await Promise.all([
     cmsSummary(scope),
     layananSummary(scope),
     dataSummary(scope),
@@ -19,6 +20,7 @@ export default async function CmsPage() {
     infrastrukturSummary(scope),
     keamananSummary(scope),
     can.manageRencana(actor) ? rencanaSummary().catch(() => null) : null,
+    can.manageRencana(actor) ? gapSummary().catch(() => null) : null,
   ]);
   // Aktivitas terbaru gabungan semua domain.
   const recent = [
@@ -31,5 +33,5 @@ export default async function CmsPage() {
   ]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 8);
-  return <CmsHome actor={actor} probis={probis} layanan={layanan} data={data} aplikasi={aplikasi} infrastruktur={infrastruktur} keamanan={keamanan} rencana={rencana} recent={recent} />;
+  return <CmsHome actor={actor} probis={probis} layanan={layanan} data={data} aplikasi={aplikasi} infrastruktur={infrastruktur} keamanan={keamanan} rencana={rencana ? { ...rencana, openHighGaps: gaps?.openHigh ?? 0 } : null} recent={recent} />;
 }

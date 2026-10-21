@@ -120,7 +120,7 @@ const columns = (v: RencanaValues) => [v.name, v.year, v.sasaran, v.inisiatif, v
 const COLS = "name, year, sasaran, inisiatif, muatan, program, target, jumlah, satuan, status, realisasi, evaluation_note, source, source_ref";
 const N = COLS.split(", ").length;
 
-async function insert(client: PoolClient, v: RencanaValues, actor: Actor, extra: { code?: string; deferredFrom?: string; sample?: boolean } = {}) {
+export async function insertRencana(client: PoolClient, v: RencanaValues, actor: Actor, extra: { code?: string; deferredFrom?: string; sample?: boolean } = {}) {
   const ref = await ids(client, v);
   const code = extra.code || (await nextCode(client, v.muatan));
   const values = [code, ...columns(v), ref.opd_id, ref.period_id, actor.id, extra.deferredFrom ?? null, extra.sample ?? false];
@@ -137,7 +137,7 @@ const UPDATE = `update roadmap_items set ${COLS.split(", ")
   .join(", ")}, opd_id=$${N + 2}, period_id=$${N + 3}, updated_by=$${N + 4}, updated_at = now()`;
 
 export function createRencana(v: RencanaValues, actor: Actor) {
-  return tx((client) => insert(client, v, actor));
+  return tx((client) => insertRencana(client, v, actor));
 }
 
 export function updateRencana(id: string, v: RencanaValues, actor: Actor) {
@@ -145,12 +145,26 @@ export function updateRencana(id: string, v: RencanaValues, actor: Actor) {
     const ref = await ids(client, v);
     const { rowCount } = await client.query(`${UPDATE} where id = $1`, [id, ...columns(v), ref.opd_id, ref.period_id, actor.id]);
     if (!rowCount) throw new Error("Kegiatan rencana tidak ditemukan.");
+    await syncGap(client, id, v.status);
     return id;
   });
 }
 
-export async function deleteRencana(id: string) {
-  await db().query("delete from roadmap_items where id = $1", [id]);
+export function deleteRencana(id: string) {
+  return tx(async (client) => {
+    // Temuan gap yang diusulkan lewat kegiatan ini kembali terbuka.
+    await client.query("update gap_analyses set status = 'terbuka', roadmap_item_id = null, updated_at = now() where roadmap_item_id = $1 and status = 'diusulkan'", [id]);
+    await client.query("delete from roadmap_items where id = $1", [id]);
+  });
+}
+
+/** Status temuan gap mengikuti kegiatan usulannya: terlaksana → ditindaklanjuti, selain itu tetap diusulkan. */
+async function syncGap(client: PoolClient, id: string, status: RencanaStatus) {
+  await client.query(
+    `update gap_analyses set status = case when $2 = 'terlaksana' then 'ditindaklanjuti' else 'diusulkan' end, updated_at = now()
+     where roadmap_item_id = $1 and status in ('diusulkan', 'ditindaklanjuti')`,
+    [id, status],
+  );
 }
 
 /**
@@ -176,7 +190,7 @@ export function deferRencana(id: string, actor: Actor) {
       period = next.rows[0].name;
     }
     await client.query("update roadmap_items set status = 'ditunda', updated_by = $2, updated_at = now() where id = $1", [id, actor.id]);
-    const newId = await insert(
+    const newId = await insertRencana(
       client,
       {
         opd: r.opd_code, period, year, sasaran: r.sasaran, inisiatif: r.inisiatif, muatan: r.muatan, program: r.program, name: r.name, target: r.target,
@@ -219,7 +233,7 @@ export function importRows(rows: (RencanaValues & { code?: string | null })[], a
         await client.query(`${UPDATE} where id = $1`, [existing, ...columns(row), ref.opd_id, ref.period_id, actor.id]);
         updated++;
       } else {
-        await insert(client, row, actor, { code: row.code ?? undefined });
+        await insertRencana(client, row, actor, { code: row.code ?? undefined });
         created++;
       }
     }

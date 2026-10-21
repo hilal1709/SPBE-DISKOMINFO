@@ -17,6 +17,7 @@ export function SampleBanner({
   infrastruktur = 0,
   keamanan = 0,
   rencana = 0,
+  gap = 0,
   canClear,
 }: {
   count: number;
@@ -27,6 +28,7 @@ export function SampleBanner({
   infrastruktur?: number;
   keamanan?: number;
   rencana?: number;
+  gap?: number;
   canClear: boolean;
 }) {
   const [confirm, setConfirm] = useState(false);
@@ -51,7 +53,7 @@ export function SampleBanner({
         )
       }
     >
-      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`, data && `${fmt.format(data)} data`, aplikasi && `${fmt.format(aplikasi)} aplikasi`, infrastruktur && `${fmt.format(infrastruktur)} infrastruktur`, keamanan && `${fmt.format(keamanan)} kegiatan keamanan`, rencana && `${fmt.format(rencana)} peta rencana`].filter(Boolean).join(", ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
+      {[probis && `${fmt.format(probis)} probis`, layanan && `${fmt.format(layanan)} layanan`, data && `${fmt.format(data)} data`, aplikasi && `${fmt.format(aplikasi)} aplikasi`, infrastruktur && `${fmt.format(infrastruktur)} infrastruktur`, keamanan && `${fmt.format(keamanan)} kegiatan keamanan`, rencana && `${fmt.format(rencana)} peta rencana`, gap && `${fmt.format(gap)} temuan gap`].filter(Boolean).join(", ") || fmt.format(count)} contoh sedang tampil di CMS dan portal. Hapus sebelum mengimpor data asli.
     </Banner>
   );
 }

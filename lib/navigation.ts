@@ -124,7 +124,7 @@ export const cmsNav: NavEntry[] = [
     label: "Perencanaan",
     icon: TaskDone01Icon,
     children: [
-      soon("gap-analysis", "Gap Analysis", GitCompareIcon, "Analisis kesenjangan AS-IS dan target"),
+      { href: "/cms/gap-analysis", label: "Gap Analysis", icon: GitCompareIcon, section: "Gap Analysis", description: "Kesenjangan AS-IS terhadap target arsitektur", roles: [...planners, "validator_data", "validator_aplikasi", "validator_infrastruktur", "validator_keamanan", "pimpinan"] },
       { href: "/cms/peta-rencana", label: "Peta Rencana", icon: Route01Icon, section: "Peta Rencana", description: "Kegiatan target arsitektur per tahun" },
       { href: "/cms/peta-rencana/baru", label: "Tambah Kegiatan", icon: TaskAdd01Icon, section: "Tambah Kegiatan Rencana", description: "Isi kegiatan rencana baru", roles: planners },
       { href: "/cms/peta-rencana/indikator", label: "Indikator & Target", icon: Target02Icon, section: "Indikator Peta Rencana", description: "Target indikator sasaran per tahun", roles: planners },

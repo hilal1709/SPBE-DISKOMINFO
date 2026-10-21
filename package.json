@@ -23,7 +23,8 @@
     "template:keamanan": "tsx scripts/build-keamanan-template.mts",
     "seed:keamanan": "tsx scripts/seed-sample-keamanan.mts",
     "seed:peta-rencana": "tsx scripts/seed-sample-peta-rencana.mts",
-    "template:peta-rencana": "tsx scripts/build-peta-rencana-template.mts"
+    "template:peta-rencana": "tsx scripts/build-peta-rencana-template.mts",
+    "seed:gap": "tsx scripts/seed-sample-gap.mts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

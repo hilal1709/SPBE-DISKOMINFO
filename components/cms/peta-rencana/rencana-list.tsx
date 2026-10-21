@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Add01Icon, Download04Icon } from "@hugeicons/core-free-icons";
+import { Banner } from "@/components/blocks/banner";
 import { DataTable } from "@/components/blocks/data-table";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { FilterBar } from "@/components/blocks/filter-bar";
@@ -24,7 +25,7 @@ type Tab = "all" | Status;
 const tabs: { value: Tab; label: string }[] = [{ value: "all", label: "Semua" }, ...statusKeys.map((k) => ({ value: k, label: statusConfig[k].label }))];
 
 /** Daftar kegiatan Peta Rencana CMS: tab status pelaksanaan, filter periode/tahun/PD/muatan, detail via pop-up. */
-export function RencanaList({ rows, periods, canManage, canExport }: { rows: RencanaRecord[]; periods: PeriodOptions; canManage: boolean; canExport: boolean }) {
+export function RencanaList({ rows, periods, canManage, canExport, openHighGaps = 0 }: { rows: RencanaRecord[]; periods: PeriodOptions; canManage: boolean; canExport: boolean; /** Gap prioritas tinggi yang masih terbuka di periode aktif. */ openHighGaps?: number }) {
   const [tab, setTab] = useState<Tab>("all");
   const [period, setPeriod] = useState(periods.active);
   const [tahun, setTahun] = useState<string[]>([]);
@@ -69,6 +70,19 @@ export function RencanaList({ rows, periods, canManage, canExport }: { rows: Ren
 
   return (
     <Reveal className="grid gap-4">
+      {canManage && openHighGaps > 0 && (
+        <Banner
+          variant="warning"
+          label="Gap analysis"
+          action={
+            <Button asChild size="sm" variant="outline">
+              <Link href="/cms/gap-analysis">Buka gap analysis</Link>
+            </Button>
+          }
+        >
+          {openHighGaps.toLocaleString("id-ID")} kesenjangan prioritas tinggi belum ditindaklanjuti. Selesaikan atau usulkan dulu sebelum menyusun kegiatan baru.
+        </Banner>
+      )}
       <StatusTabs value={tab} onChange={setTab} counts={counts} tabs={tabs} />
 
       <FilterBar

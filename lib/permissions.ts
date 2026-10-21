@@ -54,6 +54,8 @@ export const can = {
   viewKeamanan: (a: Actor) => !["operator_opd", "organisasi"].includes(a.role),
   /** Pengelola gap analysis & peta rencana: Diskominfo (Admin Operator) dan tim Diskominfo. */
   manageRencana: (a: Actor) => a.role === "operator_diskominfo" || diskominfoAdmins.includes(a.role),
+  /** Gap Analysis berisi penilaian internal: tidak untuk operator OPD maupun Bagian Organisasi. */
+  viewGap: (a: Actor) => !["operator_opd", "organisasi"].includes(a.role),
   /** Operator wajib memilih OPD-nya sendiri; peran lain bebas memilih. */
   lockedOpd: (a: Actor) => (a.role === "operator_opd" ? a.opdId : null),
   /** Boleh bertindak pada tahap ini? */
