@@ -4,12 +4,15 @@ import { isUuid } from "@/lib/constants";
 import { periodOptions } from "@/lib/probis/periods";
 import { opdCodeOf } from "@/lib/probis/repo";
 
-/** Halaman ubah CMS: id harus UUID dan isian harus ada, selain itu 404. */
-export async function loadRecord<T>(params: Promise<{ id: string }>, get: (id: string) => Promise<T | null>) {
+/**
+ * Halaman ubah CMS: id harus UUID, isian harus ada, dan milik OPD pengguna (atau `readAll`); selain itu 404 agar
+ * keberadaan rekaman OPD lain tidak terungkap.
+ */
+export async function loadRecord<T extends { opdId?: string | null }>(params: Promise<{ id: string }>, get: (id: string) => Promise<T | null>) {
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const [actor, record] = await Promise.all([currentActor(), get(id)]);
-  if (!record) notFound();
+  if (!record || !can.read(actor, record.opdId)) notFound();
   return { actor, record };
 }
 
