@@ -2,6 +2,7 @@
 import { suggestKeamanan as suggest, type KeamananSuggestion } from "@/lib/ai/keamanan-suggest";
 import { can, currentActor, reviewTeam, stageOf } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { assertAiQuota } from "@/lib/security/rate-limit";
 import * as repo from "@/lib/keamanan/cms-repo";
 import { readUpload, validateRows, type KeamananImportResult, type KeamananImportRow } from "@/lib/keamanan/import";
 import type { Kegiatan } from "@/lib/keamanan/jenis";
@@ -96,13 +97,15 @@ export async function reviewKeamanan(id: string, decision: "submit" | "verify" |
 }
 
 export async function getKeamananReviews(id: string) {
-  await currentActor();
+  const actor = await currentActor();
+  const current = await repo.getKeamanan(id);
+  if (!current || !can.read(actor, current.opdId)) return [];
   return repo.getReviews(id);
 }
 
 export async function suggestKeamanan(input: { name: string; opd: string; jenis?: Kegiatan | null; note?: string }): Promise<ActionResult<KeamananSuggestion>> {
   try {
-    await currentActor();
+    await assertAiQuota((await currentActor()).id);
     if (input.name.trim().length < 3) throw new Error("Isi nama kegiatan terlebih dahulu.");
     return { ok: true, data: await suggest({ name: input.name.trim(), opd: input.opd, jenis: input.jenis, note: input.note?.trim() }) };
   } catch (error) {

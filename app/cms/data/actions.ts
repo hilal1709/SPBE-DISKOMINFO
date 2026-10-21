@@ -2,6 +2,7 @@
 import { suggestData as suggest, type DataSuggestion } from "@/lib/ai/data-suggest";
 import { can, currentActor, reviewTeam, stageOf } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { assertAiQuota } from "@/lib/security/rate-limit";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { resolveSecurity } from "@/lib/keamanan/link";
 import * as repo from "@/lib/data/cms-repo";
@@ -106,14 +107,18 @@ export async function reviewData(id: string, decision: "submit" | "verify" | "va
 }
 
 export async function getDataReviews(id: string) {
-  await currentActor();
+  const actor = await currentActor();
+  const current = await repo.getData(id);
+  if (!current || !can.read(actor, current.opdId)) return [];
   return repo.getReviews(id);
 }
 
 /** Pilihan dependensi: probis OPD wali data dan layanan pada periode yang sama. */
 export async function listDependencyOptions(opd: string, period: string): Promise<ActionResult<Awaited<ReturnType<typeof repo.dependencyOptions>>>> {
   try {
-    await currentActor();
+    const actor = await currentActor();
+    const locked = can.lockedOpd(actor);
+    if (locked && (await opdIdOf(opd)) !== locked) throw new Error("Anda hanya dapat melihat data OPD Anda.");
     if (!opd || !period) return { ok: true, data: { probis: [], layanan: [] } };
     return { ok: true, data: await repo.dependencyOptions(opd, period) };
   } catch (error) {
@@ -123,7 +128,7 @@ export async function listDependencyOptions(opd: string, period: string): Promis
 
 export async function suggestData(input: { name: string; opd: string; note?: string; period?: string }): Promise<ActionResult<DataSuggestion>> {
   try {
-    await currentActor();
+    await assertAiQuota((await currentActor()).id);
     if (input.name.trim().length < 3) throw new Error("Isi nama data terlebih dahulu.");
     const [radSet, rabSet] = await Promise.all([rad.loadSet(), rab.loadSet()]);
     return { ok: true, data: await suggest({ name: input.name.trim(), opd: input.opd, note: input.note?.trim() }, refResolver(radSet)(input.period), refResolver(rabSet)(input.period)) };

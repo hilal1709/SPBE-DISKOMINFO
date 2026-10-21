@@ -1,5 +1,5 @@
-import { unzipSync } from "fflate";
 import * as XLSX from "xlsx";
+import { readWorkbook, unzipSafe } from "@/lib/security/upload";
 import type { RabIndex } from "./rab-index";
 import { perangkatDaerah, type PeriodOptions } from "./reference";
 
@@ -79,7 +79,7 @@ const statusOf = (raw: string | null): ImportRow["probisStatus"] => {
 /** Cari workbook domain di dalam zip (termasuk zip bertingkat); `pattern` mencocokkan nama berkas. */
 export function findInZip(data: Uint8Array, unsupported: string[], pattern = /proses bisnis/, prefix = ""): { name: string; data: Uint8Array } | null {
   let found: { name: string; data: Uint8Array } | null = null;
-  for (const [path, content] of Object.entries(unzipSync(data))) {
+  for (const [path, content] of Object.entries(unzipSafe(data, prefix))) {
     const lower = path.toLowerCase();
     if (lower.endsWith(".zip")) {
       found ??= findInZip(content, unsupported, pattern, `${prefix}${path}/`);
@@ -92,7 +92,7 @@ export function findInZip(data: Uint8Array, unsupported: string[], pattern = /pr
 }
 
 function parseSheet(data: Uint8Array): Omit<ImportRow, "issues">[] {
-  const book = XLSX.read(data, { type: "array" });
+  const book = readWorkbook(data);
   const sheet = book.Sheets["Proses Bisnis"] ?? book.Sheets[book.SheetNames[0]!];
   const table = XLSX.utils.sheet_to_json<unknown[]>(sheet!, { header: 1, blankrows: false });
   const [head = [], ...body] = table;

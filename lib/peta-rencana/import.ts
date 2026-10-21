@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { readWorkbook } from "@/lib/security/upload";
 import { matchPd, normalize, text } from "@/lib/probis/import";
 import type { PeriodOptions } from "@/lib/probis/reference";
 import { muatanFromLabel, sourceKeys, sourceLabel, statusFromLabel, type Muatan, type RencanaSource, type RencanaStatus } from "./muatan";
@@ -138,7 +139,7 @@ export function validateRows(rows: Raw[], { existing, periods }: { existing: Set
 /** Baca unggahan .xlsx: setiap sheet berkolom "Kegiatan" dibaca (sheet Indikator dilewati). */
 export function readUpload(name: string, data: Uint8Array) {
   if (!name.toLowerCase().endsWith(".xlsx")) throw new Error("Format berkas harus .xlsx");
-  const book = XLSX.read(data, { type: "array" });
+  const book = readWorkbook(data);
   const unsupported: string[] = [];
   const rows = book.SheetNames.flatMap((sheet) => {
     const parsed = parseSheet(book.Sheets[sheet]!, sheet);

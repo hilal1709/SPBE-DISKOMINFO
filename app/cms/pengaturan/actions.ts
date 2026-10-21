@@ -38,9 +38,24 @@ async function keepSuperadmin(target: users.UserAccount) {
     throw new Error("Ini Superadmin aktif terakhir. Tambahkan Superadmin lain terlebih dahulu.");
 }
 
-/** Hanya Superadmin yang boleh memberi atau mengubah akun Superadmin, walau izin "users" diberikan ke peran lain. */
-function guardSuperadmin(actor: { role: Role }, ...roles: Role[]) {
-  if (actor.role !== "superadmin" && roles.includes("superadmin")) throw new Error("Hanya Superadmin yang dapat mengelola akun Superadmin.");
+/**
+ * Hanya Superadmin yang boleh memberi atau mengubah akun Superadmin, walau izin "users" diberikan ke peran lain.
+ * Pengelola akun lain tidak boleh menyentuh akun berperan lebih kuat dari dirinya (mis. reset sandi lalu masuk sebagai akun itu).
+ */
+async function guardSuperadmin(actor: { role: Role; perms: readonly string[] }, ...roles: Role[]) {
+  if (actor.role === "superadmin") return;
+  if (roles.includes("superadmin")) throw new Error("Hanya Superadmin yang dapat mengelola akun Superadmin.");
+  for (const role of roles) {
+    const access = await grants.roleAccess(role);
+    if (access?.perms.some((p) => !actor.perms.includes(p))) throw new Error(`Peran ${access.label} memiliki hak akses melebihi peran Anda.`);
+  }
+}
+
+/** Hak akses & peran kustom hanya diatur Superadmin agar pemegang izin "users" tidak bisa menaikkan izinnya sendiri. */
+async function roleAdmin() {
+  const actor = await userAdmin();
+  if (actor.role !== "superadmin") throw new Error("Hanya Superadmin yang dapat mengatur peran dan hak akses.");
+  return actor;
 }
 
 /* ---------- Akun ---------- */
@@ -50,7 +65,7 @@ export async function createAccount(input: unknown): Promise<ActionResult<{ name
     const actor = await userAdmin();
     const parsed = await parse(input);
     if (!parsed.ok) return parsed;
-    guardSuperadmin(actor, parsed.data.role);
+    await guardSuperadmin(actor, parsed.data.role);
     const { password } = await users.createUser(parsed.data);
     done();
     return { ok: true, data: { name: parsed.data.name, email: parsed.data.email, password } };
@@ -66,7 +81,7 @@ export async function updateAccount(id: string, input: unknown): Promise<ActionR
     if (!parsed.ok) return parsed;
     const target = await users.getUser(id);
     if (!target) throw new Error("Akun tidak ditemukan.");
-    guardSuperadmin(actor, target.role, parsed.data.role);
+    await guardSuperadmin(actor, target.role, parsed.data.role);
     if (parsed.data.role !== target.role) {
       if (target.id === actor.id) throw new Error("Peran akun sendiri tidak dapat diubah.");
       await keepSuperadmin(target);
@@ -84,7 +99,7 @@ export async function setAccountActive(id: string, active: boolean): Promise<Act
     const actor = await userAdmin();
     const target = await users.getUser(id);
     if (!target) throw new Error("Akun tidak ditemukan.");
-    guardSuperadmin(actor, target.role);
+    await guardSuperadmin(actor, target.role);
     if (!active) {
       if (target.id === actor.id) throw new Error("Akun sendiri tidak dapat dinonaktifkan.");
       await keepSuperadmin(target);
@@ -102,7 +117,7 @@ export async function resetAccountPassword(id: string): Promise<ActionResult<{ p
     const actor = await userAdmin();
     const target = await users.getUser(id);
     if (!target) throw new Error("Akun tidak ditemukan.");
-    guardSuperadmin(actor, target.role);
+    await guardSuperadmin(actor, target.role);
     const password = await users.resetPassword(id);
     return { ok: true, data: { password } };
   } catch (error) {
@@ -114,7 +129,7 @@ export async function resetAccountPassword(id: string): Promise<ActionResult<{ p
 
 export async function saveRoleAccess(role: Role, perms: string[]): Promise<ActionResult> {
   try {
-    const actor = await userAdmin();
+    const actor = await roleAdmin();
     await grants.saveGrants(role, perms, actor.id);
     done();
     return { ok: true, data: undefined };
@@ -125,7 +140,7 @@ export async function saveRoleAccess(role: Role, perms: string[]): Promise<Actio
 
 export async function resetRoleAccess(role: Role): Promise<ActionResult> {
   try {
-    await userAdmin();
+    await roleAdmin();
     await grants.resetGrants(role);
     done();
     return { ok: true, data: undefined };
@@ -145,7 +160,7 @@ function roleInput(input: RoleInput) {
 
 export async function createRole(input: RoleInput & { copyFrom?: Role | null }): Promise<ActionResult<{ key: Role }>> {
   try {
-    const actor = await userAdmin();
+    const actor = await roleAdmin();
     const key = await grants.createRole({ ...roleInput(input), copyFrom: input.copyFrom ?? null }, actor.id);
     done();
     return { ok: true, data: { key } };
@@ -156,7 +171,7 @@ export async function createRole(input: RoleInput & { copyFrom?: Role | null }):
 
 export async function updateRole(key: Role, input: RoleInput): Promise<ActionResult> {
   try {
-    await userAdmin();
+    await roleAdmin();
     await grants.updateRole(key, roleInput(input));
     done();
     return { ok: true, data: undefined };
@@ -167,7 +182,7 @@ export async function updateRole(key: Role, input: RoleInput): Promise<ActionRes
 
 export async function deleteRole(key: Role): Promise<ActionResult> {
   try {
-    await userAdmin();
+    await roleAdmin();
     await grants.deleteRole(key);
     done();
     return { ok: true, data: undefined };

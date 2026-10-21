@@ -7,6 +7,7 @@ import { readUpload, validateRows, type AplikasiImportResult, type AplikasiImpor
 import { raa } from "@/lib/aplikasi/raa";
 import { makeAplikasiInput, type AplikasiInput } from "@/lib/aplikasi/schema";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { assertAiQuota } from "@/lib/security/rate-limit";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { resolveSecurity } from "@/lib/keamanan/link";
 import { listData } from "@/lib/data/cms-repo";
@@ -108,14 +109,18 @@ export async function reviewAplikasi(id: string, decision: "submit" | "verify" |
 }
 
 export async function getAplikasiReviews(id: string) {
-  await currentActor();
+  const actor = await currentActor();
+  const current = await repo.getAplikasi(id);
+  if (!current || !can.read(actor, current.opdId)) return [];
   return repo.getReviews(id);
 }
 
 /** Pilihan dependensi: probis tervalidasi, layanan, dan data pada periode yang sama. */
 export async function listDependencyOptions(opd: string, period: string): Promise<ActionResult<Awaited<ReturnType<typeof repo.dependencyOptions>>>> {
   try {
-    await currentActor();
+    const actor = await currentActor();
+    const locked = can.lockedOpd(actor);
+    if (locked && (await opdIdOf(opd)) !== locked) throw new Error("Anda hanya dapat melihat data OPD Anda.");
     if (!period) return { ok: true, data: { probis: [], layanan: [], data: [], infra: [] } };
     return { ok: true, data: await repo.dependencyOptions(opd, period) };
   } catch (error) {
@@ -125,7 +130,7 @@ export async function listDependencyOptions(opd: string, period: string): Promis
 
 export async function suggestAplikasi(input: { name: string; opd: string; pengembang?: string; note?: string; period?: string }): Promise<ActionResult<AplikasiSuggestion>> {
   try {
-    await currentActor();
+    await assertAiQuota((await currentActor()).id);
     if (input.name.trim().length < 2) throw new Error("Isi nama aplikasi terlebih dahulu.");
     const [raaSet, deps] = await Promise.all([raa.loadSet(), input.period ? repo.dependencyOptions(input.opd, input.period) : Promise.resolve({ probis: [], layanan: [], data: [], infra: [] })]);
     const data = await suggest({ name: input.name.trim(), opd: input.opd, pengembang: input.pengembang, note: input.note?.trim() }, refResolver(raaSet)(input.period), deps);

@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { auth } from "@/auth";
+import { authRequired } from "@/lib/auth-mode";
 import { getDb } from "@/lib/db";
 import { roleAccess, roleGrant } from "@/lib/pengguna/grants";
 import { sessionAccess } from "@/lib/pengguna/repo";
@@ -15,6 +16,7 @@ type SessionLike = { id: string; name?: string | null; role: Role; opdId?: strin
  */
 export async function actorFor(user: SessionLike): Promise<Actor | null> {
   let { name, role, opdId } = { name: user.name ?? "Pengguna", role: user.role, opdId: user.opdId ?? null };
+  if (user.id === "demo-admin" && process.env.NODE_ENV === "production") return null;
   if (getDb() && user.id !== "demo-admin") {
     // Akun + hak akses perannya dalam satu query (setiap halaman CMS & server action melewati ini).
     const fresh = await sessionAccess(user.id).catch(() => undefined);
@@ -29,7 +31,7 @@ export async function actorFor(user: SessionLike): Promise<Actor | null> {
   return { id: user.id, name, role, roleName: access?.label ?? role, opdId, demo: false, perms: access?.perms ?? [] };
 }
 
-/** Sesi aktif, atau superadmin demo bila login belum diwajibkan (AUTH_REQUIRED ≠ true). Sekali per request. */
+/** Sesi aktif, atau superadmin demo bila login belum diwajibkan (hanya di dev). Sekali per request. */
 export const currentActor = cache(async (): Promise<Actor> => {
   const session = await auth();
   if (session?.user) {
@@ -37,7 +39,7 @@ export const currentActor = cache(async (): Promise<Actor> => {
     if (actor) return actor;
     throw new Error("Akun Anda tidak aktif. Hubungi admin Diskominfo.");
   }
-  if (process.env.AUTH_REQUIRED === "true") throw new Error("Sesi berakhir. Silakan masuk kembali.");
+  if (authRequired) throw new Error("Sesi berakhir. Silakan masuk kembali.");
   const access = (await roleAccess("superadmin"))!;
   return { id: null, name: "Admin Diskominfo", role: "superadmin", roleName: "Superadmin (demo)", opdId: null, demo: true, perms: access.perms };
 });

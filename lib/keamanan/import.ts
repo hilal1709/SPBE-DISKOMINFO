@@ -1,5 +1,5 @@
-import { unzipSync } from "fflate";
 import * as XLSX from "xlsx";
+import { readWorkbook, unzipSafe } from "@/lib/security/upload";
 import { matchPd, normalize, text } from "@/lib/probis/import";
 import type { PeriodOptions } from "@/lib/probis/reference";
 import { kegiatanConfig, kegiatanFromName, type Kegiatan } from "./jenis";
@@ -111,7 +111,7 @@ function parseSheet(sheet: XLSX.WorkSheet, source: string, fallback: Kegiatan | 
 }
 
 const parseBook = (data: Uint8Array, file: string) => {
-  const book = XLSX.read(data, { type: "array" });
+  const book = readWorkbook(data);
   return book.SheetNames.flatMap((name) => parseSheet(book.Sheets[name]!, name, kegiatanFromName(file)));
 };
 
@@ -160,7 +160,7 @@ export function readUpload(name: string, data: Uint8Array) {
   const visit = (path: string, content: Uint8Array) => {
     const lower = path.toLowerCase();
     if (lower.endsWith(".zip")) {
-      for (const [inner, bytes] of Object.entries(unzipSync(content))) visit(`${path}/${inner}`, bytes);
+      for (const [inner, bytes] of Object.entries(unzipSafe(content, path))) visit(`${path}/${inner}`, bytes);
     } else if (lower.endsWith(".xlsx")) {
       const file = path.split("/").pop()!.replace(/\.xlsx$/i, "");
       // "Perangkat Keras Keamanan" milik domain Infrastruktur.
@@ -171,7 +171,7 @@ export function readUpload(name: string, data: Uint8Array) {
     }
   };
   if (name.toLowerCase().endsWith(".zip")) {
-    for (const [path, content] of Object.entries(unzipSync(data))) visit(path, content);
+    for (const [path, content] of Object.entries(unzipSafe(data))) visit(path, content);
   } else if (name.toLowerCase().endsWith(".xlsx")) {
     rows.push(...parseBook(data, name.replace(/\.xlsx$/i, "")));
     files.push(name);

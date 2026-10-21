@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { readWorkbook } from "@/lib/security/upload";
 import { findInZip, matchPd, normalize, text } from "@/lib/probis/import";
 import type { RabIndex } from "@/lib/probis/rab-index";
 import type { PeriodOptions } from "@/lib/probis/reference";
@@ -93,7 +94,7 @@ export function toMetode(raw: string | null): { value: Metode | null; guessed: b
 }
 
 function parseSheet(data: Uint8Array): Raw[] {
-  const book = XLSX.read(data, { type: "array" });
+  const book = readWorkbook(data);
   const sheet = book.Sheets["Layanan"] ?? book.Sheets[book.SheetNames[0]!];
   const table = XLSX.utils.sheet_to_json<unknown[]>(sheet!, { header: 1, blankrows: false });
   const [head = [], ...body] = table;

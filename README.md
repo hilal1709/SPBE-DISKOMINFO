@@ -9,7 +9,7 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 3. (Opsional) `pnpm seed:contoh` mengisi 3.501 probis contoh dan `pnpm seed:layanan` ±460 layanan contoh (status Tervalidasi, ditandai *contoh*; jalankan probis dulu agar tautan layanan → probis terisi). Tambahkan `--hapus` untuk menghapus; tim Diskominfo juga bisa menghapus keduanya dari banner di CMS.
 4. `pnpm dev`.
 
-`AUTH_REQUIRED=true` mewajibkan login di `/cms`. Akun demo per peran (operator, organisasi, validator, pimpinan `@gresikkab.go.id`) dan kata sandinya ada di `database/migrations/004_opd_and_demo_users.sql` — ganti sebelum produksi.
+Di production `/cms` selalu wajib login; `AUTH_REQUIRED=false` hanya membuka mode demo di `pnpm dev`. Akun demo dari migrasi 004 dinonaktifkan oleh migrasi 019. Keamanan (header, rate limit, pengujian Strix): lihat `docs/security-testing.md`.
 
 ### CMS Proses Bisnis
 

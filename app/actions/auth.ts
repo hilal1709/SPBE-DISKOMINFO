@@ -18,6 +18,9 @@ export async function login(_prev: string | undefined, formData: FormData) {
       if (error.type === "CredentialsSignin" && "code" in error && error.code === "unavailable") {
         return "Layanan login sedang tidak tersedia";
       }
+      if (error.type === "CredentialsSignin" && "code" in error && error.code === "locked") {
+        return "Terlalu banyak percobaan. Coba lagi 15 menit lagi";
+      }
       return "Email atau kata sandi tidak valid";
     }
     throw error;

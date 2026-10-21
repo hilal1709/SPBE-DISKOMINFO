@@ -2,6 +2,7 @@
 import { suggestLayanan as suggest, type LayananSuggestion } from "@/lib/ai/layanan-suggest";
 import { can, currentActor, stageOf } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { assertAiQuota } from "@/lib/security/rate-limit";
 import * as repo from "@/lib/layanan/cms-repo";
 import { readUpload, validateRows, type LayananImportResult, type LayananImportRow, type ProbisRef } from "@/lib/layanan/import";
 import { ral } from "@/lib/layanan/ral";
@@ -104,7 +105,9 @@ export async function reviewLayanan(id: string, decision: "submit" | "verify" | 
 }
 
 export async function getLayananReviews(id: string) {
-  await currentActor();
+  const actor = await currentActor();
+  const current = await repo.getLayanan(id);
+  if (!current || !can.read(actor, current.opdId)) return [];
   return repo.getReviews(id);
 }
 
@@ -121,7 +124,7 @@ export async function listProbisOptions(opd: string, period: string): Promise<Ac
 
 export async function suggestLayanan(input: { name: string; opd: string; note?: string; period?: string }): Promise<ActionResult<LayananSuggestion>> {
   try {
-    await currentActor();
+    await assertAiQuota((await currentActor()).id);
     if (input.name.trim().length < 3) throw new Error("Isi nama layanan terlebih dahulu.");
     const { ralFor, rabFor } = await refsFor();
     return { ok: true, data: await suggest({ name: input.name.trim(), opd: input.opd, note: input.note?.trim() }, ralFor(input.period), rabFor(input.period)) };

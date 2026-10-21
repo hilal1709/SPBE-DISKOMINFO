@@ -87,6 +87,8 @@ const has = (a: Pick<Actor, "perms">, p: Permission) => a.perms.includes(p);
 /** Pemeriksaan hak akses CMS; izin per peran diatur di Pengaturan → Hak Akses, aturan per baris (status, OPD) tetap di sini. */
 export const can = {
   readAll: (a: Actor) => has(a, "readAll"),
+  /** Boleh membaca rincian (riwayat review, dsb.) baris milik OPD ini? */
+  read: (a: Actor, opdId: string | null | undefined) => has(a, "readAll") || (!!a.opdId && a.opdId === opdId),
   create: (a: Actor) => has(a, "create"),
   edit: (a: Actor, r: Pick<ProbisRecord, "status"> & { opdId?: string | null }) =>
     has(a, "editAny") || (editable.has(r.status) && has(a, "edit") && (has(a, "readAll") || (!!a.opdId && a.opdId === r.opdId))),

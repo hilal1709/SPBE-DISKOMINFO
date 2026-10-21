@@ -1,5 +1,6 @@
 "use server";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { assertAiQuota } from "@/lib/security/rate-limit";
 import { suggestProbis as suggest, type ProbisSuggestion } from "@/lib/ai/probis-suggest";
 import { can, currentActor, stageOf } from "@/lib/access";
 import * as periods from "@/lib/probis/periods";
@@ -114,13 +115,15 @@ export async function reviewProbis(id: string, decision: "submit" | "verify" | "
 }
 
 export async function getProbisReviews(id: string) {
-  await currentActor();
+  const actor = await currentActor();
+  const current = await repo.getProbis(id);
+  if (!current || !can.read(actor, current.opdId)) return [];
   return repo.getReviews(id);
 }
 
 export async function suggestProbis(input: { name: string; opd: string; note?: string; period?: string }): Promise<ActionResult<ProbisSuggestion>> {
   try {
-    await currentActor();
+    await assertAiQuota((await currentActor()).id);
     if (input.name.trim().length < 3) throw new Error("Isi nama proses bisnis terlebih dahulu.");
     const rab = (await rabFor())(input.period);
     return { ok: true, data: await suggest({ name: input.name.trim(), opd: input.opd, note: input.note?.trim() }, rab) };
@@ -255,7 +258,7 @@ async function refAdmin(kind: RefKind) {
 
 const run = async <T,>(kind: RefKind, task: (ref: VersionedRef, actor: Awaited<ReturnType<typeof refAdmin>>) => Promise<T>): Promise<ActionResult<T>> => {
   try {
-    if (!(kind in refs)) throw new Error("Jenis referensi tidak dikenal.");
+    if (!Object.hasOwn(refs, kind)) throw new Error("Jenis referensi tidak dikenal.");
     const actor = await refAdmin(kind);
     const data = await task(refs[kind], actor);
     refresh({ reference: true });
@@ -282,7 +285,10 @@ export async function deleteRefNode(kind: RefKind, id: string) {
 }
 
 export async function setRefNodeStatus(kind: RefKind, id: string, status: RabStatus) {
-  return run(kind, (ref, actor) => ref.setNodeStatus(id, status, actor));
+  return run(kind, (ref, actor) => {
+    if (status !== "berlaku" && status !== "tidak_berlaku") throw new Error("Status referensi tidak valid.");
+    return ref.setNodeStatus(id, status, actor);
+  });
 }
 
 export async function publishRefVersion(kind: RefKind, id: string) {

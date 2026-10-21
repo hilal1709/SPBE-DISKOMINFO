@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { readWorkbook } from "@/lib/security/upload";
 import { matchRefs, parts, type DepRef } from "@/lib/data/import";
 import { securityFields, type SecurityKey } from "@/lib/data/reference";
 import { findInZip, matchPd, normalize, text } from "@/lib/probis/import";
@@ -124,7 +125,7 @@ export function toPengembang(raw: string | null) {
 }
 
 function parseSheet(data: Uint8Array): Raw[] {
-  const book = XLSX.read(data, { type: "array" });
+  const book = readWorkbook(data);
   const sheet = book.Sheets["Aplikasi"] ?? book.Sheets[book.SheetNames[0]!];
   const table = XLSX.utils.sheet_to_json<unknown[]>(sheet!, { header: 1, blankrows: false });
   const [head = [], ...body] = table;

@@ -8,7 +8,8 @@ import { kegiatanKeys, sheetName } from "@/lib/keamanan/jenis";
 /** Ekspor kegiatan keamanan: satu sheet per kegiatan dengan kolom template analis (+ periode & status). */
 export async function GET() {
   const actor = await currentActor().catch(() => null);
-  if (!actor || !can.export(actor)) return forbidden();
+  // Lintas OPD hanya untuk pemegang akses Dashboard Keamanan; operator OPD tetap bisa mengekspor isian OPD-nya.
+  if (!actor || !can.export(actor) || (opdScope(actor) === null && !can.viewKeamanan(actor))) return forbidden();
   const rows = await listKeamanan({ opdId: opdScope(actor) });
   const book = XLSX.utils.book_new();
   for (const jenis of kegiatanKeys) {

@@ -1,5 +1,5 @@
-import { unzipSync } from "fflate";
 import * as XLSX from "xlsx";
+import { readWorkbook, unzipSafe } from "@/lib/security/upload";
 import { matchRefs, parts, type DepRef } from "@/lib/data/import";
 import { securityFields, type SecurityKey } from "@/lib/data/reference";
 import { matchPd, normalize, text } from "@/lib/probis/import";
@@ -147,7 +147,7 @@ function parseSheet(sheet: XLSX.WorkSheet, source: string, fallback: InfraJenis 
 }
 
 function parseBook(data: Uint8Array, file: string): Raw[] {
-  const book = XLSX.read(data, { type: "array" });
+  const book = readWorkbook(data);
   // Workbook satu komponen: sheet pertama; workbook gabungan: tiap sheet yang dikenali (sheet referensi RAI dilewati).
   return book.SheetNames.filter((name) => !/^r[a-z]{2} level/i.test(name)).flatMap((name) => parseSheet(book.Sheets[name]!, name, jenisFromName(file)));
 }
@@ -249,7 +249,7 @@ export function readUpload(name: string, data: Uint8Array) {
   const visit = (path: string, content: Uint8Array) => {
     const lower = path.toLowerCase();
     if (lower.endsWith(".zip")) {
-      for (const [inner, bytes] of Object.entries(unzipSync(content))) visit(`${path}/${inner}`, bytes);
+      for (const [inner, bytes] of Object.entries(unzipSafe(content, path))) visit(`${path}/${inner}`, bytes);
     } else if (lower.endsWith(".xlsx")) {
       const file = path.split("/").pop()!.replace(/\.xlsx$/i, "");
       if (/infrastruktur/.test(lower) || jenisFromName(file)) {
@@ -260,7 +260,7 @@ export function readUpload(name: string, data: Uint8Array) {
     }
   };
   if (name.toLowerCase().endsWith(".zip")) {
-    for (const [path, content] of Object.entries(unzipSync(data))) visit(path, content);
+    for (const [path, content] of Object.entries(unzipSafe(data))) visit(path, content);
   } else if (name.toLowerCase().endsWith(".xlsx")) {
     rows.push(...parseBook(data, name.replace(/\.xlsx$/i, "")));
     files.push(name);

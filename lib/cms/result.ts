@@ -5,7 +5,14 @@ import { broadcastChange } from "@/lib/realtime/server";
 /** Hasil server action CMS: data, atau pesan galat (+ galat per kolom form). */
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string; fields?: Record<string, string> };
 
-export const fail = (error: unknown): { ok: false; error: string } => ({ ok: false, error: error instanceof Error ? error.message : "Terjadi kesalahan." });
+/** Galat database/sistem (punya SQLSTATE `code`, mis. dari pg) tidak dikirim mentah ke peramban: nama tabel/constraint bisa bocor. */
+const isInternal = (error: Error) => typeof (error as { code?: unknown }).code === "string" || error.name !== "Error";
+
+export const fail = (error: unknown): { ok: false; error: string } => {
+  if (error instanceof Error && !isInternal(error)) return { ok: false, error: error.message };
+  console.error("[cms] Galat server action:", error);
+  return { ok: false, error: "Terjadi kesalahan sistem. Coba lagi atau hubungi admin Diskominfo." };
+};
 
 /**
  * Muat ulang CMS dan dashboard publik setelah data berubah. `reference` = periode atau referensi berversi

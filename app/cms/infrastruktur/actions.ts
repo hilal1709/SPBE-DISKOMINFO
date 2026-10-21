@@ -3,6 +3,7 @@ import { suggestInfrastruktur as suggest, type InfrastrukturSuggestion } from "@
 import { can, currentActor, reviewTeam, stageOf } from "@/lib/access";
 import { listAplikasi } from "@/lib/aplikasi/cms-repo";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
+import { assertAiQuota } from "@/lib/security/rate-limit";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { resolveSecurity } from "@/lib/keamanan/link";
 import { listData } from "@/lib/data/cms-repo";
@@ -108,14 +109,18 @@ export async function reviewInfrastruktur(id: string, decision: "submit" | "veri
 }
 
 export async function getInfrastrukturReviews(id: string) {
-  await currentActor();
+  const actor = await currentActor();
+  const current = await repo.getInfrastruktur(id);
+  if (!current || !can.read(actor, current.opdId)) return [];
   return repo.getReviews(id);
 }
 
 /** Pilihan relasi: komponen lain, aplikasi, data, dan probis tervalidasi pada periode yang sama. */
 export async function listInfraOptions(opd: string, period: string): Promise<ActionResult<Awaited<ReturnType<typeof repo.dependencyOptions>>>> {
   try {
-    await currentActor();
+    const actor = await currentActor();
+    const locked = can.lockedOpd(actor);
+    if (locked && (await opdIdOf(opd)) !== locked) throw new Error("Anda hanya dapat melihat data OPD Anda.");
     if (!period) return { ok: true, data: { infra: [], aplikasi: [], data: [], probis: [] } };
     return { ok: true, data: await repo.dependencyOptions(opd, period) };
   } catch (error) {
@@ -125,7 +130,7 @@ export async function listInfraOptions(opd: string, period: string): Promise<Act
 
 export async function suggestInfrastruktur(input: { name: string; opd: string; jenis?: InfraJenis | null; note?: string; period?: string }): Promise<ActionResult<InfrastrukturSuggestion>> {
   try {
-    await currentActor();
+    await assertAiQuota((await currentActor()).id);
     if (input.name.trim().length < 2) throw new Error("Isi nama komponen terlebih dahulu.");
     const [raiSet, deps] = await Promise.all([rai.loadSet(), input.period ? repo.dependencyOptions(input.opd, input.period) : Promise.resolve({ infra: [] })]);
     const data = await suggest({ name: input.name.trim(), opd: input.opd, jenis: input.jenis, note: input.note?.trim() }, refResolver(raiSet)(input.period), deps.infra);

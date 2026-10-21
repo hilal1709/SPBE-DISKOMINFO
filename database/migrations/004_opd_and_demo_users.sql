@@ -32,8 +32,7 @@ INSERT INTO opd (code,name) VALUES
 ('DPMD','Dinas Pemberdayaan Masyarakat dan Desa')
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
--- Akun demo per role untuk pengujian lokal. Kata sandi demo (semua akun): spbe-demo-dc63ea
--- Ganti atau nonaktifkan sebelum produksi.
+-- Akun demo per role untuk pengujian lokal (sandi bersama, lihat pengelola proyek). Dinonaktifkan oleh migrasi 019.
 INSERT INTO users (email,password_hash,name,role,opd_id) VALUES
 ('operator@gresikkab.go.id','$2b$10$KkH8OasC9DhofvM.clBdmu91xxqji4ATHg6zkZ/OyEhiA2JMgpShm','Operator Diskominfo','operator_opd',(SELECT id FROM opd WHERE code='DISKOMINFO')),
 ('organisasi@gresikkab.go.id','$2b$10$KkH8OasC9DhofvM.clBdmu91xxqji4ATHg6zkZ/OyEhiA2JMgpShm','Bagian Organisasi','organisasi',NULL),
