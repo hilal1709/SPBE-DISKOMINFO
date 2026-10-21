@@ -22,7 +22,6 @@ import { ralSetSafe } from "@/lib/layanan/ral";
 import { rabSetSafe } from "@/lib/probis/rab";
 import { can, currentActor } from "@/lib/access";
 import { cmsSummary, opdCodeOf } from "@/lib/probis/repo";
-import { roleLabel } from "@/lib/roles";
 
 /** Kerangka CMS tampil seketika; sesi, ringkasan, dan referensi RAB/RAL/RAD/RAA/RAI dimuat di baliknya. */
 export default function CmsLayout({ children }: { children: React.ReactNode }) {
@@ -57,13 +56,14 @@ async function CmsFrame({ children }: { children: React.ReactNode }) {
   const user: CmsUser = {
     name: actor.name,
     role: actor.role,
-    roleLabel: actor.demo ? "Superadmin (demo)" : roleLabel[actor.role],
+    perms: actor.perms,
+    roleLabel: actor.roleName,
     opdName: opdCode,
     demo: actor.demo,
     badges: {
       submitted: can.verify(actor) ? summary?.counts.submitted : undefined,
       verified: can.validate(actor) ? summary?.counts.verified : undefined,
-      layananSubmitted: can.verify(actor) ? layanan?.counts.submitted : undefined,
+      layananSubmitted: can.verify(actor, "layanan") ? layanan?.counts.submitted : undefined,
       layananVerified: can.validate(actor) ? layanan?.counts.verified : undefined,
       dataSubmitted: can.verify(actor, "data") ? data?.counts.submitted : undefined,
       dataVerified: can.validate(actor) ? data?.counts.verified : undefined,

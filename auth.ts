@@ -72,6 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await findUser(parsed.data.email);
         if (!user || !(await bcrypt.compare(parsed.data.password, user.password_hash))) return null;
+        if (user.id !== demoAdmin.id) await getDb()?.query("update users set last_login_at = now() where id = $1", [user.id]).catch(() => undefined);
 
         return { id: user.id, name: user.name, email: user.email, role: user.role, opdId: user.opd_id };
       },

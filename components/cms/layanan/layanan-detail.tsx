@@ -86,7 +86,7 @@ export function LayananDetail({ record, actor, onClose }: { record: LayananRecor
       </DetailSection>
 
       <ReviewHistory id={record.id} load={getLayananReviews} />
-      <ReviewActions record={record} actor={actor} noun="Layanan" editHref={`/cms/layanan/${record.id}`} onReview={reviewLayanan} onDelete={deleteLayanan} onDone={onClose} />
+      <ReviewActions record={record} actor={actor} noun="Layanan" domain="layanan" editHref={`/cms/layanan/${record.id}`} onReview={reviewLayanan} onDelete={deleteLayanan} onDone={onClose} />
     </DetailDialog>
   );
 }

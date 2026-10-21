@@ -7,7 +7,7 @@ import { KeamananDashboard } from "@/components/dashboards/keamanan-dashboard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listApprovedKeamanan, securityCoverage, type Coverage } from "@/lib/keamanan/repo";
-import { can } from "@/lib/permissions";
+import { actorFor, can } from "@/lib/access";
 import { periodOptions } from "@/lib/probis/periods";
 import { sampleActivePeriod, samplePeriods } from "@/lib/probis/reference";
 import type { KegiatanKeamanan } from "@/lib/types";
@@ -18,8 +18,8 @@ import type { KegiatanKeamanan } from "@/lib/types";
  */
 export default async function Page() {
   const session = await auth();
-  const user = session?.user;
-  if (!user || !can.viewKeamanan({ id: user.id, name: user.name ?? "", role: user.role, opdId: user.opdId ?? null, demo: false })) {
+  const actor = session?.user ? await actorFor(session.user) : null;
+  if (!actor || !can.viewKeamanan(actor)) {
     return (
       <Card className="mt-2">
         <EmptyState illustration="security-shield" title="Halaman ini untuk tim Diskominfo dan pimpinan" description="Data keamanan SPBE hanya dapat dilihat akun Diskominfo dan pimpinan. Hubungi admin Diskominfo bila Anda memerlukan akses.">

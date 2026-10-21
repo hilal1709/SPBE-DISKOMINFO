@@ -85,7 +85,7 @@ export async function reviewLayanan(id: string, decision: "submit" | "verify" | 
     } else {
       const stage = stageOf(from);
       if (!stage) throw new Error("Layanan ini tidak sedang dalam antrean pemeriksaan.");
-      if (!can.review(actor, stage)) throw new Error(`Hanya tim ${stage} yang dapat memproses tahap ini.`);
+      if (!can.review(actor, stage, "layanan")) throw new Error(`Hanya tim ${stage} yang dapat memproses tahap ini.`);
       if (decision === "verify" && stage !== "verifikasi") throw new Error("Layanan ini sudah melewati tahap verifikasi.");
       if (decision === "validate" && stage !== "validasi") throw new Error("Layanan ini belum diverifikasi Bagian Organisasi.");
       if (decision === "reject") {

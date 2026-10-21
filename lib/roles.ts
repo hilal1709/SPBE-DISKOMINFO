@@ -1,6 +1,6 @@
-import type { Role } from "@/lib/types";
+import type { BuiltinRole, Role } from "@/lib/types";
 
-export const roleLabel: Record<Role, string> = {
+export const roleLabel: Record<BuiltinRole, string> = {
   operator_opd: "Operator OPD",
   organisasi: "Tim Verifikasi (Bag. Organisasi)",
   validator_data: "Validator Data",
@@ -12,6 +12,12 @@ export const roleLabel: Record<Role, string> = {
   pimpinan: "Pimpinan",
   superadmin: "Superadmin",
 };
+
+export const builtinRoles = Object.keys(roleLabel) as BuiltinRole[];
+export const isBuiltinRole = (role: Role): role is BuiltinRole => role in roleLabel;
+
+/** Peran untuk pilihan & tampilan (bawaan + kustom). */
+export type RoleInfo = { key: Role; label: string; description: string | null; builtin: boolean };
 
 export const initials = (name: string) =>
   name

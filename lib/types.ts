@@ -1,4 +1,7 @@
-export type Role = "operator_opd" | "organisasi" | "validator_data" | "validator_aplikasi" | "validator_infrastruktur" | "validator_keamanan" | "operator_diskominfo" | "admin" | "pimpinan" | "superadmin";
+/** Peran bawaan (sheet Functional Requirement). */
+export type BuiltinRole = "operator_opd" | "organisasi" | "validator_data" | "validator_aplikasi" | "validator_infrastruktur" | "validator_keamanan" | "operator_diskominfo" | "admin" | "pimpinan" | "superadmin";
+/** Peran akun: bawaan atau peran kustom yang dibuat Superadmin di Pengaturan → Hak Akses. */
+export type Role = BuiltinRole | (string & {});
 export type SubmissionStatus = "draft" | "submitted" | "verified" | "approved" | "rejected" | "archived";
 export type Service = { id:string; name:string; opd:string; purpose:string; function:string; rab:string; ral:string; method:string; target:string; benefit:string; risk:string; mitigation:string; processBusiness:string; status:SubmissionStatus; period:string; updatedAt:string };
 export type Probis = { id:string; name:string; uraian:string; /** Kode Perangkat Daerah. */ pd:string; status:"new"|"upgrade"|"as_is"; period:string; sasaran:string; iku:string; rab1:string; rab2:string; rab3:string; /** Kode RAB L4/L5 terdaftar (bila ada). */ rab4?:string|null; rab5?:string|null };

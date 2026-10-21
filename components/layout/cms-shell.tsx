@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { activeItem, cmsNav, flattenNav, navFor } from "@/lib/navigation";
+import type { Permission } from "@/lib/permissions";
 import { initials } from "@/lib/roles";
 import type { Role } from "@/lib/types";
 
-export type CmsUser = { name: string; role: Role; roleLabel: string; opdName?: string | null; demo: boolean; badges?: NavBadges };
+export type CmsUser = { name: string; role: Role; perms: Permission[]; roleLabel: string; opdName?: string | null; demo: boolean; badges?: NavBadges };
 
 function LogoutButton() {
   const { pending } = useFormStatus();
@@ -39,7 +40,7 @@ function Sidebar({ user, onNavigate }: { user: CmsUser; onNavigate?: () => void 
   return (
     <div className="flex h-full flex-col gap-8 px-4 py-6">
       <Logo href="/cms" subtitle="CMS · Kabupaten Gresik" className="px-1" />
-      <SidebarNav items={navFor(cmsNav, user.role)} badges={user.badges} onNavigate={onNavigate} />
+      <SidebarNav items={navFor(cmsNav, user.perms)} badges={user.badges} onNavigate={onNavigate} />
       <div className="mt-auto flex items-center gap-3 rounded-xl bg-card/70 p-2.5">
         <Avatar className="size-9">
           <AvatarFallback className="bg-brand-teal font-bold text-brand-charcoal">{initials(user.name)}</AvatarFallback>
