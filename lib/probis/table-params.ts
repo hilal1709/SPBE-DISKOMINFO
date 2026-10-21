@@ -29,7 +29,7 @@ export function parseProbisParams(params: Record<string, string | string[] | und
     rab1: list(params.rab1),
     period: one(params.periode) || activePeriod,
     q: one(params.q).slice(0, 100),
-    page: Number.isFinite(page) && page > 1 ? page - 1 : 0,
+    page: Number.isFinite(page) && page > 1 ? Math.min(page, 10_000) - 1 : 0,
     sort: key ? { key, dir: one(params.arah) === "desc" ? -1 : 1 } : null,
   };
 }

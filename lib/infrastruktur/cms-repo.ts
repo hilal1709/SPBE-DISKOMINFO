@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import type { InfrastrukturRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
@@ -296,6 +297,7 @@ export function updateInfrastruktur(id: string, v: InfrastrukturValues, actor: A
     const { rows } = await client.query("select status::text from infrastructures where id = $1 for update", [id]);
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Komponen infrastruktur tidak ditemukan.");
+    assertStillEditable(actor, from);
     const to: SubmissionStatus = submit ? "submitted" : from;
     await client.query(
       `${UPDATE}, status = $13::text::submission_status, submitted_by = case when $13::text = 'submitted' then $14::uuid else submitted_by end where id = $1`,
@@ -329,15 +331,16 @@ export function transition(id: string, from: SubmissionStatus, to: SubmissionSta
  * Relasi antarkomponen ditautkan setelah semua baris tersimpan, sehingga komponen dalam satu unggahan bisa saling merujuk.
  */
 export function importRows(rows: (InfrastrukturValues & { code?: string | null })[], actor: Actor, status: SubmissionStatus, update: boolean) {
+  importStatus(status);
   return tx(async (client) => {
     let created = 0,
       updated = 0,
       skipped = 0;
     const codes = rows.map((r) => r.code).filter((c): c is string => !!c);
     const found = codes.length
-      ? (await client.query("select i.id, i.status::text, i.code, ap.name as period from infrastructures i join architecture_periods ap on ap.id = i.period_id where i.code = any($1)", [codes])).rows
+      ? (await client.query("select i.id, i.status::text, i.opd_id, i.code, ap.name as period from infrastructures i join architecture_periods ap on ap.id = i.period_id where i.code = any($1)", [codes])).rows
       : [];
-    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; code: string; status: SubmissionStatus; opd_id: string | null }]));
     const batch = importBatch(client, "infrastructures", codes);
     const saved: [string, InfrastrukturValues][] = [];
     for (const row of rows) {
@@ -348,6 +351,7 @@ export function importRows(rows: (InfrastrukturValues & { code?: string | null }
           skipped++;
           continue;
         }
+        assertImportUpdate(actor, existing);
         const ref = await ids(client, base, undefined, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.rai_id]);
         await linkDependencies(client, existing.id, ref);

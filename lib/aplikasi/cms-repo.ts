@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import { pdByCode } from "@/lib/probis/reference";
@@ -31,19 +32,23 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
   }
 }
 
-/** Tautan dependensi aplikasi (dipakai juga oleh lib/aplikasi/repo.ts). */
-export const LINKS_SQL = `
+/** Tautan dependensi aplikasi. `approvedOnly` untuk portal publik (lib/aplikasi/repo.ts): entri belum tervalidasi tidak tampil. */
+export const linksSql = (approvedOnly = false) => {
+  const ok = (t: string) => (approvedOnly ? ` and ${t}.status = 'approved'` : "");
+  return `
   coalesce((select json_agg(json_build_object('id', pb.code, 'name', pb.name, 'status', pb.status::text, 'sasaran', pb.strategic_goal, 'iku', pb.iku) order by pb.code)
             from application_process_businesses x join process_businesses pb on pb.id = x.process_business_id
-            where x.application_id = a.id), '[]') as probis,
+            where x.application_id = a.id${ok("pb")}), '[]') as probis,
   coalesce((select json_agg(json_build_object('id', s.code, 'name', s.name) order by s.code)
             from application_services x join services s on s.id = x.service_id
-            where x.application_id = a.id), '[]') as layanan,
+            where x.application_id = a.id${ok("s")}), '[]') as layanan,
   coalesce((select json_agg(json_build_object('id', d.code, 'name', d.name) order by d.code)
             from application_datasets x join datasets d on d.id = x.dataset_id
-            where x.application_id = a.id), '[]') as data,
+            where x.application_id = a.id${ok("d")}), '[]') as data,
   coalesce((select json_object_agg(d.code, d.name) from datasets d
-            where d.period_id = a.period_id and d.code = any(string_to_array(coalesce(a.input_data, '') || E'\\n' || coalesce(a.output_data, ''), E'\\n'))), '{}') as data_names`;
+            where d.period_id = a.period_id${ok("d")} and d.code = any(string_to_array(coalesce(a.input_data, '') || E'\\n' || coalesce(a.output_data, ''), E'\\n'))), '{}') as data_names`;
+};
+const LINKS_SQL = linksSql();
 
 // raa_id menunjuk node terdalam (L3, atau L2 tanpa turunan); L1–L3 diturunkan dari induknya.
 export const RAA_SQL = `
@@ -337,6 +342,7 @@ export function updateAplikasi(id: string, v: AplikasiValues, actor: Actor, subm
     const { rows } = await client.query("select status::text from applications where id = $1 for update", [id]);
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Aplikasi tidak ditemukan.");
+    assertStillEditable(actor, from);
     const to: SubmissionStatus = submit ? "submitted" : from;
     await client.query(
       `${UPDATE}, status = $27::text::submission_status, submitted_by = case when $27::text = 'submitted' then $28::uuid else submitted_by end where id = $1`,
@@ -379,15 +385,16 @@ export function transition(id: string, from: SubmissionStatus, to: SubmissionSta
 
 /** Simpan hasil impor dalam satu transaksi. Baris ber-ID yang sudah ada diperbarui bila `update` aktif. */
 export function importRows(rows: (AplikasiValues & { code?: string | null })[], actor: Actor, status: SubmissionStatus, update: boolean) {
+  importStatus(status);
   return tx(async (client) => {
     let created = 0,
       updated = 0,
       skipped = 0;
     const codes = rows.map((r) => r.code).filter((c): c is string => !!c);
     const found = codes.length
-      ? (await client.query("select a.id, a.status::text, a.code, ap.name as period from applications a join architecture_periods ap on ap.id = a.period_id where a.code = any($1)", [codes])).rows
+      ? (await client.query("select a.id, a.status::text, a.opd_id, a.code, ap.name as period from applications a join architecture_periods ap on ap.id = a.period_id where a.code = any($1)", [codes])).rows
       : [];
-    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; code: string; status: SubmissionStatus; opd_id: string | null }]));
     const batch = importBatch(client, "applications", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
@@ -396,6 +403,7 @@ export function importRows(rows: (AplikasiValues & { code?: string | null })[], 
           skipped++;
           continue;
         }
+        assertImportUpdate(actor, existing);
         const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row, ref), ref.opd_id, ref.developer_opd_id, ref.period_id, ref.raa_id]);
         await linkDeep(client, existing.id, batch);

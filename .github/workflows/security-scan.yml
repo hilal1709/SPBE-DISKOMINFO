@@ -1,0 +1,204 @@
+# Scan keamanan menyeluruh (gratis, berjalan di runner GitHub; tidak menyentuh database produksi).
+# - sast: CodeQL, Semgrep, Gitleaks (riwayat git), OSV-Scanner + pnpm audit
+# - dast: build produksi + Postgres sekali pakai → uji otorisasi per peran, OWASP ZAP full scan (anonim & login), Nuclei
+# - produksi: hanya pemeriksaan pasif (header, Mozilla Observatory)
+# Laporan: artefak "security-reports" di halaman run; temuan CodeQL/Semgrep juga di tab Security.
+name: security-scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 19 * * 0" # Senin 02.00 WIB
+  push:
+    branches: [main]
+    paths: [".github/workflows/security-scan.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-scan
+  cancel-in-progress: true
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: mkdir -p security-reports
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          queries: security-extended,security-and-quality
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql
+          output: security-reports/codeql
+
+      - name: Semgrep
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep semgrep scan \
+            --config p/nextjs --config p/react --config p/typescript --config p/javascript \
+            --config p/owasp-top-ten --config p/secrets --config p/sql-injection --config p/xss \
+            --exclude graphify-out --exclude public --exclude node_modules \
+            --sarif-output=security-reports/semgrep.sarif --text-output=security-reports/semgrep.txt || true
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: security-reports/semgrep.sarif
+          category: semgrep
+
+      - name: Gitleaks (seluruh riwayat git)
+        run: |
+          docker run --rm -v "$PWD:/repo" --entrypoint sh zricethezav/gitleaks:latest -c \
+            'git config --global --add safe.directory /repo && gitleaks detect --source /repo --redact --exit-code 0 \
+             --report-format json --report-path /repo/security-reports/gitleaks.json'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: pnpm audit + OSV-Scanner
+        run: |
+          pnpm audit --prod > security-reports/pnpm-audit.txt || true
+          pnpm audit --json > security-reports/pnpm-audit.json || true
+          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest scan source -r /src --format markdown \
+            > security-reports/osv.md || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-sast
+          path: security-reports
+
+  dast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      BASE_URL: http://localhost:3100
+      # Postgres uji dengan SSL aktif agar skrip seed (yang memaksa TLS) jalan; aplikasi & migrasi pakai sslmode=disable.
+      DATABASE_URL: postgres://spbe:spbe-uji@localhost:5432/spbe?sslmode=disable
+      AUTH_URL: http://localhost:3100
+      ALLOW_HTTP: "true"
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+      SECURITY_CONTACT: mailto:keamanan@spbe.test
+      GEMINI_API_KEY: disabled
+      PUSHER_APP_ID: disabled
+      PUSHER_SECRET: disabled
+      NEXT_PUBLIC_PUSHER_KEY: disabled
+      NEXT_PUBLIC_PUSHER_CLUSTER: disabled
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p security-reports strix_runs && chmod 777 security-reports
+      - name: Postgres uji
+        run: |
+          mkdir -p /tmp/pg && openssl req -new -x509 -days 2 -nodes -subj /CN=localhost -keyout /tmp/pg/server.key -out /tmp/pg/server.crt 2>/dev/null
+          chmod 600 /tmp/pg/server.key && sudo chown 999:999 /tmp/pg/server.*
+          docker run -d --name db -p 127.0.0.1:5432:5432 -e POSTGRES_USER=spbe -e POSTGRES_PASSWORD=spbe-uji -e POSTGRES_DB=spbe \
+            -v /tmp/pg:/certs:ro postgres:16 -c ssl=on -c ssl_cert_file=/certs/server.crt -c ssl_key_file=/certs/server.key
+          for i in $(seq 30); do docker exec db pg_isready -U spbe -d spbe && break; sleep 1; done
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Uji unit kontrol keamanan
+        run: pnpm exec tsx --test scripts/security/guards.test.mts
+      - name: Skema, migrasi, data contoh, akun uji
+        run: |
+          echo "AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          # Skrip seed membaca .env.local; di runner berkas ini hanya berisi database uji.
+          echo "DATABASE_URL=postgres://spbe:spbe-uji@localhost:5432/spbe" > .env.local
+          node database/migrate.mjs
+          for s in contoh layanan data aplikasi infrastruktur keamanan peta-rencana gap; do pnpm "seed:$s" || echo "::warning::seed:$s gagal"; done
+          pnpm exec tsx scripts/strix/seed-test-users.mts
+      - run: pnpm build
+      - name: Jalankan aplikasi
+        run: |
+          nohup pnpm start -p 3100 > security-reports/server.log 2>&1 &
+          for i in $(seq 60); do curl -sf -o /dev/null "$BASE_URL/login" && break; sleep 2; done
+
+      - name: Uji otorisasi per peran
+        run: pnpm exec tsx scripts/security/authz-probe.mts || echo "::error::authz-probe menemukan FAIL"
+
+      - name: Cookie sesi operator untuk ZAP
+        run: |
+          docker exec db psql -U spbe -d spbe -c "delete from rate_limits" > /dev/null
+          line=$(grep 'uji.operator.a@' strix_runs/akun-uji.txt)
+          email=$(echo "$line" | awk '{print $(NF-2)}'); pass=$(echo "$line" | awk '{print $NF}')
+          csrf=$(curl -s -c jar "$BASE_URL/api/auth/csrf" | jq -r .csrfToken)
+          curl -s -b jar -c jar -o /dev/null -X POST -H "Origin: $BASE_URL" \
+            --data-urlencode "email=$email" --data-urlencode "password=$pass" --data-urlencode "csrfToken=$csrf" \
+            "$BASE_URL/api/auth/callback/credentials"
+          cookie=$(awk '$6 ~ /session-token/ {print $6"="$7}' jar)
+          test -n "$cookie" || { echo "::error::login operator gagal"; exit 1; }
+          echo "::add-mask::$cookie"
+          echo "ZAP_COOKIE=$cookie" >> "$GITHUB_ENV"
+
+      - name: OWASP ZAP full scan (anonim)
+        run: |
+          docker run --rm --network host -v "$PWD/security-reports:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-full-scan.py -t "$BASE_URL" -j -m 10 -I \
+            -r zap-anon.html -J zap-anon.json -w zap-anon.md \
+            -z "-config scanner.maxScanDurationInMins=45" || true
+      - name: OWASP ZAP full scan (login operator OPD)
+        run: |
+          docker run --rm --network host -v "$PWD/security-reports:/zap/wrk:rw" \
+            -e ZAP_AUTH_HEADER=Cookie -e ZAP_AUTH_HEADER_VALUE="$ZAP_COOKIE" -e ZAP_AUTH_HEADER_SITE=localhost \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-full-scan.py -t "$BASE_URL/cms" -m 10 -I \
+            -r zap-auth.html -J zap-auth.json -w zap-auth.md \
+            -z "-config scanner.maxScanDurationInMins=45" || true
+
+      - name: Nuclei
+        run: |
+          docker run --rm --network host -v "$PWD/security-reports:/out" projectdiscovery/nuclei:latest \
+            -u "$BASE_URL" -as -severity info,low,medium,high,critical -rl 50 -silent \
+            -jsonl -o /out/nuclei.jsonl || true
+
+      - name: Ringkasan
+        if: always()
+        run: |
+          cat security-reports/authz-probe.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          for f in security-reports/zap-anon.md security-reports/zap-auth.md; do
+            [ -f "$f" ] && { echo; echo "## $(basename "$f")"; grep -E '^\| (High|Medium|Low)' "$f" | head -50; } >> "$GITHUB_STEP_SUMMARY"
+          done
+          rm -f jar
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-dast
+          path: security-reports
+
+  produksi-pasif:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Header + Mozilla Observatory
+        run: |
+          mkdir -p security-reports
+          node scripts/security-headers-check.mjs https://spbe-diskominfo.vercel.app | tee security-reports/headers-prod.txt || true
+          curl -s -X POST "https://observatory-api.mdn.mozilla.net/api/v2/scan?host=spbe-diskominfo.vercel.app" \
+            | tee security-reports/observatory-prod.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-produksi
+          path: security-reports

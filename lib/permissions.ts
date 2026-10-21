@@ -69,7 +69,11 @@ export const defaultsFor = (role: Role): Permission[] => (role in defaultGrants 
 export const lockedRole: Role = "superadmin";
 
 /** Pengguna yang sedang bertindak di CMS. `id` null untuk mode demo (tanpa sesi). `perms` & `roleName` dimuat dari peran. */
-export type Actor = { id: string | null; name: string; role: Role; roleName: string; opdId: string | null; demo: boolean; perms: Permission[] };
+export type Actor = {
+  id: string | null; name: string; role: Role; roleName: string; opdId: string | null; demo: boolean; perms: Permission[];
+  /** Masih memakai sandi sementara dari admin. */
+  mustChangePassword?: boolean;
+};
 
 /** Nama tim pemeriksa per domain dan tahap (untuk teks antrean & beranda). */
 const verifierTeam: Partial<Record<ReviewDomain, string>> = {
@@ -120,3 +124,11 @@ export const stageStatus: Record<ReviewStage, SubmissionStatus> = { verifikasi: 
 /** Tahap pemeriksaan untuk status probis (bila sedang antre). */
 export const stageOf = (status: SubmissionStatus): ReviewStage | null =>
   status === "submitted" ? "verifikasi" : status === "verified" ? "validasi" : null;
+
+/** Status tujuan keputusan pemeriksaan; keputusan yang tidak cocok dengan tahapnya ditolak, bukan dianggap "setujui". */
+export const reviewTarget = (decision: unknown, stage: ReviewStage): SubmissionStatus => {
+  if (decision === "reject") return "rejected";
+  if (decision === "verify" && stage === "verifikasi") return "verified";
+  if (decision === "validate" && stage === "validasi") return "approved";
+  throw new Error("Keputusan pemeriksaan tidak valid untuk tahap ini.");
+};

@@ -9,7 +9,7 @@ import "./globals.css";
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
 /** Sembunyikan kartu petunjuk dashboard yang pernah ditutup sebelum halaman tampil (components/dashboards/probis/explore-hint.tsx). */
-const HINT_SCRIPT = `try{var c="";for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/-hint$/.test(k)&&localStorage.getItem(k)==="1")c+='[data-hint="'+k.replace(/"/g,"")+'"]{display:none!important}'}if(c){var s=document.createElement("style");s.textContent=c;document.head.appendChild(s)}}catch(e){}`;
+const HINT_SCRIPT = `try{var c="";for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/-hint$/.test(k)&&localStorage.getItem(k)==="1")c+='[data-hint="'+CSS.escape(k)+'"]{display:none!important}'}if(c){var s=document.createElement("style");s.textContent=c;document.head.appendChild(s)}}catch(e){}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),

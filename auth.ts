@@ -1,8 +1,11 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
+import { BCRYPT_COST, hashPassword } from "@/lib/pengguna/repo";
+import { logAuthEvent } from "@/lib/security/audit";
 import { clear, clientIp, hit } from "@/lib/security/rate-limit";
 import type { Role } from "@/lib/types";
 
@@ -26,8 +29,8 @@ const demoAdmin: UserRow = {
   password_hash: "$2b$10$h6.yk3.c9KJXPB95Prfeee.f5Iw8VAXo9.D31shF1Fko265NxJtTa",
 };
 
-/** Hash pembanding saat email tidak dikenal: waktu respons sama sehingga keberadaan akun tidak bocor. */
-const DUMMY_HASH = "$2b$10$Ru2osnOXHEYIVi7TOfRttu1J0..Ay3cvOcYq2/zppUEbqA0FyfmFi";
+/** Hash pembanding saat email tidak dikenal, berbiaya sama dengan hash akun: waktu respons sama sehingga keberadaan akun tidak bocor. */
+const DUMMY_HASH = bcrypt.hashSync(randomBytes(16).toString("hex"), BCRYPT_COST);
 
 const credentialsSchema = z.object({
   email: z.email().trim().toLowerCase().max(254),
@@ -42,9 +45,13 @@ class TooManyAttempts extends CredentialsSignin {
   code = "locked";
 }
 
-/** 5 percobaan per akun dan 20 per IP tiap 15 menit. */
-const PER_EMAIL = { limit: 5, windowSec: 15 * 60 };
+/**
+ * 5 percobaan per akun dari satu IP dan 20 per IP tiap 15 menit. Batas per akun lintas IP lebih longgar (50/jam) agar
+ * penyerang tidak mudah mengunci pemilik akun dari tempat lain.
+ */
+const PER_EMAIL_IP = { limit: 5, windowSec: 15 * 60 };
 const PER_IP = { limit: 20, windowSec: 15 * 60 };
+const PER_EMAIL = { limit: 50, windowSec: 60 * 60 };
 
 async function findUser(email: string) {
   const db = getDb();
@@ -84,19 +91,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
 
+        const ip = clientIp(request.headers);
         const emailKey = `login:email:${email}`;
-        const [byEmail, byIp] = await Promise.all([hit(emailKey, PER_EMAIL), hit(`login:ip:${clientIp(request.headers)}`, PER_IP)]);
-        if (!byEmail.ok || !byIp.ok) throw new TooManyAttempts();
+        const emailIpKey = `login:email-ip:${email}:${ip}`;
+        // Tanpa IP tepercaya (server sendiri tanpa TRUST_PROXY) semua klien berbagi satu IP: batas per IP dilewati agar tidak jadi DoS.
+        const checks = await Promise.all([
+          hit(emailKey, PER_EMAIL),
+          hit(emailIpKey, PER_EMAIL_IP),
+          ...(ip === "unknown" ? [] : [hit(`login:ip:${ip}`, PER_IP)]),
+        ]);
+        if (checks.some((c) => !c.ok)) {
+          await logAuthEvent("login_locked", { email, ip });
+          throw new TooManyAttempts();
+        }
 
         const user = await findUser(email);
         const valid = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
         if (!user || !valid) {
-          console.warn(`[auth] Login gagal untuk ${email}`);
+          await logAuthEvent("login_failed", { userId: user && user.id !== demoAdmin.id ? user.id : null, email, ip });
           return null;
         }
 
-        await clear(emailKey);
-        if (user.id !== demoAdmin.id) await getDb()?.query("update users set last_login_at = now() where id = $1", [user.id]).catch(() => undefined);
+        await clear(emailIpKey);
+        if (user.id !== demoAdmin.id) {
+          // Hash lama (biaya < BCRYPT_COST) dinaikkan diam-diam selagi sandi asli tersedia.
+          const rehash = bcrypt.getRounds(user.password_hash) < BCRYPT_COST ? await hashPassword(password) : null;
+          await getDb()
+            ?.query("update users set last_login_at = now(), password_hash = coalesce($2, password_hash) where id = $1", [user.id, rehash])
+            .catch(() => undefined);
+          await logAuthEvent("login", { userId: user.id, email, ip });
+        }
 
         return { id: user.id, name: user.name, email: user.email, role: user.role, opdId: user.opd_id };
       },
@@ -108,6 +132,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id!;
         token.role = user.role;
         token.opdId = user.opdId;
+        // Waktu masuk (ms): sesi yang terbit sebelum sandi diganti/di-reset dicabut di lib/access.ts.
+        token.authAt = Date.now();
       }
       return token;
     },
@@ -115,6 +141,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.id = token.id;
       session.user.role = token.role;
       session.user.opdId = token.opdId;
+      session.user.authAt = token.authAt;
       return session;
     },
   },

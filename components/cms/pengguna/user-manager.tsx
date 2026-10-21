@@ -269,7 +269,7 @@ function PasswordDialog({ value, onClose }: { value: { name: string; email: stri
         <DialogHeader>
           <DialogTitle>Kata sandi sementara</DialogTitle>
           <DialogDescription>
-            Berikan kepada {value?.name} ({value?.email}). Kata sandi ini tidak akan ditampilkan lagi.
+            Berikan kepada {value?.name} ({value?.email}). Kata sandi ini tidak akan ditampilkan lagi dan wajib diganti saat pertama masuk.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-3">

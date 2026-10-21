@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { readWorkbook, unzipSafe } from "@/lib/security/upload";
+import { readWorkbook, unzipSafe, uploadBudget, type UploadBudget } from "@/lib/security/upload";
 import { matchRefs, parts, type DepRef } from "@/lib/data/import";
 import { securityFields, type SecurityKey } from "@/lib/data/reference";
 import { matchPd, normalize, text } from "@/lib/probis/import";
@@ -146,8 +146,8 @@ function parseSheet(sheet: XLSX.WorkSheet, source: string, fallback: InfraJenis 
     .filter((row) => row.name || row.code);
 }
 
-function parseBook(data: Uint8Array, file: string): Raw[] {
-  const book = readWorkbook(data);
+function parseBook(data: Uint8Array, file: string, budget: UploadBudget): Raw[] {
+  const book = readWorkbook(data, budget);
   // Workbook satu komponen: sheet pertama; workbook gabungan: tiap sheet yang dikenali (sheet referensi RAI dilewati).
   return book.SheetNames.filter((name) => !/^r[a-z]{2} level/i.test(name)).flatMap((name) => parseSheet(book.Sheets[name]!, name, jenisFromName(file)));
 }
@@ -246,23 +246,24 @@ export function readUpload(name: string, data: Uint8Array) {
   const unsupported: string[] = [];
   const files: string[] = [];
   const rows: Raw[] = [];
+  const budget = uploadBudget();
   const visit = (path: string, content: Uint8Array) => {
     const lower = path.toLowerCase();
     if (lower.endsWith(".zip")) {
-      for (const [inner, bytes] of Object.entries(unzipSafe(content, path))) visit(`${path}/${inner}`, bytes);
+      for (const [inner, bytes] of Object.entries(unzipSafe(content, path, budget))) visit(`${path}/${inner}`, bytes);
     } else if (lower.endsWith(".xlsx")) {
       const file = path.split("/").pop()!.replace(/\.xlsx$/i, "");
       if (/infrastruktur/.test(lower) || jenisFromName(file)) {
-        const parsed = parseBook(content, file);
+        const parsed = parseBook(content, file, budget);
         if (parsed.length || jenisFromName(file)) files.push(file);
         rows.push(...parsed);
       } else unsupported.push(file);
     }
   };
   if (name.toLowerCase().endsWith(".zip")) {
-    for (const [path, content] of Object.entries(unzipSafe(data))) visit(path, content);
+    for (const [path, content] of Object.entries(unzipSafe(data, "", budget))) visit(path, content);
   } else if (name.toLowerCase().endsWith(".xlsx")) {
-    rows.push(...parseBook(data, name.replace(/\.xlsx$/i, "")));
+    rows.push(...parseBook(data, name.replace(/\.xlsx$/i, ""), budget));
     files.push(name);
   } else throw new Error("Format berkas harus .xlsx atau .zip");
   if (!files.length) throw new Error("Tidak ada template Domain Arsitektur Infrastruktur di berkas ini.");

@@ -72,6 +72,8 @@ async function importContext(codes: string[]) {
 /** Langkah 1 impor: baca berkas, validasi baris, kembalikan pratinjau. */
 export async function previewRencanaImport(form: FormData): Promise<ActionResult<RencanaImportResult>> {
   try {
+    // Izin dicek sebelum berkas dibaca: mengurai .xlsx/.zip itu berat dan tidak boleh dipicu tanpa hak impor.
+    await manager();
     const file = form.get("file");
     if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));

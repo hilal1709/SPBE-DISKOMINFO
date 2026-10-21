@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Logout01Icon, Menu01Icon, ViewIcon } from "@hugeicons/core-free-icons";
+import { Key01Icon, Logout01Icon, Menu01Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { logout } from "@/app/actions/auth";
 import { Banner } from "@/components/blocks/banner";
 import { Logo } from "@/components/brand/logo";
@@ -52,9 +52,21 @@ function Sidebar({ user, onNavigate }: { user: CmsUser; onNavigate?: () => void 
           <p className="truncate text-xs text-muted-foreground">{user.roleLabel}{user.opdName && ` · ${user.opdName}`}</p>
         </div>
         {!user.demo && (
-          <form action={logout} className="ml-auto">
-            <LogoutButton />
-          </form>
+          <div className="ml-auto flex">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild size="icon" variant="ghost" className="hover:bg-sidebar-accent">
+                  <Link href="/akun/sandi" aria-label="Ganti sandi" onClick={onNavigate}>
+                    <Icon icon={Key01Icon} />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Ganti sandi</TooltipContent>
+            </Tooltip>
+            <form action={logout}>
+              <LogoutButton />
+            </form>
+          </div>
         )}
       </div>
     </div>

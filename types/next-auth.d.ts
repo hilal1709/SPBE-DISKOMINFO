@@ -9,7 +9,7 @@ declare module "next-auth" {
   }
 
   interface Session {
-    user: { id: string; role: Role; opdId?: string } & DefaultSession["user"];
+    user: { id: string; role: Role; opdId?: string; authAt?: number } & DefaultSession["user"];
   }
 }
 
@@ -18,5 +18,7 @@ declare module "next-auth/jwt" {
     id: string;
     role: Role;
     opdId?: string;
+    /** Waktu login (ms epoch). */
+    authAt?: number;
   }
 }

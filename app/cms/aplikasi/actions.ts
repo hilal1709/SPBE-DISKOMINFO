@@ -1,13 +1,13 @@
 "use server";
 import { suggestAplikasi as suggest, type AplikasiSuggestion } from "@/lib/ai/aplikasi-suggest";
-import { can, currentActor, reviewTeam, stageOf } from "@/lib/access";
+import { can, currentActor, reviewTeam, stageOf, reviewTarget } from "@/lib/access";
 import * as repo from "@/lib/aplikasi/cms-repo";
 import { resolveFlow } from "@/lib/aplikasi/data-flow";
 import { readUpload, validateRows, type AplikasiImportResult, type AplikasiImportRow } from "@/lib/aplikasi/import";
 import { raa } from "@/lib/aplikasi/raa";
 import { makeAplikasiInput, type AplikasiInput } from "@/lib/aplikasi/schema";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
-import { assertAiQuota } from "@/lib/security/rate-limit";
+import { assertAiInput, assertAiQuota } from "@/lib/security/rate-limit";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { resolveSecurity } from "@/lib/keamanan/link";
 import { listData } from "@/lib/data/cms-repo";
@@ -97,7 +97,7 @@ export async function reviewAplikasi(id: string, decision: "submit" | "verify" |
         if (!text) throw new Error("Tuliskan catatan alasan pengembalian.");
         text = `Dikembalikan tim ${team}: ${text}`;
       }
-      to = decision === "reject" ? "rejected" : decision === "verify" ? "verified" : "approved";
+      to = reviewTarget(decision, stage);
     }
 
     await repo.transition(id, from, to, actor, text);
@@ -131,6 +131,7 @@ export async function listDependencyOptions(opd: string, period: string): Promis
 export async function suggestAplikasi(input: { name: string; opd: string; pengembang?: string; note?: string; period?: string }): Promise<ActionResult<AplikasiSuggestion>> {
   try {
     await assertAiQuota((await currentActor()).id);
+    assertAiInput(input);
     if (input.name.trim().length < 2) throw new Error("Isi nama aplikasi terlebih dahulu.");
     const [raaSet, deps] = await Promise.all([raa.loadSet(), input.period ? repo.dependencyOptions(input.opd, input.period) : Promise.resolve({ probis: [], layanan: [], data: [], infra: [] })]);
     const data = await suggest({ name: input.name.trim(), opd: input.opd, pengembang: input.pengembang, note: input.note?.trim() }, refResolver(raaSet)(input.period), deps);
@@ -161,6 +162,8 @@ async function importContext(codes: string[]) {
 /** Langkah 1 impor: baca berkas, validasi baris, kembalikan pratinjau. */
 export async function previewAplikasiImport(form: FormData): Promise<ActionResult<AplikasiImportResult>> {
   try {
+    // Izin dicek sebelum berkas dibaca: mengurai .xlsx/.zip itu berat dan tidak boleh dipicu tanpa hak impor.
+    if (!can.import(await currentActor())) throw new Error("Peran Anda tidak dapat mengimpor data.");
     const file = form.get("file");
     if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx atau .zip.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));

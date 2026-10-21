@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import { expire, TAGS } from "@/lib/cache";
 import { broadcastChange } from "@/lib/realtime/server";
 
@@ -9,6 +10,8 @@ export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; e
 const isInternal = (error: Error) => typeof (error as { code?: unknown }).code === "string" || error.name !== "Error";
 
 export const fail = (error: unknown): { ok: false; error: string } => {
+  // redirect()/notFound() dari currentActor (sesi dicabut, wajib ganti sandi) diteruskan ke Next, bukan jadi pesan galat.
+  unstable_rethrow(error);
   if (error instanceof Error && !isInternal(error)) return { ok: false, error: error.message };
   console.error("[cms] Galat server action:", error);
   return { ok: false, error: "Terjadi kesalahan sistem. Coba lagi atau hubungi admin Diskominfo." };

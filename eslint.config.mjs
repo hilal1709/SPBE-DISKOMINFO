@@ -9,6 +9,9 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Build & hasil uji keamanan lokal (scripts/strix).
+    ".next-strix/**",
+    "strix_runs/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

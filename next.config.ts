@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
+/** Hanya untuk uji keamanan lokal lewat http (scripts/strix); jangan diset di Vercel/server produksi. */
+const allowHttp = process.env.ALLOW_HTTP === "true";
 
 /**
  * CSP tanpa nonce agar halaman publik tetap statis/ter-cache CDN. 'unsafe-inline' pada script dibutuhkan
@@ -19,7 +21,7 @@ const csp = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "manifest-src 'self'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ...(isDev || allowHttp ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
 const securityHeaders = [
@@ -40,6 +42,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Build uji Strix memakai folder terpisah agar tidak bentrok dengan `pnpm dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

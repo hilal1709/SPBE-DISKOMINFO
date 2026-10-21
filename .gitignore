@@ -43,3 +43,7 @@ next-env.d.ts
 
 # graphify (knowledge graph lokal)
 graphify-out/
+
+# uji keamanan lokal (scripts/strix)
+/strix_runs/
+/.next-strix/

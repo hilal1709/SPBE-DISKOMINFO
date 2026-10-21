@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import type { Aplikasi } from "@/lib/types";
-import { LINKS_SQL, RAA_JOIN, RAA_SQL } from "./cms-repo";
+import { linksSql, RAA_JOIN, RAA_SQL } from "./cms-repo";
 import { kepemilikanOf } from "./reference";
 import { cached, TAGS } from "@/lib/cache";
 
@@ -15,7 +15,7 @@ async function loadListApprovedAplikasi(): Promise<{ rows: Aplikasi[]; sample: b
             o.code as operasional, coalesce(dv.code, a.developer, o.code) as developer, ap.name as period, a.is_sample,
             a.supplier, a.customer, a.cloud, a.server, a.splp, a.jip,
             ${RAA_SQL},
-            ${LINKS_SQL}
+            ${linksSql(true)}
      from applications a
      join opd o on o.id = a.opd_id
      left join opd dv on dv.id = a.developer_opd_id

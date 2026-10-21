@@ -5,6 +5,7 @@ import { fail, type ActionResult } from "@/lib/cms/result";
 import * as grants from "@/lib/pengguna/grants";
 import * as users from "@/lib/pengguna/repo";
 import { broadcastChange } from "@/lib/realtime/server";
+import { logAuthEvent } from "@/lib/security/audit";
 import type { Role } from "@/lib/types";
 
 async function userAdmin() {
@@ -119,6 +120,7 @@ export async function resetAccountPassword(id: string): Promise<ActionResult<{ p
     if (!target) throw new Error("Akun tidak ditemukan.");
     await guardSuperadmin(actor, target.role);
     const password = await users.resetPassword(id);
+    await logAuthEvent("password_reset", { userId: id, email: target.email });
     return { ok: true, data: { password } };
   } catch (error) {
     return fail(error);

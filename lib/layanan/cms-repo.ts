@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import type { LayananRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
@@ -229,6 +230,7 @@ export function updateLayanan(id: string, v: LayananValues, actor: Actor, submit
     const { rows } = await client.query("select status::text from services where id = $1 for update", [id]);
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Layanan tidak ditemukan.");
+    assertStillEditable(actor, from);
     const to: SubmissionStatus = submit ? "submitted" : from;
     await client.query(
       `${UPDATE}, status = $19::text::submission_status, submitted_by = case when $19::text = 'submitted' then $20::uuid else submitted_by end where id = $1`,
@@ -260,6 +262,7 @@ export function transition(id: string, from: SubmissionStatus, to: SubmissionSta
 
 /** Simpan hasil impor dalam satu transaksi. Baris ber-ID yang sudah ada diperbarui bila `update` aktif. */
 export function importRows(rows: (LayananValues & { code?: string | null })[], actor: Actor, status: SubmissionStatus, update: boolean) {
+  importStatus(status);
   return tx(async (client) => {
     let created = 0,
       updated = 0,
@@ -267,9 +270,9 @@ export function importRows(rows: (LayananValues & { code?: string | null })[], a
     // Satu query untuk semua ID yang sudah ada (bukan per baris).
     const codes = rows.map((r) => r.code).filter((c): c is string => !!c);
     const found = codes.length
-      ? (await client.query("select s.id, s.status::text, s.code, ap.name as period from services s join architecture_periods ap on ap.id = s.period_id where s.code = any($1)", [codes])).rows
+      ? (await client.query("select s.id, s.status::text, s.opd_id, s.code, ap.name as period from services s join architecture_periods ap on ap.id = s.period_id where s.code = any($1)", [codes])).rows
       : [];
-    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; code: string; status: SubmissionStatus; opd_id: string | null }]));
     const batch = importBatch(client, "services", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
@@ -278,6 +281,7 @@ export function importRows(rows: (LayananValues & { code?: string | null })[], a
           skipped++;
           continue;
         }
+        assertImportUpdate(actor, existing);
         const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.ral_id, ref.rab_id]);
         await linkDeep(client, existing.id, batch);

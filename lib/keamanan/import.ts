@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { readWorkbook, unzipSafe } from "@/lib/security/upload";
+import { readWorkbook, unzipSafe, uploadBudget, type UploadBudget } from "@/lib/security/upload";
 import { matchPd, normalize, text } from "@/lib/probis/import";
 import type { PeriodOptions } from "@/lib/probis/reference";
 import { kegiatanConfig, kegiatanFromName, type Kegiatan } from "./jenis";
@@ -110,8 +110,8 @@ function parseSheet(sheet: XLSX.WorkSheet, source: string, fallback: Kegiatan | 
     .filter((row) => row.name || row.code);
 }
 
-const parseBook = (data: Uint8Array, file: string) => {
-  const book = readWorkbook(data);
+const parseBook = (data: Uint8Array, file: string, budget: UploadBudget) => {
+  const book = readWorkbook(data, budget);
   return book.SheetNames.flatMap((name) => parseSheet(book.Sheets[name]!, name, kegiatanFromName(file)));
 };
 
@@ -157,23 +157,24 @@ export function readUpload(name: string, data: Uint8Array) {
   const unsupported: string[] = [];
   const files: string[] = [];
   const rows: Raw[] = [];
+  const budget = uploadBudget();
   const visit = (path: string, content: Uint8Array) => {
     const lower = path.toLowerCase();
     if (lower.endsWith(".zip")) {
-      for (const [inner, bytes] of Object.entries(unzipSafe(content, path))) visit(`${path}/${inner}`, bytes);
+      for (const [inner, bytes] of Object.entries(unzipSafe(content, path, budget))) visit(`${path}/${inner}`, bytes);
     } else if (lower.endsWith(".xlsx")) {
       const file = path.split("/").pop()!.replace(/\.xlsx$/i, "");
       // "Perangkat Keras Keamanan" milik domain Infrastruktur.
       if (!/infrastruktur/.test(lower) && kegiatanFromName(file)) {
         files.push(file);
-        rows.push(...parseBook(content, file));
+        rows.push(...parseBook(content, file, budget));
       } else unsupported.push(file);
     }
   };
   if (name.toLowerCase().endsWith(".zip")) {
-    for (const [path, content] of Object.entries(unzipSafe(data))) visit(path, content);
+    for (const [path, content] of Object.entries(unzipSafe(data, "", budget))) visit(path, content);
   } else if (name.toLowerCase().endsWith(".xlsx")) {
-    rows.push(...parseBook(data, name.replace(/\.xlsx$/i, "")));
+    rows.push(...parseBook(data, name.replace(/\.xlsx$/i, ""), budget));
     files.push(name);
   } else throw new Error("Format berkas harus .xlsx atau .zip");
   if (!files.length) throw new Error("Tidak ada template Domain Arsitektur Keamanan di berkas ini.");

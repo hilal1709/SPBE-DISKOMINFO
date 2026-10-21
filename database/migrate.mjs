@@ -9,9 +9,13 @@ const env = Object.fromEntries(
   fs.readFileSync(path.join(root, ".env.local"), "utf8")
     .split(/\r?\n/).filter((line) => line && !line.startsWith("#")).map((line) => line.split(/=(.*)/s).slice(0, 2)),
 );
+// DATABASE_URL di environment menimpa .env.local (mis. database uji lokal untuk Strix).
+if (process.env.DATABASE_URL) env.DATABASE_URL = process.env.DATABASE_URL;
 if (!env.DATABASE_URL) throw new Error("DATABASE_URL tidak tersedia");
 
-const client = new pg.Client({ connectionString: env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+// sslmode=disable di URL (database uji lokal) mematikan TLS.
+const ssl = /sslmode=disable/.test(env.DATABASE_URL) ? false : { rejectUnauthorized: false };
+const client = new pg.Client({ connectionString: env.DATABASE_URL, ssl });
 await client.connect();
 
 const statements = (file) =>

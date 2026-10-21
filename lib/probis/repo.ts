@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
 import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { cached, TAGS } from "@/lib/cache";
@@ -302,6 +303,7 @@ export function updateProbis(id: string, v: ProbisValues, actor: Actor, submit: 
     const { rows } = await client.query("select status::text from process_businesses where id = $1 for update", [id]);
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Probis tidak ditemukan.");
+    assertStillEditable(actor, from);
     const to: SubmissionStatus = submit ? "submitted" : from;
     await client.query(
       `update process_businesses set name=$2, description=$3, rab_l4=$4, rab_l5=$5, strategic_goal=$6, iku=$7, iku_target=$8, iku_realization=$9,
@@ -364,13 +366,14 @@ const REVIEW_COLUMNS = ["process_business_id", "actor_id", "actor_name", "from_s
  * Lookup, kode baru, baris baru, riwayat, dan penautan L4/L5 dikirim sekaligus, bukan per baris.
  */
 export function importRows(rows: (ProbisValues & { code?: string | null })[], actor: Actor, status: SubmissionStatus, update: boolean) {
+  importStatus(status);
   return tx(async (client) => {
     let created = 0, updated = 0, skipped = 0;
     const codes = rows.map((r) => r.code).filter((c): c is string => !!c);
     const found = codes.length
-      ? (await client.query("select pb.id, pb.code, pb.status::text, ap.name as period from process_businesses pb join architecture_periods ap on ap.id = pb.period_id where pb.code = any($1)", [codes])).rows
+      ? (await client.query("select pb.id, pb.code, pb.status::text, pb.opd_id, ap.name as period from process_businesses pb join architecture_periods ap on ap.id = pb.period_id where pb.code = any($1)", [codes])).rows
       : [];
-    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; code: string; status: SubmissionStatus; opd_id: string | null }]));
     const refOf = await idsMany(client, rows);
     const next = codeSequence(client, "process_businesses", codes);
     const prefixOf = (row: ProbisValues) => `GSK-DAB ${row.rab3.slice(4)}.`;
@@ -386,6 +389,7 @@ export function importRows(rows: (ProbisValues & { code?: string | null })[], ac
       }
       const ref = refOf(row);
       if (existing) {
+        assertImportUpdate(actor, existing);
         await client.query(
           `update process_businesses set name=$2, description=$3, rab_l4=$4, rab_l5=$5, strategic_goal=$6, iku=$7, iku_target=$8, iku_realization=$9,
              probis_status=$10, opd_id=$11, period_id=$12, rab_id=$13, rab_review = false, updated_at = now() where id = $1`,

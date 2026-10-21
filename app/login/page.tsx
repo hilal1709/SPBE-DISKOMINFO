@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useActionState, useRef, useState } from "react";
-import { Alert02Icon, ArrowLeft01Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, ArrowLeft01Icon, CheckmarkCircle02Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { login } from "@/app/actions/auth";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustrations/illustration";
@@ -73,6 +73,11 @@ export default function Login() {
               <CallbackField />
             </Suspense>
             <FieldGroup className="gap-5">
+              {!error && (
+                <Suspense fallback={null}>
+                  <NoticeAlert />
+                </Suspense>
+              )}
               {error && (
                 <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-1">
                   <Icon icon={Alert02Icon} />
@@ -109,6 +114,23 @@ export default function Login() {
       </section>
     </main>
   );
+}
+
+const notices: Record<string, string> = {
+  sandi: "Sandi berhasil diubah. Masuk dengan sandi baru.",
+  sesi: "Sesi berakhir. Silakan masuk kembali.",
+};
+
+/** Pesan setelah ganti sandi atau sesi dicabut (?pesan=…); hanya teks tetap, bukan isi dari URL. */
+function NoticeAlert() {
+  const key = useSearchParams().get("pesan") ?? "";
+  const notice = Object.hasOwn(notices, key) ? notices[key] : null;
+  return notice ? (
+    <Alert>
+      <Icon icon={CheckmarkCircle02Icon} />
+      <AlertDescription>{notice}</AlertDescription>
+    </Alert>
+  ) : null;
 }
 
 /** Halaman tujuan setelah login (mis. /keamanan); divalidasi ulang di server action. */

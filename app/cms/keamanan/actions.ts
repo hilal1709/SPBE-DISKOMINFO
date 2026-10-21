@@ -1,8 +1,8 @@
 "use server";
 import { suggestKeamanan as suggest, type KeamananSuggestion } from "@/lib/ai/keamanan-suggest";
-import { can, currentActor, reviewTeam, stageOf } from "@/lib/access";
+import { can, currentActor, reviewTeam, stageOf, reviewTarget } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
-import { assertAiQuota } from "@/lib/security/rate-limit";
+import { assertAiInput, assertAiQuota } from "@/lib/security/rate-limit";
 import * as repo from "@/lib/keamanan/cms-repo";
 import { readUpload, validateRows, type KeamananImportResult, type KeamananImportRow } from "@/lib/keamanan/import";
 import type { Kegiatan } from "@/lib/keamanan/jenis";
@@ -85,7 +85,7 @@ export async function reviewKeamanan(id: string, decision: "submit" | "verify" |
         if (!text) throw new Error("Tuliskan catatan alasan pengembalian.");
         text = `Dikembalikan tim ${team}: ${text}`;
       }
-      to = decision === "reject" ? "rejected" : decision === "verify" ? "verified" : "approved";
+      to = reviewTarget(decision, stage);
     }
 
     await repo.transition(id, from, to, actor, text);
@@ -106,6 +106,7 @@ export async function getKeamananReviews(id: string) {
 export async function suggestKeamanan(input: { name: string; opd: string; jenis?: Kegiatan | null; note?: string }): Promise<ActionResult<KeamananSuggestion>> {
   try {
     await assertAiQuota((await currentActor()).id);
+    assertAiInput(input);
     if (input.name.trim().length < 3) throw new Error("Isi nama kegiatan terlebih dahulu.");
     return { ok: true, data: await suggest({ name: input.name.trim(), opd: input.opd, jenis: input.jenis, note: input.note?.trim() }) };
   } catch (error) {
@@ -124,6 +125,8 @@ async function importContext(codes: string[]) {
 /** Langkah 1 impor: baca berkas, validasi baris, kembalikan pratinjau. */
 export async function previewKeamananImport(form: FormData): Promise<ActionResult<KeamananImportResult>> {
   try {
+    // Izin dicek sebelum berkas dibaca: mengurai .xlsx/.zip itu berat dan tidak boleh dipicu tanpa hak impor.
+    if (!can.import(await currentActor())) throw new Error("Peran Anda tidak dapat mengimpor data.");
     const file = form.get("file");
     if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx atau .zip.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));

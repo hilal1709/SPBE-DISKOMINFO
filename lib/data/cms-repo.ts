@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import { pdByCode } from "@/lib/probis/reference";
@@ -281,6 +282,7 @@ export function updateData(id: string, v: DataValues, actor: Actor, submit: bool
     const { rows } = await client.query("select status::text from datasets where id = $1 for update", [id]);
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Data tidak ditemukan.");
+    assertStillEditable(actor, from);
     const to: SubmissionStatus = submit ? "submitted" : from;
     await client.query(
       `${UPDATE}, status = $19::text::submission_status, submitted_by = case when $19::text = 'submitted' then $20::uuid else submitted_by end where id = $1`,
@@ -312,15 +314,16 @@ export function transition(id: string, from: SubmissionStatus, to: SubmissionSta
 
 /** Simpan hasil impor dalam satu transaksi. Baris ber-ID yang sudah ada diperbarui bila `update` aktif. */
 export function importRows(rows: (DataValues & { code?: string | null })[], actor: Actor, status: SubmissionStatus, update: boolean) {
+  importStatus(status);
   return tx(async (client) => {
     let created = 0,
       updated = 0,
       skipped = 0;
     const codes = rows.map((r) => r.code).filter((c): c is string => !!c);
     const found = codes.length
-      ? (await client.query("select d.id, d.status::text, d.code, ap.name as period from datasets d join architecture_periods ap on ap.id = d.period_id where d.code = any($1)", [codes])).rows
+      ? (await client.query("select d.id, d.status::text, d.opd_id, d.code, ap.name as period from datasets d join architecture_periods ap on ap.id = d.period_id where d.code = any($1)", [codes])).rows
       : [];
-    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; status: SubmissionStatus }]));
+    const byKey = new Map(found.map((r) => [`${r.code}|${r.period}`, r as { id: string; code: string; status: SubmissionStatus; opd_id: string | null }]));
     const batch = importBatch(client, "datasets", codes);
     for (const row of rows) {
       const existing = row.code ? byKey.get(`${row.code}|${row.period}`) : undefined;
@@ -329,6 +332,7 @@ export function importRows(rows: (DataValues & { code?: string | null })[], acto
           skipped++;
           continue;
         }
+        assertImportUpdate(actor, existing);
         const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row, ref), ref.opd_id, ref.producer_opd_id, ref.period_id, ref.rad_id]);
         await linkDeep(client, existing.id, batch);

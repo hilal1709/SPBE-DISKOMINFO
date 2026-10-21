@@ -13,6 +13,10 @@ export const proxy = auth((request) => {
     login.searchParams.set("callbackUrl", request.nextUrl.pathname);
     return NextResponse.redirect(login);
   }
+  // Ganti sandi selalu untuk pengguna yang sudah masuk.
+  if (request.nextUrl.pathname.startsWith("/akun") && !request.auth) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
   // Dashboard lain dan katalog dapat dibaca publik; CMS selalu memerlukan sesi di production.
   if (request.nextUrl.pathname.startsWith("/cms") && authRequired && !request.auth) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -20,4 +24,4 @@ export const proxy = auth((request) => {
   return NextResponse.next();
 });
 
-export const config = { matcher: ["/cms/:path*", "/keamanan/:path*", "/keamanan", "/design-system"] };
+export const config = { matcher: ["/cms/:path*", "/akun/:path*", "/keamanan/:path*", "/keamanan", "/design-system"] };

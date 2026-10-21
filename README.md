@@ -6,10 +6,11 @@ Portal arsitektur SPBE (dashboard publik) dan CMS. Modul dibangun bertahap; saat
 
 1. Salin `.env.example` menjadi `.env.local`, isi `DATABASE_URL` dan `AUTH_SECRET` (wajib untuk `pnpm build && pnpm start`).
 2. `pnpm migrate` — skema dasar (bila database kosong) lalu migrasi di `database/migrations/` (dicatat di tabel `schema_migrations`).
+   Superadmin pertama: `pnpm admin:buat <email> "<nama>"` (sandi sementara acak, wajib diganti saat masuk).
 3. (Opsional) `pnpm seed:contoh` mengisi 3.501 probis contoh dan `pnpm seed:layanan` ±460 layanan contoh (status Tervalidasi, ditandai *contoh*; jalankan probis dulu agar tautan layanan → probis terisi). Tambahkan `--hapus` untuk menghapus; tim Diskominfo juga bisa menghapus keduanya dari banner di CMS.
 4. `pnpm dev`.
 
-Di production `/cms` selalu wajib login; `AUTH_REQUIRED=false` hanya membuka mode demo di `pnpm dev`. Akun demo dari migrasi 004 dinonaktifkan oleh migrasi 019. Keamanan (header, rate limit, pengujian Strix): lihat `docs/security-testing.md`.
+Di production `/cms` selalu wajib login; `AUTH_REQUIRED=false` hanya membuka mode demo di `pnpm dev`. Semua akun dengan sandi demo yang tertulis di repositori dinonaktifkan oleh migrasi 019 dan 021. Keamanan (header, rate limit, pengujian Strix): lihat `docs/security-testing.md`.
 
 ### CMS Proses Bisnis
 
@@ -40,7 +41,6 @@ Di production `/cms` selalu wajib login; `AUTH_REQUIRED=false` hanya membuka mod
 - Impor/ekspor di `/cms/data/impor`: unggah template Data atau zip paket arsitektur semua domain (berkas Data dibaca, domain lain dilewati).
 - Dashboard `/data` membaca data tervalidasi; bila kosong memakai data contoh (`lib/data/generate.ts`). `pnpm seed:data` mengisi data contoh ke database (`--hapus` untuk menghapus).
 - `pnpm referensi:rad` membuat ulang `lib/data/rad-reference.json` dari template analis (`--sql` mencetak INSERT untuk migrasi).
-- Akun demo Verifikator Data: `walidata@gresikkab.go.id` (kata sandi sama dengan akun demo lain).
 
 ### CMS Aplikasi
 
@@ -52,7 +52,6 @@ Di production `/cms` selalu wajib login; `AUTH_REQUIRED=false` hanya membuka mod
 - **Referensi RAA berversi** di *Pengaturan › Referensi RAA* (mesin sama dengan RAB/RAL/RAD; template baru sampai Level 2, jadi RAA L2 tanpa turunan dipakai langsung). Tiap periode memilih versi RAA di *Periode Arsitektur*. `pnpm referensi:raa` membuat ulang `lib/aplikasi/raa-reference.json` (`--sql` mencetak INSERT untuk migrasi).
 - Impor/ekspor di `/cms/aplikasi/impor`: unggah template Aplikasi atau zip paket arsitektur; ekspor memakai 32 kolom template (+ periode & status).
 - Dashboard `/aplikasi` membaca aplikasi tervalidasi; bila kosong memakai data contoh (`lib/aplikasi/generate.ts`). `pnpm seed:aplikasi` mengisi aplikasi contoh ke database (`--hapus` untuk menghapus; jalankan `seed:contoh`, `seed:layanan`, `seed:data` dulu agar tautannya terisi).
-- Akun demo Verifikator Aplikasi: `aplikasi@gresikkab.go.id` (kata sandi sama dengan akun demo lain).
 
 ### CMS Infrastruktur
 
@@ -63,7 +62,7 @@ Di production `/cms` selalu wajib login; `AUTH_REQUIRED=false` hanya membuka mod
 - Alur: Operator OPD → **Verifikasi** Admin Verifikator Infrastruktur Diskominfo (`validator_infrastruktur`) → **Validasi** Diskominfo → tayang. ID otomatis `GSK-INF <kode RAI>.<urutan>`.
 - **Referensi RAI berversi** di *Pengaturan › Referensi RAI* (mesin sama dengan RAB/RAL/RAD/RAA; L2 tanpa turunan dipakai langsung). Template analis memberi kode ganda `RAI.02.01` untuk JIP dan SPLP; ekstraksi menomori SPLP menjadi `RAI.02.02`. `pnpm referensi:rai` membuat ulang `lib/infrastruktur/rai-reference.json` (`--sql` mencetak INSERT).
 - Impor di `/cms/infrastruktur/impor`: satu workbook komponen, workbook gabungan `public/templates/infrastruktur.xlsx` (`pnpm template:infrastruktur`), atau zip folder Infrastruktur / paket arsitektur. Komponen dikenali dari nama berkas/sheet; relasi dalam satu unggahan ditautkan lewat nama. Ekspor satu sheet per komponen dan bisa diimpor ulang.
-- `pnpm seed:infrastruktur` mengisi komponen contoh (`--hapus` untuk menghapus). Akun demo: `infrastruktur@gresikkab.go.id`.
+- `pnpm seed:infrastruktur` mengisi komponen contoh (`--hapus` untuk menghapus).
 
 ### CMS Keamanan
 
@@ -72,7 +71,7 @@ Di production `/cms` selalu wajib login; `AUTH_REQUIRED=false` hanya membuka mod
 - Alur: Operator OPD → **Verifikasi** Admin Verifikator Keamanan Diskominfo (`validator_keamanan`) → **Validasi** Diskominfo → tayang di `/keamanan`. ID otomatis `GSK-KAM <STD|EDU|KRT|PNK|INS|AUD|KLK>.<urutan>`.
 - Dashboard `/keamanan` **wajib login** (proxy mengarahkan ke `/login?callbackUrl=/keamanan`) dan hanya untuk tim Diskominfo & pimpinan (`can.viewKeamanan`); operator OPD dan Bagian Organisasi melihat pesan akses ditolak. Isinya: siklus 7 kegiatan, kegiatan per tahun, standar berlaku, dan **cakupan dependensi** (berapa persen data, aplikasi, infrastruktur tervalidasi yang mencantumkan tiap kegiatan keamanan).
 - **Tautan dependensi keamanan**: form Data, Aplikasi, dan Infrastruktur memilih kegiatan keamanan tervalidasi pada periode yang sama; kolom `security` menyimpan kode kegiatan (`lib/keamanan/link.ts`). Isian teks lama tetap tampil apa adanya. Impor mencocokkan kode, "kode nama", atau nama kegiatan; ekspor menulis "kode nama".
-- Impor menerima tanggal Excel maupun teks (12/03/2025, 12 Maret 2025); template gabungan `public/templates/keamanan.xlsx` (`pnpm template:keamanan`). `pnpm seed:keamanan` mengisi kegiatan contoh dan menautkannya ke data, aplikasi, serta infrastruktur contoh. Akun demo: `keamanan@gresikkab.go.id`.
+- Impor menerima tanggal Excel maupun teks (12/03/2025, 12 Maret 2025); template gabungan `public/templates/keamanan.xlsx` (`pnpm template:keamanan`). `pnpm seed:keamanan` mengisi kegiatan contoh dan menautkannya ke data, aplikasi, serta infrastruktur contoh.
 
 ## Getting Started
 

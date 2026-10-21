@@ -35,7 +35,7 @@ async function loadListApprovedServices(): Promise<{ rows: Layanan[]; sample: bo
      join ral_references r1 on r1.id = r2.parent_id
      left join rab_references rb on rb.id = s.rab_id
      left join service_process_businesses sp on sp.service_id = s.id
-     left join process_businesses pb on pb.id = sp.process_business_id
+     left join process_businesses pb on pb.id = sp.process_business_id and pb.status = 'approved'
      where s.status = 'approved'
      group by s.id, o.code, ap.name, r1.code, r2.code, r3.code, rb.code`,
   );

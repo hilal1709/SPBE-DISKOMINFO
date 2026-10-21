@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { readWorkbook, unzipSafe } from "@/lib/security/upload";
+import { readWorkbook, unzipSafe, uploadBudget } from "@/lib/security/upload";
 import type { RabIndex } from "./rab-index";
 import { perangkatDaerah, type PeriodOptions } from "./reference";
 
@@ -77,12 +77,12 @@ const statusOf = (raw: string | null): ImportRow["probisStatus"] => {
 };
 
 /** Cari workbook domain di dalam zip (termasuk zip bertingkat); `pattern` mencocokkan nama berkas. */
-export function findInZip(data: Uint8Array, unsupported: string[], pattern = /proses bisnis/, prefix = ""): { name: string; data: Uint8Array } | null {
+export function findInZip(data: Uint8Array, unsupported: string[], pattern = /proses bisnis/, prefix = "", budget = uploadBudget()): { name: string; data: Uint8Array } | null {
   let found: { name: string; data: Uint8Array } | null = null;
-  for (const [path, content] of Object.entries(unzipSafe(data, prefix))) {
+  for (const [path, content] of Object.entries(unzipSafe(data, prefix, budget))) {
     const lower = path.toLowerCase();
     if (lower.endsWith(".zip")) {
-      found ??= findInZip(content, unsupported, pattern, `${prefix}${path}/`);
+      found ??= findInZip(content, unsupported, pattern, `${prefix}${path}/`, budget);
     } else if (lower.endsWith(".xlsx")) {
       if (pattern.test(lower) && !/gabungan/.test(lower)) found ??= { name: prefix + path, data: content };
       else unsupported.push((prefix + path).split("/").pop()!.replace(/\.xlsx$/i, ""));

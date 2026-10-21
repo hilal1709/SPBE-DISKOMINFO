@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { allKeamanan, sampleCoverage } from "@/lib/keamanan/generate";
 import { auth } from "@/auth";
@@ -24,6 +25,7 @@ export const metadata = pageMetadata("/keamanan");
 export default async function Page() {
   const session = await auth();
   const actor = session?.user ? await actorFor(session.user) : null;
+  if (actor?.mustChangePassword) redirect("/akun/sandi");
   if (!actor || !can.viewKeamanan(actor)) {
     return (
       <Card className="mt-2">

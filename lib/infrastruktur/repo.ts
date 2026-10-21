@@ -20,7 +20,7 @@ const PUBLIC_LINKS = `
                    or lower(i.name) in (lower(a.cloud), lower(a.server), lower(a.splp), lower(a.jip)))), '[]') as aplikasi,
   coalesce((select json_agg(json_build_object('id', d.code, 'name', d.name) order by d.code)
             from infrastructure_datasets x join datasets d on d.id = x.dataset_id
-            where x.infrastructure_id = i.id), '[]') as data,
+            where x.infrastructure_id = i.id and d.status = 'approved'), '[]') as data,
   coalesce((select json_agg(json_build_object('id', pb.code, 'name', pb.name) order by pb.code)
             from infrastructure_process_businesses x join process_businesses pb on pb.id = x.process_business_id
             where x.infrastructure_id = i.id and pb.status = 'approved'), '[]') as probis`;

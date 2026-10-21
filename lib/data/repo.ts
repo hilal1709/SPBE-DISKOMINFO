@@ -15,9 +15,9 @@ async function loadListApprovedData(): Promise<{ rows: DataInfo[]; sample: boole
             case when n.level = 3 then p1.code else n.code end as rad2,
             case when n.level = 3 then n.code end as rad3,
             coalesce((select json_agg(json_build_object('id', pb.code, 'name', pb.name) order by pb.code)
-                      from dataset_process_businesses dp join process_businesses pb on pb.id = dp.process_business_id where dp.dataset_id = d.id), '[]') as probis,
+                      from dataset_process_businesses dp join process_businesses pb on pb.id = dp.process_business_id where dp.dataset_id = d.id and pb.status = 'approved'), '[]') as probis,
             coalesce((select json_agg(json_build_object('id', s.code, 'name', s.name) order by s.code)
-                      from dataset_services ds join services s on s.id = ds.service_id where ds.dataset_id = d.id), '[]') as layanan
+                      from dataset_services ds join services s on s.id = ds.service_id where ds.dataset_id = d.id and s.status = 'approved'), '[]') as layanan
      from datasets d
      join opd o on o.id = d.opd_id
      left join opd po on po.id = d.producer_opd_id

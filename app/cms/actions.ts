@@ -1,8 +1,8 @@
 "use server";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
-import { assertAiQuota } from "@/lib/security/rate-limit";
+import { assertAiInput, assertAiQuota } from "@/lib/security/rate-limit";
 import { suggestProbis as suggest, type ProbisSuggestion } from "@/lib/ai/probis-suggest";
-import { can, currentActor, stageOf } from "@/lib/access";
+import { can, currentActor, stageOf, reviewTarget } from "@/lib/access";
 import * as periods from "@/lib/probis/periods";
 import { readUpload, validateRows, type ImportResult, type ImportRow } from "@/lib/probis/import";
 import * as repo from "@/lib/probis/repo";
@@ -103,7 +103,7 @@ export async function reviewProbis(id: string, decision: "submit" | "verify" | "
         if (!text) throw new Error("Tuliskan catatan alasan pengembalian.");
         text = `Dikembalikan tim ${stage}: ${text}`;
       }
-      to = decision === "reject" ? "rejected" : decision === "verify" ? "verified" : "approved";
+      to = reviewTarget(decision, stage);
     }
 
     await repo.transition(id, from, to, actor, text);
@@ -124,6 +124,7 @@ export async function getProbisReviews(id: string) {
 export async function suggestProbis(input: { name: string; opd: string; note?: string; period?: string }): Promise<ActionResult<ProbisSuggestion>> {
   try {
     await assertAiQuota((await currentActor()).id);
+    assertAiInput(input);
     if (input.name.trim().length < 3) throw new Error("Isi nama proses bisnis terlebih dahulu.");
     const rab = (await rabFor())(input.period);
     return { ok: true, data: await suggest({ name: input.name.trim(), opd: input.opd, note: input.note?.trim() }, rab) };
