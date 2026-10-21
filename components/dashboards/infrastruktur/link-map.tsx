@@ -93,7 +93,7 @@ export function LinkMapCard({ rows, selected, onToggle, className }: { rows: Inf
         <CardTitle className="section-title">Peta keterhubungan</CardTitle>
       </CardHeader>
       <CardContent ref={ref} className="flex-1">
-        <svg ref={svg} viewBox={`-10 -14 ${W + 20} ${H + 40}`} className="w-full overflow-visible" role="group" aria-label="Keterhubungan aplikasi, data, dan komponen infrastruktur">
+        <svg ref={svg} viewBox={`-40 -14 ${W + 100} ${H + 40}`} className="w-full overflow-visible" role="group" aria-label="Keterhubungan aplikasi, data, dan komponen infrastruktur">
           {edges.map((e) => (
             <path
               key={e.id}

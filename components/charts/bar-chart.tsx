@@ -68,7 +68,17 @@ export default function BarChart({ labels, series, stacked = false, horizontal =
             scales: {
               // Batasi tick hanya di sumbu nilai; sumbu kategori menampilkan semua label.
               x: { stacked, grid: { display: horizontal }, border: { display: false }, ...(horizontal && { beginAtZero: true, ticks: { maxTicksLimit: 6 } }) },
-              y: { stacked, grid: { display: !horizontal }, border: { display: false }, beginAtZero: true, ticks: horizontal ? { autoSkip: false } : { maxTicksLimit: 6 } },
+              y: { stacked, grid: { display: !horizontal }, border: { display: false }, beginAtZero: true, ticks: horizontal
+                  ? {
+                      autoSkip: false,
+                      // Di layar sempit label kategori panjang dipotong agar batang tetap terbaca; tooltip memuat label penuh.
+                      callback(value) {
+                        const text = String(this.getLabelForValue(Number(value)));
+                        return this.chart.width < 480 && text.length > 18 ? `${text.slice(0, 17)}…` : text;
+                      },
+                    }
+                  : { maxTicksLimit: 6 },
+              },
             },
           }}
         />

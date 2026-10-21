@@ -24,13 +24,14 @@ export function Segmented<T extends string>({
       onValueChange={(v) => v && onChange(v as T)}
       aria-label={label}
       spacing={1.5}
-      className={cn("grid w-full auto-cols-fr grid-flow-col", className)}
+      // Pil turun ke baris berikut di layar sempit alih-alih meluap dari kartu.
+      className={cn("flex w-full flex-wrap", className)}
     >
       {options.map((o) => (
         <ToggleGroupItem
           key={o.value}
           value={o.value}
-          className="h-8 rounded-full border border-border px-3.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-brand-charcoal/30 hover:bg-transparent hover:text-foreground data-[state=on]:border-transparent data-[state=on]:bg-brand-yellow data-[state=on]:font-semibold data-[state=on]:text-on-brand"
+          className="h-8 flex-auto rounded-full border border-border px-3.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-brand-charcoal/30 hover:bg-transparent hover:text-foreground data-[state=on]:border-transparent data-[state=on]:bg-brand-yellow data-[state=on]:font-semibold data-[state=on]:text-on-brand"
         >
           {o.label}
         </ToggleGroupItem>

@@ -126,7 +126,7 @@ export function RefManager({ kind, versions, current, nodes, changes }: { kind: 
         return (
           <Fragment key={n.id}>
             <tr data-parent={parentId} className={cn("group/row border-b transition-colors last:border-0 hover:bg-muted/50", n.level === 1 && "bg-muted/30 font-semibold", inactive && "opacity-60")}>
-              <td className="py-2 pr-2" style={{ paddingLeft: `${depth * 1.25 + 0.5}rem` }}>
+              <td className="py-2 pr-2 pl-[calc(var(--depth)*0.75rem+0.5rem)] sm:pl-[calc(var(--depth)*1.25rem+0.5rem)]" style={{ "--depth": depth } as React.CSSProperties}>
                 <div className="flex items-start gap-1.5">
                   {hasChildren ? (
                     <Button variant="ghost" size="icon-xs" aria-expanded={isOpen} aria-label={`${isOpen ? "Tutup" : "Buka"} ${n.name}`} onClick={() => toggle(n.id)} className="-mt-0.5 shrink-0">
@@ -146,7 +146,7 @@ export function RefManager({ kind, versions, current, nodes, changes }: { kind: 
               <td className="hidden py-2 pr-3 text-[11px] text-muted-foreground sm:table-cell">L{n.level}</td>
               <td className="py-2 pr-3 text-right text-xs text-muted-foreground tabular-nums">{n.used || "—"}</td>
               <td className="py-1.5 pr-2">
-                <div className="flex justify-end gap-0.5 opacity-60 transition-opacity group-hover/row:opacity-100">
+                <div className="flex justify-end gap-0.5 opacity-60 transition-opacity group-hover/row:opacity-100 pointer-coarse:opacity-100">
                   <Button variant="ghost" size="icon-xs" aria-label={`Ubah ${n.code}`} onClick={() => setEditing({ mode: "edit", node: n })}>
                     <Icon icon={PencilEdit02Icon} size={13} />
                   </Button>

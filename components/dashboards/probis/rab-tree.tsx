@@ -78,7 +78,7 @@ export function RabTreeCard({
       return (
         <Fragment key={node.code}>
           <tr data-parent={node.parent} className={cn("border-b transition-colors last:border-0 hover:bg-muted/60", node.level === 1 && "bg-muted/40 font-semibold")}>
-            <td className="py-2 pr-2" style={{ paddingLeft: `${(node.level - 1) * 1.25 + 0.5}rem` }}>
+            <td className="py-2 pr-2 pl-[calc(var(--depth)*0.75rem+0.5rem)] sm:pl-[calc(var(--depth)*1.25rem+0.5rem)]" style={{ "--depth": node.level - 1 } as React.CSSProperties}>
               <div className="flex items-start gap-1.5">
                 {node.children.length ? (
                   <Button variant="ghost" size="icon-xs" aria-expanded={isOpen} aria-label={`${isOpen ? "Tutup" : "Buka"} ${node.name}`} onClick={() => toggle(node.code)} className="-mt-0.5 shrink-0">
@@ -95,9 +95,9 @@ export function RabTreeCard({
               </div>
             </td>
             <td className="hidden py-2 pr-3 text-[11px] text-muted-foreground sm:table-cell">{levelLabel[node.level]}</td>
-            <td className="w-32 py-2 pr-3">
+            <td className="w-14 py-2 pr-3 sm:w-32">
               <div className="flex items-center justify-end gap-2">
-                <span className="h-2 w-16 overflow-hidden rounded-full bg-muted" aria-hidden>
+                <span className="hidden h-2 w-16 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
                   <span className="block h-full rounded-full transition-[width] duration-700 ease-(--ease-out)" style={{ width: `${Math.max(share, 2)}%`, background: `var(${color})` }} />
                 </span>
                 <b className="w-10 text-right text-xs tabular-nums"><CountUp instant value={node.count} /></b>

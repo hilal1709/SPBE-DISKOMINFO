@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsPhone } from "@/hooks/use-is-phone";
 import { cn } from "@/lib/utils";
 
 export type Column<T> = {
@@ -48,9 +49,12 @@ const collator = new Intl.Collator("id", { numeric: true });
 export function DataTable<T>({ title, description, rows, columns, rowId, searchText, searchPlaceholder = "Cari data", actions, onView, onRowClick, limit, pageSize, minWidth = 860 }: Props<T>) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ header: string; dir: 1 | -1 } | null>(null);
-  const [hidden, setHidden] = useState(() => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.header)));
   const [page, setPage] = useState(0);
   const body = useRef<HTMLTableSectionElement>(null);
+  const phone = useIsPhone();
+  /** Pilihan kolom pengguna; sebelum memilih, ponsel menyembunyikan semua kolom sekunder (hideable). */
+  const [chosen, setChosen] = useState<Set<string> | null>(null);
+  const hidden = chosen ?? new Set(columns.filter((c) => (phone ? c.hideable : c.defaultHidden)).map((c) => c.header));
 
   const visible = columns.filter((c) => !hidden.has(c.header));
   const sortColumn = sort && columns.find((c) => c.header === sort.header);
@@ -87,8 +91,8 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
     setPage(0);
   };
   const toggleColumn = (header: string, show: boolean) =>
-    setHidden((h) => {
-      const next = new Set(h);
+    setChosen((h) => {
+      const next = new Set(h ?? hidden);
       if (show) next.delete(header);
       else next.add(header);
       return next;
@@ -139,7 +143,7 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
       </div>
 
       {filtered.length ? (
-        <Table style={{ minWidth }}>
+        <Table style={{ "--table-min": `${minWidth}px` } as React.CSSProperties} className="md:min-w-(--table-min)">
           <TableHeader className="bg-accent/60">
             <TableRow className="hover:bg-transparent">
               {visible.map((column) => (

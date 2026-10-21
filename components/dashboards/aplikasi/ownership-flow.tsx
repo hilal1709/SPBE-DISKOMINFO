@@ -12,6 +12,8 @@ const H = 250;
 const NODE = 10;
 const GAP = 14;
 const fmt = new Intl.NumberFormat("id-ID");
+/** Label kiri dan kanan berbagi lebar W; dipotong agar tidak bertabrakan di tengah pada huruf besar ponsel. */
+const clip = (s: string) => (s.length > 22 ? `${s.slice(0, 21)}…` : s);
 
 type Node = { code: string; label: string; count: number; y: number; h: number };
 
@@ -144,7 +146,8 @@ export function OwnershipFlowCard({
                 textAnchor={side === "left" ? "start" : "end"}
                 className="fill-foreground stroke-card text-[19px] font-medium sm:text-[13px] [paint-order:stroke] [stroke-width:4px]"
               >
-                {n.label}
+                <title>{n.label}</title>
+                {clip(n.label)}
                 <tspan className="fill-muted-foreground font-normal tabular-nums"> {fmt.format(n.count)}</tspan>
               </text>
             </g>

@@ -17,7 +17,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // Status login dibaca di klien agar halaman portal tetap statis.
   const signedIn = useSession().status === "authenticated";
   return (
-    <div className="flex h-full flex-col gap-8 px-4 py-6">
+    <div className="flex min-h-full shrink-0 flex-col gap-8 px-4 py-6">
       <Logo className="px-1" />
       <SidebarNav items={publicNav} onNavigate={onNavigate} signedIn={signedIn} />
       <Button asChild variant="ghost" className="group mt-auto justify-start gap-3 px-3 text-sidebar-foreground hover:bg-sidebar-accent">
@@ -47,7 +47,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-svh lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
       <aside className="hidden bg-sidebar lg:block">
-        <div className="sticky top-0 h-svh overflow-y-auto">
+        <div className="sticky top-0 h-svh overflow-y-auto overscroll-contain">
           <Sidebar />
         </div>
       </aside>
@@ -59,7 +59,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                 <Icon icon={Menu01Icon} />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 border-0 bg-sidebar p-0">
+            <SheetContent side="left" className="w-72 overflow-y-auto overscroll-contain border-0 bg-sidebar p-0">
               <SheetTitle className="sr-only">Menu navigasi</SheetTitle>
               <Sidebar onNavigate={() => setOpen(false)} />
             </SheetContent>

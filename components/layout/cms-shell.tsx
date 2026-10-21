@@ -38,7 +38,7 @@ function LogoutButton() {
 
 function Sidebar({ user, onNavigate }: { user: CmsUser; onNavigate?: () => void }) {
   return (
-    <div className="flex h-full flex-col gap-8 px-4 py-6">
+    <div className="flex min-h-full shrink-0 flex-col gap-8 px-4 py-6">
       <Logo href="/cms" subtitle="CMS · Kabupaten Gresik" className="px-1" />
       <SidebarNav items={navFor(cmsNav, user.perms)} badges={user.badges} onNavigate={onNavigate} />
       <div className="mt-auto flex items-center gap-3 rounded-xl bg-card/70 p-2.5">
@@ -78,7 +78,7 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
   return (
     <div data-theme="cms" className="min-h-svh bg-background lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
       <aside className="hidden bg-sidebar lg:block">
-        <div className="sticky top-0 h-svh overflow-y-auto">
+        <div className="sticky top-0 h-svh overflow-y-auto overscroll-contain">
           <Sidebar user={user} />
         </div>
       </aside>
@@ -90,7 +90,7 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
                 <Icon icon={Menu01Icon} />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 border-0 bg-sidebar p-0">
+            <SheetContent side="left" className="w-72 overflow-y-auto overscroll-contain border-0 bg-sidebar p-0">
               <SheetTitle className="sr-only">Menu CMS</SheetTitle>
               <Sidebar user={user} onNavigate={() => setOpen(false)} />
             </SheetContent>

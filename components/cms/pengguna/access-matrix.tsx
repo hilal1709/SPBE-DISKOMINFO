@@ -78,8 +78,8 @@ export function AccessMatrix({ grants, users }: { grants: RoleGrant[]; users: Re
     });
 
   return (
-    <Reveal className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
-      <Card data-reveal className="gap-0 py-2 lg:sticky lg:top-20">
+    <Reveal className="grid gap-5 xl:grid-cols-[18rem_minmax(0,1fr)] xl:items-start">
+      <Card data-reveal className="gap-0 py-2 xl:sticky xl:top-20">
         <div className="px-3 pb-2">
           <Button variant="teal" className="w-full" onClick={() => setDialog("new")}>
             <Icon icon={Add01Icon} size={16} />

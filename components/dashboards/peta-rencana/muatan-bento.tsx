@@ -15,7 +15,7 @@ export function MuatanBento({ counts, selected, onToggle, className }: { counts:
       <CardHeader>
         <CardTitle className="section-title">Muatan rencana</CardTitle>
       </CardHeader>
-      <CardContent className="grid flex-1 auto-rows-[5.5rem] grid-cols-2 gap-2 sm:grid-cols-4">
+      <CardContent className="grid flex-1 auto-rows-[minmax(5.5rem,auto)] grid-cols-2 gap-2 sm:grid-cols-4">
         {counts.map(([k, n], i) => {
           const cfg = muatanConfig[k];
           const on = selected.includes(k);

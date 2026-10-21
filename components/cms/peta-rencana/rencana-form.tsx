@@ -258,7 +258,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
           </CardHeader>
           <CardContent>
             <FieldGroup>
-              <Segmented label="Status pelaksanaan" value={values.status} onChange={(v) => set("status", v)} options={statusKeys.map((k) => ({ value: k, label: statusConfig[k].label }))} className="flex flex-wrap" />
+              <Segmented label="Status pelaksanaan" value={values.status} onChange={(v) => set("status", v)} options={statusKeys.map((k) => ({ value: k, label: statusConfig[k].label }))} />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field data-field="realisasi" data-invalid={!!errors.realisasi || undefined} className="rounded-lg">
                   <FieldLabel htmlFor="realisasi">Realisasi</FieldLabel>
