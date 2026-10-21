@@ -7,10 +7,15 @@ import { signIn, signOut } from "@/auth";
 const safePath = (value: FormDataEntryValue | null) => (typeof value === "string" && /^\/(?![/\\])/.test(value) ? value : "/cms");
 
 export async function login(_prev: string | undefined, formData: FormData) {
+  // Validasi isian hanya di server; skema lengkap (format email, panjang) ada di authorize() auth.ts.
+  if (!(formData instanceof FormData)) return "Isi email dan kata sandi";
+  const email = formData.get("email");
+  const password = formData.get("password");
+  if (typeof email !== "string" || !email.trim() || typeof password !== "string" || !password) return "Isi email dan kata sandi";
   try {
     await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
+      email,
+      password,
       redirectTo: safePath(formData.get("callbackUrl")),
     });
   } catch (error) {

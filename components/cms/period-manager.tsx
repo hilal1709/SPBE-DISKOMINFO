@@ -62,7 +62,6 @@ export function PeriodManager({
   );
 
   const span = Number(end) - Number(start) + 1;
-  const spanOk = span >= min && span <= max;
 
   const add = () =>
     start_(async () => {
@@ -190,14 +189,13 @@ export function PeriodManager({
             </Field>
             <Field>
               <FieldLabel htmlFor="end">Tahun selesai</FieldLabel>
-              <Input id="end" type="number" inputMode="numeric" value={end} onChange={(e) => setEnd(e.target.value)} aria-invalid={!spanOk || undefined} />
+              <Input id="end" type="number" inputMode="numeric" value={end} onChange={(e) => setEnd(e.target.value)} />
             </Field>
           </div>
-          <FieldDescription className={cn(!spanOk && "text-destructive")}>
+          <FieldDescription>
             {Number.isFinite(span) && span > 0 ? `Periode ${start}–${end} · ${span} tahun` : "Isi tahun mulai dan selesai"}
-            {!spanOk && ` (harus ${min}–${max} tahun)`}
           </FieldDescription>
-          <Button loading={pending} disabled={!spanOk} onClick={add}>
+          <Button loading={pending} onClick={add}>
             {!pending && <Icon icon={Add01Icon} size={16} />}
             Tambah periode
           </Button>

@@ -7,6 +7,8 @@ import { passwordRecord, setOwnPassword } from "@/lib/pengguna/repo";
 import { logAuthEvent } from "@/lib/security/audit";
 import { passwordProblem } from "@/lib/security/password";
 import { clear, clientIp, hit } from "@/lib/security/rate-limit";
+import { revokeOwnSession, revokeUserSessions } from "@/lib/security/session";
+import { sessionActor } from "@/lib/access";
 
 export type ChangePasswordState = { error?: string; fields?: Partial<Record<"current" | "next" | "confirm", string>> } | undefined;
 
@@ -23,6 +25,7 @@ export async function changePassword(_prev: ChangePasswordState, formData: FormD
   const session = await auth();
   const id = session?.user?.id;
   if (!id || id === "demo-admin") return { error: "Masuk dengan akun CMS untuk mengganti sandi." };
+  if (!(formData instanceof FormData)) return { error: "Isian tidak valid." };
 
   const current = field(formData, "current");
   const next = field(formData, "next");
@@ -58,4 +61,46 @@ export async function changePassword(_prev: ChangePasswordState, formData: FormD
 
   // Di luar try: signOut melempar redirect.
   await signOut({ redirectTo: "/login?pesan=sandi" });
+}
+
+export type SessionActionResult = { ok: true } | { ok: false; error: string };
+
+/** Hash id sesi (sha256 hex) seperti yang ditampilkan di /akun/sesi. */
+const sessionIdPattern = /^[a-f0-9]{64}$/;
+
+/** Pengguna sesi yang masih sah (dicek ulang ke tabel sessions), beserta id sesinya. */
+async function ownSession() {
+  const session = await auth();
+  const sid = session?.user?.sid;
+  if (!session?.user?.id || !sid || !(await sessionActor())) return null;
+  return { userId: session.user.id, sid };
+}
+
+/** Keluarkan satu perangkat. Hanya sesi milik akun sendiri yang bisa dicabut. */
+export async function revokeSessionAction(id: unknown): Promise<SessionActionResult> {
+  if (typeof id !== "string" || !sessionIdPattern.test(id)) return { ok: false, error: "Sesi tidak valid." };
+  const own = await ownSession();
+  if (!own) return { ok: false, error: "Sesi berakhir. Silakan masuk kembali." };
+  try {
+    if (!(await revokeOwnSession(own.userId, id))) return { ok: false, error: "Sesi tidak ditemukan atau sudah berakhir." };
+    await logAuthEvent("session_revoked", { userId: own.userId, ip: clientIp(await headers()) });
+    return { ok: true };
+  } catch (error) {
+    console.error("[akun] Gagal mencabut sesi:", error);
+    return { ok: false, error: "Terjadi kesalahan sistem." };
+  }
+}
+
+/** Keluarkan semua perangkat lain; sesi yang sedang dipakai tetap aktif. */
+export async function revokeOtherSessionsAction(): Promise<SessionActionResult> {
+  const own = await ownSession();
+  if (!own) return { ok: false, error: "Sesi berakhir. Silakan masuk kembali." };
+  try {
+    await revokeUserSessions(own.userId, own.sid);
+    await logAuthEvent("sessions_revoked_others", { userId: own.userId, ip: clientIp(await headers()) });
+    return { ok: true };
+  } catch (error) {
+    console.error("[akun] Gagal mencabut sesi lain:", error);
+    return { ok: false, error: "Terjadi kesalahan sistem." };
+  }
 }

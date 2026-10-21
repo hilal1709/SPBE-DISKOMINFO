@@ -1,8 +1,10 @@
 "use server";
+import { assertUploadFile } from "@/lib/security/upload";
+import { arg, idSchema, importOptions, importRows, isValid, reviewArgs, saveOptions } from "@/lib/security/schemas";
 import { suggestKeamanan as suggest, type KeamananSuggestion } from "@/lib/ai/keamanan-suggest";
 import { can, currentActor, reviewTeam, stageOf, reviewTarget } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
-import { assertAiInput, assertAiQuota } from "@/lib/security/rate-limit";
+import { assertAiInput, assertAiQuota, assertImportQuota } from "@/lib/security/rate-limit";
 import * as repo from "@/lib/keamanan/cms-repo";
 import { readUpload, validateRows, type KeamananImportResult, type KeamananImportRow } from "@/lib/keamanan/import";
 import type { Kegiatan } from "@/lib/keamanan/jenis";
@@ -20,6 +22,7 @@ async function assertOpd(opdCode: string) {
 }
 
 export async function saveKeamanan(input: KeamananInput, options: { id?: string; submit: boolean }): Promise<ActionResult<{ id: string }>> {
+  if (!isValid(saveOptions, options)) return { ok: false, error: "Data tidak valid." };
   const parsed = keamananInput.safeParse(input);
   if (!parsed.success) {
     const fields = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
@@ -46,6 +49,7 @@ export async function saveKeamanan(input: KeamananInput, options: { id?: string;
 
 export async function deleteKeamanan(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     const actor = await currentActor();
     const current = await repo.getKeamanan(id);
     if (!current) throw new Error("Kegiatan keamanan tidak ditemukan.");
@@ -64,6 +68,7 @@ export async function deleteKeamanan(id: string): Promise<ActionResult> {
  */
 export async function reviewKeamanan(id: string, decision: "submit" | "verify" | "validate" | "reject", note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
   try {
+    ({ id, decision, note } = arg(reviewArgs, { id, decision, note }));
     const actor = await currentActor();
     const current = await repo.getKeamanan(id);
     if (!current) throw new Error("Kegiatan keamanan tidak ditemukan.");
@@ -97,6 +102,7 @@ export async function reviewKeamanan(id: string, decision: "submit" | "verify" |
 }
 
 export async function getKeamananReviews(id: string) {
+  if (!isValid(idSchema, id)) return [];
   const actor = await currentActor();
   const current = await repo.getKeamanan(id);
   if (!current || !can.read(actor, current.opdId)) return [];
@@ -126,9 +132,11 @@ async function importContext(codes: string[]) {
 export async function previewKeamananImport(form: FormData): Promise<ActionResult<KeamananImportResult>> {
   try {
     // Izin dicek sebelum berkas dibaca: mengurai .xlsx/.zip itu berat dan tidak boleh dipicu tanpa hak impor.
-    if (!can.import(await currentActor())) throw new Error("Peran Anda tidak dapat mengimpor data.");
+    const actor = await currentActor();
+    if (!can.import(actor)) throw new Error("Peran Anda tidak dapat mengimpor data.");
+    await assertImportQuota(actor.id);
     const file = form.get("file");
-    if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx atau .zip.");
+    assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
     return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };
@@ -140,6 +148,9 @@ export async function previewKeamananImport(form: FormData): Promise<ActionResul
 /** Langkah 2 impor: simpan baris tanpa galat. Validasi diulang di server. */
 export async function commitKeamananImport(rows: KeamananImportRow[], options: { status: "draft" | "submitted"; update: boolean }): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   try {
+    arg(importRows, rows);
+    arg(importOptions, options);
+    await assertImportQuota((await currentActor()).id);
     const { actor, ctx } = await importContext(rows.map((r) => r.code).filter((c): c is string => !!c));
     const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({

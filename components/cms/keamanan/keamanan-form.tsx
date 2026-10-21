@@ -101,11 +101,6 @@ export function KeamananForm({
   );
 
   const askAi = () => {
-    if (values.name.trim().length < 3) {
-      setErrors((e) => ({ ...e, name: "Isi nama kegiatan dulu agar AI punya konteks" }));
-      flash(field("name"));
-      return;
-    }
     startThinking(async () => {
       const request = suggestKeamanan({ name: values.name, opd: values.opd, jenis: values.jenis || null, note });
       toast.promise(request.then((r) => (r.ok ? r : Promise.reject(new Error(r.error)))), {
@@ -127,11 +122,6 @@ export function KeamananForm({
   };
 
   const submit = (mode: "draft" | "submit") => {
-    if (!values.jenis) {
-      setErrors((e) => ({ ...e, jenis: "Pilih jenis kegiatan keamanan" }));
-      picker.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
     setSavingMode(mode);
     startSaving(async () => {
       const result = await saveKeamanan(values as KeamananInput, { id: record?.id, submit: mode === "submit" });
@@ -262,10 +252,10 @@ export function KeamananForm({
           <Button asChild variant="ghost" className="mr-auto">
             <Link href="/cms/keamanan">Batal</Link>
           </Button>
-          <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving || !cfg} onClick={() => submit("draft")}>
+          <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving} onClick={() => submit("draft")}>
             Simpan draf
           </Button>
-          <Button type="button" loading={saving && savingMode === "submit"} disabled={saving || !cfg} onClick={() => submit("submit")}>
+          <Button type="button" loading={saving && savingMode === "submit"} disabled={saving} onClick={() => submit("submit")}>
             {!(saving && savingMode === "submit") && <Icon icon={SentIcon} size={16} />}
             Ajukan verifikasi
           </Button>
@@ -349,7 +339,7 @@ function AttrInput({ attr, value, onChange }: { attr: KegiatanField; value: stri
       ) : attr.type === "date" ? (
         <Input id={id} type="date" value={value} onChange={(e) => onChange(e.target.value)} />
       ) : attr.type === "score" ? (
-        <Input id={id} type="number" min={0} max={5} step={0.1} inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={attr.placeholder} />
+        <Input id={id} type="text" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={attr.placeholder} />
       ) : (
         <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={attr.placeholder} />
       )}

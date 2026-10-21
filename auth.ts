@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { BCRYPT_COST, hashPassword } from "@/lib/pengguna/repo";
 import { logAuthEvent } from "@/lib/security/audit";
 import { clear, clientIp, hit } from "@/lib/security/rate-limit";
+import { SESSION_MAX_AGE_SEC, createSession, revokeSession } from "@/lib/security/session";
 import type { Role } from "@/lib/types";
 
 type UserRow = {
@@ -19,6 +20,14 @@ type UserRow = {
 };
 
 const isProduction = process.env.NODE_ENV === "production";
+
+/**
+ * Cookie sesi hanya lewat HTTPS di production (ALLOW_HTTP untuk uji lokal `pnpm start` tanpa TLS, sama dengan next.config).
+ * Prefiks `__Host-` memaksa browser menolak cookie ini bila tidak Secure, punya Domain, atau Path selain "/": tidak bisa
+ * ditimpa subdomain lain. HttpOnly → tidak terbaca JavaScript (XSS). SameSite=Lax → tidak ikut POST lintas situs.
+ */
+const secureCookies = isProduction && process.env.ALLOW_HTTP !== "true";
+const cookieOptions = { httpOnly: true, sameSite: "lax" as const, path: "/", secure: secureCookies };
 
 /** Akun demo hanya untuk dev lokal tanpa database; tidak pernah dikenali di production. */
 const demoAdmin: UserRow = {
@@ -78,7 +87,14 @@ async function findUser(email: string) {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET || (isProduction ? undefined : "development-only-change-me-before-production"),
   // trustHost tidak di-hard-code: Auth.js hanya mempercayai Host di Vercel, atau bila AUTH_URL / AUTH_TRUST_HOST diset.
-  session: { strategy: "jwt", maxAge: 8 * 60 * 60, updateAge: 30 * 60 },
+  // JWT hanya membawa id sesi; keabsahan sesi (logout, pencabutan, idle 30 menit, 8 jam mutlak) dicek di tabel sessions.
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SEC, updateAge: 5 * 60 },
+  useSecureCookies: secureCookies,
+  cookies: {
+    sessionToken: { name: secureCookies ? "__Host-spbe.sid" : "spbe.sid", options: cookieOptions },
+    csrfToken: { name: secureCookies ? "__Host-spbe.csrf" : "spbe.csrf", options: cookieOptions },
+    callbackUrl: { name: secureCookies ? "__Host-spbe.callback" : "spbe.callback", options: cookieOptions },
+  },
   pages: { signIn: "/login" },
   providers: [
     Credentials({
@@ -113,16 +129,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         await clear(emailIpKey);
-        if (user.id !== demoAdmin.id) {
-          // Hash lama (biaya < BCRYPT_COST) dinaikkan diam-diam selagi sandi asli tersedia.
-          const rehash = bcrypt.getRounds(user.password_hash) < BCRYPT_COST ? await hashPassword(password) : null;
-          await getDb()
-            ?.query("update users set last_login_at = now(), password_hash = coalesce($2, password_hash) where id = $1", [user.id, rehash])
-            .catch(() => undefined);
-          await logAuthEvent("login", { userId: user.id, email, ip });
+        if (user.id === demoAdmin.id) return { id: user.id, name: user.name, email: user.email, role: user.role };
+        // Tanpa baris sesi tidak ada login (gagal-tertutup; jalankan migrasi 022 sebelum deploy).
+        let sid: string;
+        try {
+          sid = await createSession(user.id, { ip, userAgent: request.headers.get("user-agent") });
+        } catch (error) {
+          console.error("[auth] Gagal membuat sesi (jalankan migrasi 022):", error instanceof Error ? error.message : error);
+          throw new ServiceUnavailable();
         }
+        // Hash lama (biaya < BCRYPT_COST) dinaikkan diam-diam selagi sandi asli tersedia.
+        const rehash = bcrypt.getRounds(user.password_hash) < BCRYPT_COST ? await hashPassword(password) : null;
+        await getDb()
+          ?.query("update users set last_login_at = now(), password_hash = coalesce($2, password_hash) where id = $1", [user.id, rehash])
+          .catch(() => undefined);
+        await logAuthEvent("login", { userId: user.id, email, ip });
 
-        return { id: user.id, name: user.name, email: user.email, role: user.role, opdId: user.opd_id };
+        return { id: user.id, name: user.name, email: user.email, role: user.role, opdId: user.opd_id, sid };
       },
     }),
   ],
@@ -132,8 +155,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id!;
         token.role = user.role;
         token.opdId = user.opdId;
-        // Waktu masuk (ms): sesi yang terbit sebelum sandi diganti/di-reset dicabut di lib/access.ts.
-        token.authAt = Date.now();
+        token.sid = user.sid;
       }
       return token;
     },
@@ -141,8 +163,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.id = token.id;
       session.user.role = token.role;
       session.user.opdId = token.opdId;
-      session.user.authAt = token.authAt;
+      // Id sesi bukan rahasia tersendiri: tanpa JWT bertanda tangan (cookie HttpOnly) ia tidak memberi akses apa pun.
+      session.user.sid = token.sid;
       return session;
+    },
+  },
+  events: {
+    // Logout mencabut sesi di server: JWT yang disalin/dicuri sebelumnya ikut tidak berlaku.
+    async signOut(message) {
+      const token = "token" in message ? message.token : null;
+      if (!token?.sid) return;
+      await revokeSession(token.sid).catch((error) => console.error("[auth] Gagal mencabut sesi:", error));
+      await logAuthEvent("logout", { userId: token.id });
     },
   },
 });
