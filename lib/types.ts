@@ -1,6 +1,5 @@
-export type Role = "operator_opd" | "organisasi" | "validator_data" | "validator_aplikasi" | "validator_infrastruktur" | "validator_keamanan" | "admin" | "pimpinan" | "superadmin";
+export type Role = "operator_opd" | "organisasi" | "validator_data" | "validator_aplikasi" | "validator_infrastruktur" | "validator_keamanan" | "operator_diskominfo" | "admin" | "pimpinan" | "superadmin";
 export type SubmissionStatus = "draft" | "submitted" | "verified" | "approved" | "rejected" | "archived";
-export type RoadmapStatus = "belum_mulai" | "berjalan" | "selesai";
 export type Service = { id:string; name:string; opd:string; purpose:string; function:string; rab:string; ral:string; method:string; target:string; benefit:string; risk:string; mitigation:string; processBusiness:string; status:SubmissionStatus; period:string; updatedAt:string };
 export type Probis = { id:string; name:string; uraian:string; /** Kode Perangkat Daerah. */ pd:string; status:"new"|"upgrade"|"as_is"; period:string; sasaran:string; iku:string; rab1:string; rab2:string; rab3:string; /** Kode RAB L4/L5 terdaftar (bila ada). */ rab4?:string|null; rab5?:string|null };
 
@@ -302,3 +301,43 @@ export type KeamananRecord = Omit<KegiatanKeamanan, "id" | "opd"> & {
   updatedAt: string;
   isSample: boolean;
 };
+
+/** Kegiatan Peta Rencana di dashboard publik (target arsitektur per tahun). */
+export type Rencana = {
+  /** ID kegiatan (GSK-PRN …). */
+  id: string;
+  /** Nama kegiatan. */
+  name: string;
+  /** Kode PD pelaksana. */
+  opd: string;
+  period: string;
+  year: number;
+  sasaran: string;
+  inisiatif: string | null;
+  muatan: "aplikasi" | "layanan" | "data" | "infrastruktur" | "keamanan" | "tata_kelola" | "manajemen" | "audit";
+  program: string | null;
+  target: string | null;
+  jumlah: number;
+  satuan: string;
+  status: "direncanakan" | "berjalan" | "terlaksana" | "ditunda" | "batal";
+  realisasi: string | null;
+  evaluasi: string | null;
+  source: "manual" | "gap" | "usulan_tertunda";
+  sourceRef: string | null;
+  /** ID kegiatan asal bila dialihkan dari tahun/periode sebelumnya. */
+  deferredFrom: string | null;
+};
+
+/** Kegiatan Peta Rencana di CMS (satu baris tabel roadmap_items). */
+export type RencanaRecord = Omit<Rencana, "id" | "opd"> & {
+  id: string;
+  code: string;
+  opdId: string;
+  opdCode: string;
+  opdName: string;
+  updatedAt: string;
+  isSample: boolean;
+};
+
+/** Indikator sasaran beserta target per tahun (kunci = tahun). */
+export type RencanaIndicator = { id: string; period: string; sasaran: string; inisiatif: string | null; indikator: string; targets: Record<string, string> };

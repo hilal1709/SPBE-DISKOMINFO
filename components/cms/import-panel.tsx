@@ -51,6 +51,7 @@ export function ImportPanel<R extends PanelRow>({
   preview: previewImport,
   commit: commitImport,
   refColumn,
+  statusChoice = true,
 }: {
   canImport: boolean;
   canExport: boolean;
@@ -59,6 +60,8 @@ export function ImportPanel<R extends PanelRow>({
   commit: (rows: R[], options: { status: "draft" | "submitted"; update: boolean }) => Promise<ActionResult<Saved>>;
   /** Kolom referensi di pratinjau (mis. RAB 3 / RAL 3). */
   refColumn: { header: string; cell: (row: R) => React.ReactNode; search: (row: R) => string };
+  /** Pilihan draf/ajukan; domain tanpa alur verifikasi (Peta Rencana) tidak memakainya. */
+  statusChoice?: boolean;
 }) {
   const [preview, setPreview] = useState<Preview<R> | null>(null);
   const [status, setStatus] = useState<"draft" | "submitted">("draft");
@@ -203,16 +206,18 @@ export function ImportPanel<R extends PanelRow>({
                   ]}
                 />
                 <Card data-reveal className="flex-row flex-wrap items-center gap-4 p-4">
-                  <Segmented
-                    label="Status awal"
-                    className="w-auto"
-                    value={status}
-                    onChange={setStatus}
-                    options={[
-                      { value: "draft", label: "Simpan sebagai draf" },
-                      { value: "submitted", label: "Langsung ajukan" },
-                    ]}
-                  />
+                  {statusChoice && (
+                    <Segmented
+                      label="Status awal"
+                      className="w-auto"
+                      value={status}
+                      onChange={setStatus}
+                      options={[
+                        { value: "draft", label: "Simpan sebagai draf" },
+                        { value: "submitted", label: "Langsung ajukan" },
+                      ]}
+                    />
+                  )}
                   <Label className="flex items-center gap-2 text-sm font-normal">
                     <Checkbox checked={update} onCheckedChange={(v) => setUpdate(v === true)} />
                     Perbarui {copy.noun} dengan ID yang sudah ada

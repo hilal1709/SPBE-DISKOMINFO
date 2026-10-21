@@ -9,6 +9,7 @@ import * as aplikasiRepo from "@/lib/aplikasi/cms-repo";
 import * as raaRepo from "@/lib/aplikasi/raa";
 import * as infraRepo from "@/lib/infrastruktur/cms-repo";
 import * as keamananRepo from "@/lib/keamanan/cms-repo";
+import * as rencanaRepo from "@/lib/peta-rencana/cms-repo";
 import * as raiRepo from "@/lib/infrastruktur/rai";
 import * as dataRepo from "@/lib/data/cms-repo";
 import * as radRepo from "@/lib/data/rad";
@@ -226,7 +227,7 @@ export async function clearSamples(): Promise<ActionResult<{ removed: number }>>
     const actor = await currentActor();
     if (!can.managePeriods(actor)) throw new Error("Hanya tim Diskominfo yang dapat menghapus data contoh.");
     // Infrastruktur, aplikasi, data & layanan contoh dihapus dulu: tautannya ke probis contoh ikut terlepas.
-    const removed = (await keamananRepo.clearSamples()) + (await infraRepo.clearSamples()) + (await aplikasiRepo.clearSamples()) + (await dataRepo.clearSamples()) + (await layananRepo.clearSamples()) + (await repo.clearSamples());
+    const removed = (await rencanaRepo.clearSamples()) + (await keamananRepo.clearSamples()) + (await infraRepo.clearSamples()) + (await aplikasiRepo.clearSamples()) + (await dataRepo.clearSamples()) + (await layananRepo.clearSamples()) + (await repo.clearSamples());
     refresh();
     return { ok: true, data: { removed } };
   } catch (error) {

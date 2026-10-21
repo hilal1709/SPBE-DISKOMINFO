@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Add01Icon, ArrowRight01Icon, FileImportIcon } from "@hugeicons/core-free-icons";
+import { Add01Icon, ArrowRight01Icon, FileImportIcon, Target02Icon } from "@hugeicons/core-free-icons";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { Segmented } from "@/components/blocks/segmented";
 import { StatCard } from "@/components/blocks/stat-card";
@@ -13,6 +13,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { can, reviewTeam, type Actor } from "@/lib/permissions";
+import type { RencanaStatus } from "@/lib/peta-rencana/muatan";
 import type { SubmissionStatus } from "@/lib/types";
 
 type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan" };
@@ -51,6 +52,15 @@ const dotTone: Record<SubmissionStatus, string> = {
   archived: "bg-muted-foreground/40",
 };
 
+/** Kegiatan Peta Rencana periode aktif yang perlu diperbarui pengelolanya. */
+function rencanaSteps(actor: Actor, rencana: { counts: Partial<Record<RencanaStatus, number>> } | null | undefined) {
+  if (!rencana || !can.manageRencana(actor)) return [];
+  const list: { text: string; href: string; label: string }[] = [];
+  if (rencana.counts.berjalan) list.push({ text: `${rencana.counts.berjalan} kegiatan peta rencana sedang berjalan; perbarui realisasi dan catatan evaluasinya.`, href: "/cms/peta-rencana", label: "Perbarui" });
+  if (rencana.counts.ditunda) list.push({ text: `${rencana.counts.ditunda} kegiatan peta rencana ditunda.`, href: "/cms/peta-rencana", label: "Tinjau" });
+  return list;
+}
+
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
 /** Beranda CMS: ringkasan status per domain dalam cakupan pengguna, tindakan berikutnya, dan aktivitas terbaru. */
@@ -62,6 +72,7 @@ export function CmsHome({
   aplikasi,
   infrastruktur,
   keamanan,
+  rencana,
   recent,
 }: {
   actor: Actor;
@@ -71,6 +82,8 @@ export function CmsHome({
   aplikasi: Summary;
   infrastruktur: Summary;
   keamanan: Summary;
+  /** Ringkasan Peta Rencana periode aktif (status pelaksanaan), bila tersedia. */
+  rencana?: { counts: Partial<Record<RencanaStatus, number>> } | null;
   recent: Activity[];
 }) {
   const timeline = useRef<HTMLOListElement>(null);
@@ -88,7 +101,7 @@ export function CmsHome({
   );
 
   // Maksimal tiga tindakan terpenting dari semua domain.
-  const next = [...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan), ...steps(actor, "data", data), ...steps(actor, "aplikasi", aplikasi), ...steps(actor, "infrastruktur", infrastruktur), ...steps(actor, "keamanan", keamanan)].slice(0, 3);
+  const next = [...rencanaSteps(actor, rencana), ...steps(actor, "probis", probis), ...steps(actor, "layanan", layanan), ...steps(actor, "data", data), ...steps(actor, "aplikasi", aplikasi), ...steps(actor, "infrastruktur", infrastruktur), ...steps(actor, "keamanan", keamanan)].slice(0, 3);
 
   return (
     <Reveal className="grid gap-5">
@@ -134,6 +147,12 @@ export function CmsHome({
               ))
             ) : (
               <p className="text-sm text-muted-foreground">Tidak ada tindakan yang tertunda.</p>
+            )}
+            {can.manageRencana(actor) && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <QuickLink tone="bg-brand-teal" href="/cms/peta-rencana/baru" icon={Add01Icon} title="Tambah kegiatan rencana" text="Target arsitektur per tahun" />
+                <QuickLink tone="bg-brand-yellow" href="/cms/peta-rencana/indikator" icon={Target02Icon} title="Indikator & target" text="Target sasaran tiap tahun" />
+              </div>
             )}
             {can.create(actor) && (
               <div className="grid gap-3 sm:grid-cols-2">

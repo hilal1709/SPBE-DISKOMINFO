@@ -41,6 +41,10 @@ const variants: Record<string, "success" | "warning" | "muted" | "alert" | "acce
   "Instansi lain": "info",
   "Pihak ketiga": "alert",
   Berlaku: "success",
+  Direncanakan: "info",
+  Terlaksana: "success",
+  Ditunda: "warning",
+  Batal: "alert",
 };
 
 /** Varian badge untuk token warna kategori (sama dengan warna seri grafiknya). */

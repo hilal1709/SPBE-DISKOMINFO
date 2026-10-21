@@ -14,4 +14,5 @@ export function refresh() {
   revalidatePath("/aplikasi");
   revalidatePath("/infrastruktur");
   revalidatePath("/keamanan");
+  revalidatePath("/peta-rencana");
 }

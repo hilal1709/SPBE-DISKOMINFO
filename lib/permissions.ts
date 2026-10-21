@@ -52,6 +52,8 @@ export const can = {
     diskominfoAdmins.includes(a.role) || a.role === "validator_data" || (kind === "raa" && a.role === "validator_aplikasi") || (kind === "rai" && a.role === "validator_infrastruktur"),
   /** Dashboard Keamanan (wajib login): tim Diskominfo dan pimpinan, bukan operator OPD maupun Bagian Organisasi. */
   viewKeamanan: (a: Actor) => !["operator_opd", "organisasi"].includes(a.role),
+  /** Pengelola gap analysis & peta rencana: Diskominfo (Admin Operator) dan tim Diskominfo. */
+  manageRencana: (a: Actor) => a.role === "operator_diskominfo" || diskominfoAdmins.includes(a.role),
   /** Operator wajib memilih OPD-nya sendiri; peran lain bebas memilih. */
   lockedOpd: (a: Actor) => (a.role === "operator_opd" ? a.opdId : null),
   /** Boleh bertindak pada tahap ini? */

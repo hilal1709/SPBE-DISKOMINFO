@@ -137,7 +137,9 @@ export async function deletePeriod(id: string) {
             (select count(*)::int from services s where s.period_id = ap.id) as services,
             (select count(*)::int from datasets d where d.period_id = ap.id) as datasets,
             (select count(*)::int from applications a where a.period_id = ap.id) as applications,
-            (select count(*)::int from infrastructures i where i.period_id = ap.id) as infrastructures
+            (select count(*)::int from infrastructures i where i.period_id = ap.id) as infrastructures,
+            (select count(*)::int from security_activities sa where sa.period_id = ap.id) as security,
+            (select count(*)::int from roadmap_items ri where ri.period_id = ap.id) as roadmap
      from architecture_periods ap where ap.id = $1`,
     [id],
   );
@@ -148,5 +150,7 @@ export async function deletePeriod(id: string) {
   if (rows[0].datasets > 0) throw new Error(`Periode masih dipakai ${rows[0].datasets} data.`);
   if (rows[0].applications > 0) throw new Error(`Periode masih dipakai ${rows[0].applications} aplikasi.`);
   if (rows[0].infrastructures > 0) throw new Error(`Periode masih dipakai ${rows[0].infrastructures} komponen infrastruktur.`);
+  if (rows[0].security > 0) throw new Error(`Periode masih dipakai ${rows[0].security} kegiatan keamanan.`);
+  if (rows[0].roadmap > 0) throw new Error(`Periode masih dipakai ${rows[0].roadmap} kegiatan peta rencana.`);
   await db().query("delete from architecture_periods where id = $1", [id]);
 }

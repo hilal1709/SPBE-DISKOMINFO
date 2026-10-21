@@ -1,7 +1,7 @@
 import {
   Calendar03Icon, CheckListIcon, CheckmarkBadge01Icon, ComputerIcon, CustomerService01Icon, DashboardSquare01Icon,
   Database01Icon, FileImportIcon, FlowConnectionIcon, GitCompareIcon, Layers01Icon, ListViewIcon, Route01Icon,
-  ServerStack01Icon, Settings02Icon, ShieldKeyIcon, TaskAdd01Icon, TaskDone01Icon, UserGroupIcon,
+  ServerStack01Icon, Settings02Icon, ShieldKeyIcon, Target02Icon, TaskAdd01Icon, TaskDone01Icon, UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@/components/icon";
 import type { Role } from "@/lib/types";
@@ -45,6 +45,9 @@ export const publicNav: NavItem[] = [
 export const portalSections: Record<string, string> = {
   "/katalog": "Katalog Layanan",
 };
+
+/** Pengelola peta rencana (Detailing Requirement: Diskominfo Admin Operator). */
+const planners: Role[] = ["operator_diskominfo", "admin", "superadmin"];
 
 const soon = (slug: string, label: string, icon: IconSvgElement, description: string): NavItem => ({ href: `/cms/segera/${slug}`, label, icon, section: label, soon: true, description });
 
@@ -122,7 +125,10 @@ export const cmsNav: NavEntry[] = [
     icon: TaskDone01Icon,
     children: [
       soon("gap-analysis", "Gap Analysis", GitCompareIcon, "Analisis kesenjangan AS-IS dan target"),
-      soon("peta-rencana", "Peta Rencana", Route01Icon, "Target arsitektur per tahun"),
+      { href: "/cms/peta-rencana", label: "Peta Rencana", icon: Route01Icon, section: "Peta Rencana", description: "Kegiatan target arsitektur per tahun" },
+      { href: "/cms/peta-rencana/baru", label: "Tambah Kegiatan", icon: TaskAdd01Icon, section: "Tambah Kegiatan Rencana", description: "Isi kegiatan rencana baru", roles: planners },
+      { href: "/cms/peta-rencana/indikator", label: "Indikator & Target", icon: Target02Icon, section: "Indikator Peta Rencana", description: "Target indikator sasaran per tahun", roles: planners },
+      { href: "/cms/peta-rencana/impor", label: "Impor & Ekspor", icon: FileImportIcon, section: "Impor & Ekspor Peta Rencana", description: "Unggah atau unduh peta rencana", roles: planners },
     ],
   },
   {

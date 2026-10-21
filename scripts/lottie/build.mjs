@@ -578,9 +578,52 @@ function securityShield() {
   });
 }
 
+/* 15. Peta rencana — jalan berkelok tergambar, tonggak tahunan bermunculan berurutan, penanda bergerak menuju bendera target. */
+function roadmap() {
+  const frames = 180;
+  const road = curve([[26, 132, 0, 0, 34, -6], [92, 108, -30, 10, 30, -10], [148, 116, -26, 0, 30, 0], [212, 52, 4, 34, 0, 0]]);
+  const drawn = trim(0, anim([[0, 0], [4, 0], [52, 100, ease.inOut], [frames, 100]]));
+  // Pin tonggak: kepala bulat + ekor runcing, ujung ekor tepat di jalan.
+  const pin = (at, color, t) =>
+    layer("tonggak", [
+      group([ellipse(7, 7, [0, -22]), fill(c.white)]),
+      group([path([[-9, -20], [0, 0], [9, -20]], true), ellipse(20, 20, [0, -22]), fill(color), stroke(c.charcoal, 2)]),
+    ], {
+      p: at,
+      s: anim([[0, [0, 0]], [t, [0, 0]], [t + 14, [100, 100], ease.back], [156, [100, 100]], [166, [0, 0]], [frames, [0, 0]]]),
+    });
+  const stops = [[56, 122], [92, 108], [148, 116], [196, 86]];
+  return composition("roadmap", {
+    w: 240, h: 160, frames,
+    layers: [
+      layer("blob", group([ellipse(224, 144), fill(c.amberPale)]), { p: [120, 82], s: pingPong([100, 100], [104, 104], frames) }),
+      layer("bayangan", group([ellipse(170, 10), fill(c.navy, 8)]), { p: [120, 146] }),
+      layer("jalan", [
+        group([road, drawn, stroke(c.white, 2, { dash: [6, 6] })]),
+        group([road, drawn, stroke(c.charcoal, 12)]),
+      ], { o: anim([[0, 100], [158, 100], [172, 0], [frames, 0]], ease.linear) }),
+      pin(stops[0], c.teal, 26),
+      pin(stops[1], c.yellow, 42),
+      pin(stops[2], c.amber, 58),
+      pin(stops[3], c.orange, 74),
+      layer("bendera", [
+        group([path([[0, 0], [22, 6], [0, 13]], true), fill(c.teal), stroke(c.charcoal, 2)], { p: [0, -36], r: pingPong(0, -6, 40, 100) }),
+        group([path([[0, 0], [0, -36]]), stroke(c.charcoal, 3)]),
+      ], {
+        p: [212, 54],
+        s: anim([[0, [0, 0]], [88, [0, 0]], [102, [100, 100], ease.back], [156, [100, 100]], [166, [0, 0]], [frames, [0, 0]]]),
+      }),
+      layer("penanda", group([ellipse(12, 12), fill(c.yellow), stroke(c.charcoal, 2)]), {
+        p: anim([[0, [26, 132]], [100, [26, 132]], [112, [56, 120], ease.inOut], [122, [92, 106], ease.inOut], [134, [148, 114], ease.inOut], [144, [196, 84], ease.inOut], [152, [210, 56], ease.inOut], [frames, [210, 56]]]),
+        o: anim([[0, 0], [98, 0], [102, 100], [154, 100], [160, 0], [frames, 0]], ease.linear),
+      }),
+    ],
+  });
+}
+
 const builds = {
   loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty,
-  "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem, "data-center": dataCenter, "security-shield": securityShield,
+  "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem, "data-center": dataCenter, "security-shield": securityShield, roadmap,
 };
 for (const [name, build] of Object.entries(builds)) {
   const json = JSON.stringify(build());

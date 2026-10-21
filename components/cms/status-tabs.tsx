@@ -11,6 +11,12 @@ const tones: Record<string, { ring: string; fill: string }> = {
   approved: { ring: "border-brand-teal", fill: "data-active:bg-brand-teal data-active:text-on-brand" },
   rejected: { ring: "border-brand-orange", fill: "data-active:bg-brand-orange data-active:text-on-brand" },
   review: { ring: "border-brand-amber", fill: "data-active:bg-brand-amber data-active:text-on-brand" },
+  // Status pelaksanaan Peta Rencana.
+  direncanakan: { ring: "border-brand-sky", fill: "data-active:bg-brand-sky data-active:text-on-brand" },
+  berjalan: { ring: "border-brand-amber", fill: "data-active:bg-brand-amber data-active:text-on-brand" },
+  terlaksana: { ring: "border-brand-teal", fill: "data-active:bg-brand-teal data-active:text-on-brand" },
+  ditunda: { ring: "border-brand-yellow", fill: "data-active:bg-brand-yellow data-active:text-on-brand" },
+  batal: { ring: "border-brand-orange", fill: "data-active:bg-brand-orange data-active:text-on-brand" },
 };
 
 /** Tab status daftar CMS berbentuk pil bergaris warna status; pil aktif terisi penuh (pola pil filter referensi). */
