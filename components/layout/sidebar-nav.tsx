@@ -148,8 +148,8 @@ export function SidebarNav({
   return (
     <nav ref={nav} aria-label="Navigasi utama" className="relative grid gap-1" onPointerLeave={() => hover(null)}>
       <span ref={highlight} aria-hidden className={cn("pointer-events-none absolute top-0 left-0 rounded-lg opacity-0", tone === "dark" ? "bg-panel-accent" : "bg-sidebar-accent")} />
-      {items.map((entry, i) => (
-        <div key={isGroup(entry) ? entry.label : entry.href} data-aos="fade-blur" data-aos-delay={Math.min(i * 40, 400)} data-aos-offset="0">
+      {items.map((entry) => (
+        <div key={isGroup(entry) ? entry.label : entry.href}>
           {isGroup(entry) ? <Group group={entry} {...shared} /> : <ItemLink item={entry} {...shared} />}
         </div>
       ))}

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Logout01Icon, Menu01Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { logout } from "@/app/actions/auth";
@@ -66,6 +66,25 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
   const current = activeItem(flattenNav(cmsNav), pathname);
   const section = current?.section ?? "CMS";
 
+  // Sidebar tidak boleh terbuka dalam keadaan tergulir (mis. akibat scroll-into-view Next saat redirect login):
+  // setelah navigasi, gulirkan hanya rail ini agar menu aktif terlihat, atau ke atas bila menu aktif sudah di atas.
+  const rail = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = rail.current;
+    if (!el) return;
+    const fit = () => {
+      const link = el.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!link) return void (el.scrollTop = 0);
+      const box = el.getBoundingClientRect();
+      const at = link.getBoundingClientRect();
+      if (at.top < box.top + 120) el.scrollTop = Math.max(0, el.scrollTop - (box.top + 120 - at.top));
+      else if (at.bottom > box.bottom - 24) el.scrollTop += at.bottom - box.bottom + 24;
+    };
+    fit();
+    const frame = requestAnimationFrame(() => requestAnimationFrame(fit));
+    return () => cancelAnimationFrame(frame);
+  }, [pathname]);
+
   // Modal, sheet, dan toast dirender di luar shell (portal ke <body>), jadi tema CMS juga dipasang di <html>.
   useEffect(() => {
     const root = document.documentElement;
@@ -78,7 +97,7 @@ export function CmsShell({ user, notice, children }: { user: CmsUser; notice?: R
   return (
     <div data-theme="cms" className="min-h-svh bg-background lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
       <aside className="hidden bg-sidebar lg:block">
-        <div className="sticky top-0 h-svh overflow-y-auto overscroll-contain">
+        <div ref={rail} className="sticky top-0 h-svh overflow-y-auto overscroll-contain">
           <Sidebar user={user} />
         </div>
       </aside>
