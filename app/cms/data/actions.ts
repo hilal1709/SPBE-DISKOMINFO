@@ -1,8 +1,10 @@
 "use server";
+import { assertUploadFile } from "@/lib/security/upload";
+import { arg, idSchema, importOptions, importRows, isValid, opdCode, periodName, reviewArgs, saveOptions } from "@/lib/security/schemas";
 import { suggestData as suggest, type DataSuggestion } from "@/lib/ai/data-suggest";
 import { can, currentActor, reviewTeam, stageOf, reviewTarget } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
-import { assertAiInput, assertAiQuota } from "@/lib/security/rate-limit";
+import { assertAiInput, assertAiQuota, assertImportQuota } from "@/lib/security/rate-limit";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { resolveSecurity } from "@/lib/keamanan/link";
 import * as repo from "@/lib/data/cms-repo";
@@ -30,6 +32,7 @@ async function assertOpd(opdCode: string) {
 }
 
 export async function saveData(input: DataInput, options: { id?: string; submit: boolean }): Promise<ActionResult<{ id: string }>> {
+  if (!isValid(saveOptions, options)) return { ok: false, error: "Data tidak valid." };
   const parsed = makeDataInput((await radFor())(input.period)).safeParse(input);
   if (!parsed.success) {
     const fields = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
@@ -56,6 +59,7 @@ export async function saveData(input: DataInput, options: { id?: string; submit:
 
 export async function deleteData(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     const actor = await currentActor();
     const current = await repo.getData(id);
     if (!current) throw new Error("Data tidak ditemukan.");
@@ -74,6 +78,7 @@ export async function deleteData(id: string): Promise<ActionResult> {
  */
 export async function reviewData(id: string, decision: "submit" | "verify" | "validate" | "reject", note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
   try {
+    ({ id, decision, note } = arg(reviewArgs, { id, decision, note }));
     const actor = await currentActor();
     const current = await repo.getData(id);
     if (!current) throw new Error("Data tidak ditemukan.");
@@ -107,6 +112,7 @@ export async function reviewData(id: string, decision: "submit" | "verify" | "va
 }
 
 export async function getDataReviews(id: string) {
+  if (!isValid(idSchema, id)) return [];
   const actor = await currentActor();
   const current = await repo.getData(id);
   if (!current || !can.read(actor, current.opdId)) return [];
@@ -116,6 +122,8 @@ export async function getDataReviews(id: string) {
 /** Pilihan dependensi: probis OPD wali data dan layanan pada periode yang sama. */
 export async function listDependencyOptions(opd: string, period: string): Promise<ActionResult<Awaited<ReturnType<typeof repo.dependencyOptions>>>> {
   try {
+    arg(opdCode, opd);
+    arg(periodName, period);
     const actor = await currentActor();
     const locked = can.lockedOpd(actor);
     if (locked && (await opdIdOf(opd)) !== locked) throw new Error("Anda hanya dapat melihat data OPD Anda.");
@@ -159,9 +167,11 @@ async function importContext(codes: string[]) {
 export async function previewDataImport(form: FormData): Promise<ActionResult<DataImportResult>> {
   try {
     // Izin dicek sebelum berkas dibaca: mengurai .xlsx/.zip itu berat dan tidak boleh dipicu tanpa hak impor.
-    if (!can.import(await currentActor())) throw new Error("Peran Anda tidak dapat mengimpor data.");
+    const actor = await currentActor();
+    if (!can.import(actor)) throw new Error("Peran Anda tidak dapat mengimpor data.");
+    await assertImportQuota(actor.id);
     const file = form.get("file");
-    if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx atau .zip.");
+    assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
     return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };
@@ -173,6 +183,9 @@ export async function previewDataImport(form: FormData): Promise<ActionResult<Da
 /** Langkah 2 impor: simpan baris tanpa galat. Validasi diulang di server. */
 export async function commitDataImport(rows: DataImportRow[], options: { status: "draft" | "submitted"; update: boolean }): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   try {
+    arg(importRows, rows);
+    arg(importOptions, options);
+    await assertImportQuota((await currentActor()).id);
     const [{ actor, ctx }, refs] = await Promise.all([importContext(rows.map((r) => r.code).filter((c): c is string => !!c)), securityRefs()]);
     const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({

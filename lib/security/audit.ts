@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 
-export type AuthEvent = "login" | "login_failed" | "login_locked" | "password_changed" | "password_reset" | "password_change_failed";
+export type AuthEvent = "login" | "login_failed" | "login_locked" | "password_changed" | "password_reset" | "password_change_failed"
+  | "logout" | "session_revoked" | "sessions_revoked_others";
 
 /** Jejak audit autentikasi (migrasi 020). Best-effort: kegagalan menulis log tidak boleh menggagalkan login/ganti sandi. */
 export async function logAuthEvent(event: AuthEvent, { userId, email, ip }: { userId?: string | null; email?: string | null; ip?: string | null }) {

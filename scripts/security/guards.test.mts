@@ -6,7 +6,9 @@ import { zipSync } from "fflate";
 import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
 import { defaultsFor, reviewTarget, type Actor } from "@/lib/permissions";
 import { assertAiInput } from "@/lib/security/rate-limit";
-import { readWorkbook, unzipSafe, uploadBudget } from "@/lib/security/upload";
+import { arg, idSchema, importOptions, importRows, reviewArgs, roleKey, saveOptions, yearSchema } from "@/lib/security/schemas";
+import { sessionHash } from "@/lib/security/session";
+import { MAX_UPLOAD_BYTES, assertUploadFile, readWorkbook, unzipSafe, uploadBudget } from "@/lib/security/upload";
 
 const actor = (role: "operator_opd" | "superadmin", opdId: string | null = "opd-a"): Actor =>
   ({ id: "u", name: "Uji", role, roleName: role, opdId, demo: false, perms: defaultsFor(role) });
@@ -56,4 +58,32 @@ test("isian AI dibatasi", () => {
   assert.throws(() => assertAiInput({ name: "ok", note: "x".repeat(2001) }));
   assert.throws(() => assertAiInput({ name: ["array"] }));
   assert.throws(() => assertAiInput(undefined));
+});
+
+test("argumen server action divalidasi sebelum ke database", () => {
+  const id = "3f2b8c1e-9d4a-4e6b-8a7c-1b2c3d4e5f60";
+  assert.equal(arg(idSchema, id), id);
+  for (const bad of ["1 or 1=1", "", null, 42, `${id}'--`]) assert.throws(() => arg(idSchema, bad), /Data tidak valid/);
+  assert.throws(() => arg(reviewArgs, { id, decision: "approve" }));
+  assert.throws(() => arg(reviewArgs, { id, decision: "reject", note: "x".repeat(1001) }), /1\.000/);
+  assert.deepEqual(arg(reviewArgs, { id, decision: "reject", note: "  alasan  " }), { id, decision: "reject", note: "alasan" });
+  assert.throws(() => arg(importOptions, { status: "approved", update: false }));
+  assert.throws(() => arg(saveOptions, { submit: "true" }));
+  assert.throws(() => arg(importRows, Array.from({ length: 5001 }, () => ({}))), /5\.000/);
+  assert.throws(() => arg(yearSchema, 1999.5));
+  assert.equal(arg(roleKey, "kustom_auditor_2"), "kustom_auditor_2");
+  assert.throws(() => arg(roleKey, "superadmin' or '1"));
+});
+
+test("unggahan di atas 12 MB ditolak sebelum dibaca", () => {
+  assert.throws(() => assertUploadFile(null, "Pilih berkas"), /Pilih berkas/);
+  assert.throws(() => assertUploadFile(new File([new Uint8Array(MAX_UPLOAD_BYTES + 1)], "a.xlsx"), "x"), /12 MB/);
+  assert.doesNotThrow(() => assertUploadFile(new File([new Uint8Array(10)], "a.xlsx"), "x"));
+});
+
+test("hash id sesi deterministik dan tidak sama dengan id aslinya", () => {
+  const sid = "abc";
+  assert.equal(sessionHash(sid), sessionHash(sid));
+  assert.match(sessionHash(sid), /^[a-f0-9]{64}$/);
+  assert.notEqual(sessionHash(sid), sid);
 });

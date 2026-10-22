@@ -1,5 +1,6 @@
 // Uji otorisasi aktif ke build produksi + database UJI (CI atau lokal): login per peran, sapu semua server action,
-// IDOR antar-OPD, halaman Pengaturan, pencabutan sesi, wajib ganti sandi, CSRF, open redirect, rate limit login.
+// IDOR antar-OPD, halaman Pengaturan, sesi server-side (logout, idle, cookie), pencabutan sesi, wajib ganti sandi, CSRF,
+// argumen tidak valid, open redirect, rate limit login.
 // Prasyarat: aplikasi berjalan di BASE_URL, akun uji dari scripts/strix/seed-test-users.mts (strix_runs/akun-uji.txt).
 // Jalankan: BASE_URL=http://localhost:3100 DATABASE_URL=postgres://…@localhost:…/spbe?sslmode=disable tsx scripts/security/authz-probe.mts
 import fs from "node:fs";
@@ -47,7 +48,8 @@ async function login(email: string, password: string, callbackUrl = `${BASE}/cms
     body: new URLSearchParams({ email, password, csrfToken, callbackUrl }),
   });
   cookie = cookieHeader(res, cookie);
-  return { cookie, location: res.headers.get("location") ?? "", ok: /session-token=/.test(cookie) };
+  const setCookie = res.headers.getSetCookie().find((c) => /(spbe\.sid|session-token)=/.test(c)) ?? "";
+  return { cookie, setCookie, location: res.headers.get("location") ?? "", ok: /(spbe\.sid|session-token)=/.test(cookie) };
 }
 
 const get = (url: string, cookie?: string) =>
@@ -58,6 +60,13 @@ const denied = (res: Response) => {
   const loc = res.headers.get("location") ?? "";
   return [401, 403, 404].includes(res.status) || (res.status >= 300 && res.status < 400 && !/\/cms(\/|$)/.test(new URL(loc, BASE).pathname));
 };
+
+/**
+ * Seperti `denied`, tetapi juga mengenali redirect yang dikirim di tengah streaming: halaman dengan loading.tsx sudah
+ * berstatus 200 saat currentActor() memanggil redirect(), jadi pengalihan ke /login atau /akun/sandi ada di body RSC.
+ */
+const blocked = async (res: Response) =>
+  denied(res) || /NEXT_REDIRECT;(replace|push);\/(login|akun\/sandi)/.test(await res.text());
 
 // ---- daftar rute & server action dari build -------------------------------------------------------------------
 const distDir = path.join(root, process.env.NEXT_DIST_DIR ?? ".next");
@@ -82,16 +91,16 @@ const actions = (() => {
   });
 })();
 
-async function callAction(action: (typeof actions)[number], cookie?: string, origin = BASE) {
+async function callAction(action: (typeof actions)[number], cookie?: string, origin: string | null = BASE, body = "[]") {
   const res = await fetch(`${BASE}${action.route}`, {
     method: "POST",
     redirect: "manual",
-    headers: { "next-action": action.id, "content-type": "text/plain;charset=UTF-8", accept: "text/x-component", origin, ...(cookie ? { cookie } : {}) },
-    body: "[]",
+    headers: { "next-action": action.id, "content-type": "text/plain;charset=UTF-8", accept: "text/x-component", ...(origin ? { origin } : {}), ...(cookie ? { cookie } : {}) },
+    body,
   });
-  const body = await res.text();
+  const text = await res.text();
   const redirect = res.headers.get("x-action-redirect") ?? res.headers.get("location") ?? "";
-  return { status: res.status, body, redirect };
+  return { status: res.status, body: text, redirect };
 }
 
 const db = new pg.Client({ connectionString: DB_URL, ssl: false });
@@ -142,6 +151,9 @@ try {
     }
   }
 
+  // Sapuan action di atas ikut memanggil logout / cabut sesi, yang kini benar-benar mencabut sesi: masuk ulang.
+  for (const acc of [opA, pimpinan]) acc.cookie = (await login(acc.email, acc.password)).cookie;
+
   // ---- 5. IDOR antar-OPD: operator A membuka rekaman milik OPD operator B -------------------------------------
   const tables: Record<string, string> = {
     aplikasi: "applications", data: "datasets", infrastruktur: "infrastructures", keamanan: "security_activities",
@@ -149,15 +161,19 @@ try {
   };
   for (const [modul, table] of Object.entries(tables)) {
     const { rows } = await db.query(
-      `select t.id from ${table} t join opd o on o.id = t.opd_id where o.code = $1 limit 1`,
+      `select t.id, t.code from ${table} t join opd o on o.id = t.opd_id where o.code = $1 and t.code is not null limit 1`,
       [opB.opd],
-    ).catch(() => ({ rows: [] as { id: string }[] }));
+    ).catch(() => ({ rows: [] as { id: string; code: string }[] }));
     if (!rows[0]) {
       record("IDOR", `/cms/${modul}/[id] milik ${opB.opd}`, "REVIEW", "tidak ada rekaman OPD lain di database uji; tidak teruji");
       continue;
     }
+    // Seperti redirect, notFound() di halaman ber-loading.tsx dikirim di body stream (status 200). Lulus hanya bila
+    // halaman 404 dan kode rekaman OPD lain tidak muncul di respons.
     const res = await get(`/cms/${modul}/${rows[0].id}`, opA.cookie);
-    record("IDOR", `operator ${opA.opd} → /cms/${modul}/<${opB.opd}>`, denied(res) ? "PASS" : "FAIL", String(res.status));
+    const body = await res.text();
+    const hidden = (denied(res) || /NEXT_HTTP_ERROR_FALLBACK;404/.test(body)) && !body.includes(rows[0].code);
+    record("IDOR", `operator ${opA.opd} → /cms/${modul}/<${opB.opd}>`, hidden ? "PASS" : "FAIL", String(res.status));
   }
 
   // ---- 6. CSRF: server action dari origin lain ditolak --------------------------------------------------------
@@ -167,11 +183,67 @@ try {
     record("CSRF", `action dengan Origin asing (${sample.name})`, /"ok":true/.test(r.body) || (r.status === 200 && !/error/i.test(r.body)) ? "FAIL" : "PASS", String(r.status));
   }
 
+  // ---- 6b. CSRF: POST tanpa Origin ditolak proxy (Next sendiri hanya memberi peringatan) ---------------------
+  if (sample) {
+    const r = await callAction(sample, opA.cookie, null);
+    record("CSRF", `action tanpa header Origin (${sample.name})`, r.status === 403 ? "PASS" : "FAIL", String(r.status));
+  }
+
+  // ---- 6c. argumen bukan uuid ditolak terkontrol, tidak sampai ke database ----------------------------------
+  {
+    const del = actions.find((a) => /#delete(Layanan|Data|Aplikasi|Probis)$/.test(a.name));
+    if (del) {
+      const r = await callAction(del, opA.cookie, BASE, JSON.stringify(["1 or 1=1; drop table users"]));
+      record("Validasi server", `id bukan uuid (${del.name})`, /Data tidak valid/.test(r.body) ? "PASS" : "FAIL", `${r.status} ${r.body.slice(0, 120)}`);
+    }
+  }
+
+  // ---- 6d. atribut cookie sesi ---------------------------------------------------------------------------------
+  {
+    const r = await login(opA.email, opA.password);
+    const c = r.setCookie;
+    record("Cookie", "HttpOnly", /;\s*HttpOnly/i.test(c) ? "PASS" : "FAIL", c.split(";").slice(1).join(";"));
+    record("Cookie", "SameSite=Lax/Strict", /;\s*SameSite=(Lax|Strict)/i.test(c) ? "PASS" : "FAIL");
+    if (BASE.startsWith("https://")) {
+      record("Cookie", "Secure + prefiks __Host-", /^__Host-/.test(c) && /;\s*Secure/i.test(c) ? "PASS" : "FAIL");
+    } else {
+      record("Cookie", "Secure + prefiks __Host-", "REVIEW", "BASE_URL http: hanya berlaku di HTTPS (production)");
+    }
+  }
+
+  // ---- 6e. logout mencabut sesi di server: cookie lama yang disalin tidak berlaku lagi -----------------------
+  {
+    const s = await login(opB.email, opB.password);
+    const csrf = await fetch(`${BASE}/api/auth/csrf`, { headers: { cookie: s.cookie } });
+    const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+    const cookie = cookieHeader(csrf, s.cookie);
+    await fetch(`${BASE}/api/auth/signout`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "content-type": "application/x-www-form-urlencoded", cookie, origin: BASE },
+      body: new URLSearchParams({ csrfToken, callbackUrl: BASE }),
+    });
+    const res = await get("/cms", s.cookie);
+    record("Sesi", "cookie lama ditolak setelah logout", (await blocked(res)) ? "PASS" : "FAIL", `${res.status} ${res.headers.get("location") ?? ""}`);
+  }
+
+  // ---- 6f. sesi berakhir setelah 30 menit tidak aktif --------------------------------------------------------
+  {
+    const s = await login(opB.email, opB.password);
+    await db.query(
+      `update sessions set last_seen_at = now() - interval '31 minutes'
+       where id = (select s.id from sessions s join users u on u.id = s.user_id where u.email = $1 order by s.created_at desc limit 1)`,
+      [opB.email],
+    );
+    const res = await get("/cms", s.cookie);
+    record("Sesi", "idle 30 menit → wajib login ulang", (await blocked(res)) ? "PASS" : "FAIL", `${res.status} ${res.headers.get("location") ?? ""}`);
+  }
+
   // ---- 7. pencabutan sesi setelah sandi diganti/di-reset ------------------------------------------------------
   await db.query("update users set password_changed_at = now() + interval '1 second' where email = $1", [opB.email]);
   {
     const res = await get("/cms", opB.cookie);
-    record("Sesi", "sesi lama dicabut setelah sandi diganti", denied(res) ? "PASS" : "FAIL", `${res.status} ${res.headers.get("location") ?? ""}`);
+    record("Sesi", "sesi lama dicabut setelah sandi diganti", (await blocked(res)) ? "PASS" : "FAIL", `${res.status} ${res.headers.get("location") ?? ""}`);
   }
   await db.query("update users set password_changed_at = null where email = $1", [opB.email]);
 
@@ -180,7 +252,7 @@ try {
   await db.query("update users set active = false where email = $1", [opB.email]);
   {
     const res = await get("/cms", fresh.cookie);
-    record("Sesi", "akun dinonaktifkan langsung keluar", denied(res) ? "PASS" : "FAIL", String(res.status));
+    record("Sesi", "akun dinonaktifkan langsung keluar", (await blocked(res)) ? "PASS" : "FAIL", String(res.status));
   }
   await db.query("update users set active = true where email = $1", [opB.email]);
 
@@ -189,7 +261,7 @@ try {
   {
     const res = await get("/cms", pimpinan.cookie);
     const loc = res.headers.get("location") ?? "";
-    record("Sandi sementara", "CMS terkunci sampai sandi diganti", /\/akun\/sandi/.test(loc) || denied(res) ? "PASS" : "FAIL", `${res.status} ${loc}`);
+    record("Sandi sementara", "CMS terkunci sampai sandi diganti", /\/akun\/sandi/.test(loc) || (await blocked(res)) ? "PASS" : "FAIL", `${res.status} ${loc}`);
     const cmsAction = actions.find((a) => a.route.startsWith("/cms") && !/akun/.test(a.name));
     if (cmsAction) {
       const r = await callAction(cmsAction, pimpinan.cookie);
@@ -237,6 +309,7 @@ try {
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, "authz-probe.json"), JSON.stringify(results, null, 2));
 const count = (s: Result["status"]) => results.filter((r) => r.status === s).length;
+const cell = (v: string) => v.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 const md = [
   "# Uji otorisasi (authz-probe)",
   "",
@@ -247,7 +320,7 @@ const md = [
   "| Status | Area | Pemeriksaan | Detail |",
   "|---|---|---|---|",
   ...[...results].sort((a, b) => ["FAIL", "REVIEW", "PASS"].indexOf(a.status) - ["FAIL", "REVIEW", "PASS"].indexOf(b.status))
-    .map((r) => `| ${r.status} | ${r.area} | ${r.check.replace(/\|/g, "\\|")} | ${r.detail.replace(/\|/g, "\\|")} |`),
+    .map((r) => `| ${r.status} | ${r.area} | ${cell(r.check)} | ${cell(r.detail)} |`),
 ].join("\n");
 fs.writeFileSync(path.join(outDir, "authz-probe.md"), md + "\n");
 console.log(`\nFAIL ${count("FAIL")} · REVIEW ${count("REVIEW")} · PASS ${count("PASS")} → ${path.join(outDir, "authz-probe.md")}`);

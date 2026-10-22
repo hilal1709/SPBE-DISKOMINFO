@@ -51,6 +51,18 @@ export async function assertAiQuota(actorId: string | null) {
   if (!result.ok) throw new Error(`Batas saran AI tercapai. Coba lagi dalam ${Math.ceil(result.retryAfterSec / 60)} menit.`);
 }
 
+/** Impor mengurai .xlsx/.zip (berat di CPU & memori): 10 pratinjau/simpan per pengguna tiap 5 menit. */
+export async function assertImportQuota(actorId: string | null) {
+  const result = await hit(`import:${actorId ?? "demo"}`, { limit: 10, windowSec: 5 * 60 });
+  if (!result.ok) throw new Error(`Terlalu banyak impor. Coba lagi dalam ${Math.ceil(result.retryAfterSec / 60)} menit.`);
+}
+
+/** Aksi sensitif pengelolaan akun (buat, reset sandi, ubah status/peran): 30 per pengguna tiap 10 menit. */
+export async function assertAdminQuota(actorId: string | null) {
+  const result = await hit(`admin:${actorId ?? "demo"}`, { limit: 30, windowSec: 10 * 60 });
+  if (!result.ok) throw new Error(`Terlalu banyak perubahan akun. Coba lagi dalam ${Math.ceil(result.retryAfterSec / 60)} menit.`);
+}
+
 /**
  * IP klien untuk pembatas percobaan. Header proxy bisa dipalsukan klien, jadi hanya dipercaya dari proxy yang dikenal:
  * di Vercel (header diisi ulang oleh edge Vercel), atau di server sendiri bila TRUST_PROXY=true dan reverse proxy

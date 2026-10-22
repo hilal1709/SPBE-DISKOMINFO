@@ -166,11 +166,6 @@ export function InfrastrukturForm({
   );
 
   const askAi = () => {
-    if (values.name.trim().length < 2) {
-      setErrors((e) => ({ ...e, name: "Isi nama komponen dulu agar AI punya konteks" }));
-      flash(field("name"));
-      return;
-    }
     startThinking(async () => {
       const request = suggestInfrastruktur({ name: values.name, opd: values.opd, jenis: values.jenis || null, note, period: values.period });
       toast.promise(request.then((r) => (r.ok ? r : Promise.reject(new Error(r.error)))), {
@@ -197,11 +192,6 @@ export function InfrastrukturForm({
   };
 
   const submit = (mode: "draft" | "submit") => {
-    if (!values.jenis) {
-      setErrors((e) => ({ ...e, jenis: "Pilih komponen infrastruktur" }));
-      picker.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
     setSavingMode(mode);
     startSaving(async () => {
       const result = await saveInfrastruktur(values as InfrastrukturInput, { id: record?.id, submit: mode === "submit" });
@@ -421,10 +411,10 @@ export function InfrastrukturForm({
           <Button asChild variant="ghost" className="mr-auto">
             <Link href="/cms/infrastruktur">Batal</Link>
           </Button>
-          <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving || !cfg} onClick={() => submit("draft")}>
+          <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving} onClick={() => submit("draft")}>
             Simpan draf
           </Button>
-          <Button type="button" loading={saving && savingMode === "submit"} disabled={saving || !cfg} onClick={() => submit("submit")}>
+          <Button type="button" loading={saving && savingMode === "submit"} disabled={saving} onClick={() => submit("submit")}>
             {!(saving && savingMode === "submit") && <Icon icon={SentIcon} size={16} />}
             Ajukan verifikasi
           </Button>

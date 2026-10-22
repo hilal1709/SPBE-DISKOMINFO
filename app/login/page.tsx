@@ -68,7 +68,7 @@ export default function Login() {
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Masuk ke akun Anda</h1>
           </div>
 
-          <form ref={form} action={formAction} className="mt-8" data-reveal>
+          <form ref={form} action={formAction} noValidate className="mt-8" data-reveal>
             <Suspense fallback={null}>
               <CallbackField />
             </Suspense>
@@ -86,12 +86,12 @@ export default function Login() {
               )}
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input id="email" name="email" type="email" autoComplete="username" defaultValue={DEMO ? "admin@gresikkab.go.id" : undefined} required />
+                <Input id="email" name="email" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false} defaultValue={DEMO ? "admin@gresikkab.go.id" : undefined} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="password">Kata sandi</FieldLabel>
                 <InputGroup>
-                  <InputGroupInput id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" defaultValue={DEMO ? "admin123" : undefined} required />
+                  <InputGroupInput id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" defaultValue={DEMO ? "admin123" : undefined} />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton size="icon-xs" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}>
                       <Icon icon={showPassword ? ViewOffSlashIcon : ViewIcon} size={16} />

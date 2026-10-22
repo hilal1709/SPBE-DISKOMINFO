@@ -48,11 +48,13 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Data CMS & ekspor tidak boleh disimpan cache bersama/peramban.
-      { source: "/(cms|keamanan|api)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/(cms|keamanan|api|akun)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/(cms|keamanan|login)", headers: [{ key: "Cache-Control", value: "no-store" }] },
     ];
   },
   experimental: {
-    // Impor template arsitektur (.xlsx / .zip) lewat server action.
+    // Impor template arsitektur (.xlsx / .zip) lewat server action. allowedOrigins sengaja tidak diisi: hanya origin
+    // situs sendiri yang boleh memanggil server action (proxy.ts juga menolak POST tanpa Origin).
     serverActions: { bodySizeLimit: "12mb" },
     // Hanya ikon/komponen yang dipakai ikut terbundel (paket barrel besar).
     optimizePackageImports: ["@hugeicons/core-free-icons", "radix-ui"],

@@ -212,7 +212,7 @@ function AccountDialog({
           </Field>
           <Field data-invalid={!!errors.email || undefined}>
             <FieldLabel htmlFor="account-email">Email</FieldLabel>
-            <Input id="account-email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} aria-invalid={!!errors.email || undefined} />
+            <Input id="account-email" type="text" inputMode="email" autoCapitalize="none" spellCheck={false} value={form.email} onChange={(e) => set("email", e.target.value)} aria-invalid={!!errors.email || undefined} />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
           <Field data-invalid={!!errors.role || undefined}>

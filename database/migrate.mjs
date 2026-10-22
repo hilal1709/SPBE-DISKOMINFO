@@ -13,8 +13,9 @@ const env = Object.fromEntries(
 if (process.env.DATABASE_URL) env.DATABASE_URL = process.env.DATABASE_URL;
 if (!env.DATABASE_URL) throw new Error("DATABASE_URL tidak tersedia");
 
-// sslmode=disable di URL (database uji lokal) mematikan TLS.
-const ssl = /sslmode=disable/.test(env.DATABASE_URL) ? false : { rejectUnauthorized: false };
+// sslmode=disable di URL (database uji lokal) mematikan TLS; DATABASE_CA (PEM root Supabase) memverifikasi sertifikat.
+const ca = process.env.DATABASE_CA ?? env.DATABASE_CA;
+const ssl = /sslmode=disable/.test(env.DATABASE_URL) ? false : ca ? { ca: ca.replace(/\\n/g, "\n"), rejectUnauthorized: true } : { rejectUnauthorized: false };
 const client = new pg.Client({ connectionString: env.DATABASE_URL, ssl });
 await client.connect();
 

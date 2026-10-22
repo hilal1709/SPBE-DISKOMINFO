@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Key01Icon, Logout01Icon, Menu01Icon, ViewIcon } from "@hugeicons/core-free-icons";
+import { ComputerPhoneSyncIcon, Key01Icon, Logout01Icon, Menu01Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { logout } from "@/app/actions/auth";
 import { Banner } from "@/components/blocks/banner";
 import { Logo } from "@/components/brand/logo";
@@ -62,6 +62,16 @@ function Sidebar({ user, onNavigate }: { user: CmsUser; onNavigate?: () => void 
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Ganti sandi</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild size="icon" variant="ghost" className="hover:bg-sidebar-accent">
+                  <Link href="/akun/sesi" aria-label="Sesi aktif" onClick={onNavigate}>
+                    <Icon icon={ComputerPhoneSyncIcon} />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Sesi aktif</TooltipContent>
             </Tooltip>
             <form action={logout}>
               <LogoutButton />

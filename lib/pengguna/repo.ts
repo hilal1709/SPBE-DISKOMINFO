@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
+import { SESSION_IDLE_MIN, revokeUserSessions, sessionHash } from "@/lib/security/session";
 import type { Role } from "@/lib/types";
 
 /** Akun CMS (tabel users). Server saja. */
@@ -72,17 +73,30 @@ export async function listOpd(): Promise<OpdOption[]> {
   return rows;
 }
 
-/** Akun sesi beserta label peran kustom, hak akses tersimpan perannya, dan status sandinya (satu query). */
-export async function sessionAccess(id: string) {
+/**
+ * Akun sesi beserta label peran kustom, hak akses tersimpan perannya, status sandinya, dan keabsahan sesinya — satu
+ * round-trip. `session_ok` salah bila sesi tidak ada, dicabut, lewat 8 jam, tidak aktif > 30 menit, atau terbit sebelum
+ * sandi terakhir diganti/di-reset. `last_seen_at` diperbarui paling sering sekali per menit (CTE update tetap dijalankan).
+ */
+export async function sessionAccess(id: string, sessionId: string) {
   const { rows } = await db().query<{
     name: string; role: Role; opd_id: string | null; active: boolean; custom_label: string | null; permissions: string[] | null;
-    must_change_password: boolean; password_changed_at: Date | null;
+    must_change_password: boolean; session_ok: boolean;
   }>(
-    `select u.name, u.role, u.opd_id, coalesce(u.active, true) as active, cr.label as custom_label, ra.permissions,
-            u.must_change_password, u.password_changed_at
+    `with s as (
+       select s.id, (s.revoked_at is null and s.expires_at > now() and s.last_seen_at > now() - make_interval(mins => $3)
+                     and (u.password_changed_at is null or u.password_changed_at <= s.created_at)) as ok,
+              s.last_seen_at < now() - interval '1 minute' as stale
+       from sessions s join users u on u.id = s.user_id
+       where s.id = $2 and s.user_id = $1
+     ), touch as (
+       update sessions set last_seen_at = now() where id = (select id from s where ok and stale)
+     )
+     select u.name, u.role, u.opd_id, coalesce(u.active, true) as active, cr.label as custom_label, ra.permissions,
+            u.must_change_password, coalesce((select ok from s), false) as session_ok
      from users u left join custom_roles cr on cr.key = u.role left join role_access ra on ra.role = u.role
      where u.id = $1`,
-    [id],
+    [id, sessionHash(sessionId), SESSION_IDLE_MIN],
   );
   return rows[0] ?? null;
 }
@@ -125,6 +139,7 @@ export async function updateUser(id: string, v: UserInput) {
 export async function setUserActive(id: string, active: boolean) {
   const { rowCount } = await db().query("update users set active = $2, updated_at = now() where id = $1", [id, active]);
   if (!rowCount) throw new Error("Akun tidak ditemukan.");
+  if (!active) await revokeUserSessions(id);
 }
 
 /** Reset oleh admin: sesi akun itu di semua perangkat dicabut dan sandi sementara wajib diganti saat masuk. */
@@ -135,6 +150,7 @@ export async function resetPassword(id: string) {
     [id, await hashPassword(password)],
   );
   if (!rowCount) throw new Error("Akun tidak ditemukan.");
+  await revokeUserSessions(id);
   return password;
 }
 
@@ -153,6 +169,7 @@ export async function setOwnPassword(id: string, password: string) {
     "update users set password_hash = $2, must_change_password = false, password_changed_at = now(), updated_at = now() where id = $1",
     [id, await hashPassword(password)],
   );
+  await revokeUserSessions(id);
 }
 
 /** Jumlah superadmin aktif selain akun ini (pengaman agar CMS tidak kehilangan superadmin). */
