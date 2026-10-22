@@ -161,15 +161,19 @@ try {
   };
   for (const [modul, table] of Object.entries(tables)) {
     const { rows } = await db.query(
-      `select t.id from ${table} t join opd o on o.id = t.opd_id where o.code = $1 limit 1`,
+      `select t.id, t.code from ${table} t join opd o on o.id = t.opd_id where o.code = $1 and t.code is not null limit 1`,
       [opB.opd],
-    ).catch(() => ({ rows: [] as { id: string }[] }));
+    ).catch(() => ({ rows: [] as { id: string; code: string }[] }));
     if (!rows[0]) {
       record("IDOR", `/cms/${modul}/[id] milik ${opB.opd}`, "REVIEW", "tidak ada rekaman OPD lain di database uji; tidak teruji");
       continue;
     }
+    // Seperti redirect, notFound() di halaman ber-loading.tsx dikirim di body stream (status 200). Lulus hanya bila
+    // halaman 404 dan kode rekaman OPD lain tidak muncul di respons.
     const res = await get(`/cms/${modul}/${rows[0].id}`, opA.cookie);
-    record("IDOR", `operator ${opA.opd} → /cms/${modul}/<${opB.opd}>`, denied(res) ? "PASS" : "FAIL", String(res.status));
+    const body = await res.text();
+    const hidden = (denied(res) || /NEXT_HTTP_ERROR_FALLBACK;404/.test(body)) && !body.includes(rows[0].code);
+    record("IDOR", `operator ${opA.opd} → /cms/${modul}/<${opB.opd}>`, hidden ? "PASS" : "FAIL", String(res.status));
   }
 
   // ---- 6. CSRF: server action dari origin lain ditolak --------------------------------------------------------
