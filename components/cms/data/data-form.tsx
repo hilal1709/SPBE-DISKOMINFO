@@ -122,11 +122,6 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
   );
 
   const askAi = () => {
-    if (values.name.trim().length < 3) {
-      setErrors((e) => ({ ...e, name: "Isi nama data dulu agar AI punya konteks" }));
-      flash(field("name"));
-      return;
-    }
     startThinking(async () => {
       const request = suggestData({ name: values.name, opd: values.opd, note, period: values.period });
       toast.promise(request.then((r) => (r.ok ? r : Promise.reject(new Error(r.error)))), {
@@ -406,7 +401,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
           <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving} onClick={() => submit("draft")}>
             Simpan draf
           </Button>
-          <Button type="button" loading={saving && savingMode === "submit"} disabled={saving || noProbis} onClick={() => submit("submit")}>
+          <Button type="button" loading={saving && savingMode === "submit"} disabled={saving} onClick={() => submit("submit")}>
             {!(saving && savingMode === "submit") && <Icon icon={SentIcon} size={16} />}
             Ajukan verifikasi
           </Button>

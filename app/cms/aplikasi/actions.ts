@@ -1,4 +1,6 @@
 "use server";
+import { assertUploadFile } from "@/lib/security/upload";
+import { arg, idSchema, importOptions, importRows, isValid, opdCode, periodName, reviewArgs, saveOptions } from "@/lib/security/schemas";
 import { suggestAplikasi as suggest, type AplikasiSuggestion } from "@/lib/ai/aplikasi-suggest";
 import { can, currentActor, reviewTeam, stageOf, reviewTarget } from "@/lib/access";
 import * as repo from "@/lib/aplikasi/cms-repo";
@@ -7,7 +9,7 @@ import { readUpload, validateRows, type AplikasiImportResult, type AplikasiImpor
 import { raa } from "@/lib/aplikasi/raa";
 import { makeAplikasiInput, type AplikasiInput } from "@/lib/aplikasi/schema";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
-import { assertAiInput, assertAiQuota } from "@/lib/security/rate-limit";
+import { assertAiInput, assertAiQuota, assertImportQuota } from "@/lib/security/rate-limit";
 import { securityRefs } from "@/lib/keamanan/cms-repo";
 import { resolveSecurity } from "@/lib/keamanan/link";
 import { listData } from "@/lib/data/cms-repo";
@@ -32,6 +34,7 @@ async function assertOpd(opdCode: string) {
 }
 
 export async function saveAplikasi(input: AplikasiInput, options: { id?: string; submit: boolean }): Promise<ActionResult<{ id: string }>> {
+  if (!isValid(saveOptions, options)) return { ok: false, error: "Data tidak valid." };
   const parsed = makeAplikasiInput((await raaFor())(input.period)).safeParse(input);
   if (!parsed.success) {
     const fields = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
@@ -58,6 +61,7 @@ export async function saveAplikasi(input: AplikasiInput, options: { id?: string;
 
 export async function deleteAplikasi(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     const actor = await currentActor();
     const current = await repo.getAplikasi(id);
     if (!current) throw new Error("Aplikasi tidak ditemukan.");
@@ -76,6 +80,7 @@ export async function deleteAplikasi(id: string): Promise<ActionResult> {
  */
 export async function reviewAplikasi(id: string, decision: "submit" | "verify" | "validate" | "reject", note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
   try {
+    ({ id, decision, note } = arg(reviewArgs, { id, decision, note }));
     const actor = await currentActor();
     const current = await repo.getAplikasi(id);
     if (!current) throw new Error("Aplikasi tidak ditemukan.");
@@ -109,6 +114,7 @@ export async function reviewAplikasi(id: string, decision: "submit" | "verify" |
 }
 
 export async function getAplikasiReviews(id: string) {
+  if (!isValid(idSchema, id)) return [];
   const actor = await currentActor();
   const current = await repo.getAplikasi(id);
   if (!current || !can.read(actor, current.opdId)) return [];
@@ -118,6 +124,8 @@ export async function getAplikasiReviews(id: string) {
 /** Pilihan dependensi: probis tervalidasi, layanan, dan data pada periode yang sama. */
 export async function listDependencyOptions(opd: string, period: string): Promise<ActionResult<Awaited<ReturnType<typeof repo.dependencyOptions>>>> {
   try {
+    arg(opdCode, opd);
+    arg(periodName, period);
     const actor = await currentActor();
     const locked = can.lockedOpd(actor);
     if (locked && (await opdIdOf(opd)) !== locked) throw new Error("Anda hanya dapat melihat data OPD Anda.");
@@ -163,9 +171,11 @@ async function importContext(codes: string[]) {
 export async function previewAplikasiImport(form: FormData): Promise<ActionResult<AplikasiImportResult>> {
   try {
     // Izin dicek sebelum berkas dibaca: mengurai .xlsx/.zip itu berat dan tidak boleh dipicu tanpa hak impor.
-    if (!can.import(await currentActor())) throw new Error("Peran Anda tidak dapat mengimpor data.");
+    const actor = await currentActor();
+    if (!can.import(actor)) throw new Error("Peran Anda tidak dapat mengimpor data.");
+    await assertImportQuota(actor.id);
     const file = form.get("file");
-    if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx atau .zip.");
+    assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
     return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };
@@ -177,6 +187,9 @@ export async function previewAplikasiImport(form: FormData): Promise<ActionResul
 /** Langkah 2 impor: simpan baris tanpa galat. Validasi diulang di server. */
 export async function commitAplikasiImport(rows: AplikasiImportRow[], options: { status: "draft" | "submitted"; update: boolean }): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   try {
+    arg(importRows, rows);
+    arg(importOptions, options);
+    await assertImportQuota((await currentActor()).id);
     const [{ actor, ctx }, refs] = await Promise.all([importContext(rows.map((r) => r.code).filter((c): c is string => !!c)), securityRefs()]);
     const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({

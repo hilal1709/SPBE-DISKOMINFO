@@ -1,9 +1,13 @@
 "use server";
+import { assertImportQuota } from "@/lib/security/rate-limit";
+import { assertUploadFile } from "@/lib/security/upload";
+import { arg, editOptions, idSchema, importRows, isValid, updateOption } from "@/lib/security/schemas";
+import { z } from "zod";
 import { can, currentActor } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
 import * as repo from "@/lib/peta-rencana/cms-repo";
 import { readUpload, validateRows, type RencanaImportResult, type RencanaImportRow } from "@/lib/peta-rencana/import";
-import type { RencanaStatus } from "@/lib/peta-rencana/muatan";
+import { statusKeys, type RencanaStatus } from "@/lib/peta-rencana/muatan";
 import { indicatorInput, rencanaInput, type RencanaInput } from "@/lib/peta-rencana/schema";
 import * as periods from "@/lib/probis/periods";
 
@@ -14,9 +18,12 @@ async function manager() {
   return actor;
 }
 
+const rencanaStatus = z.enum(statusKeys, "Data tidak valid.");
+
 const fieldErrors = (issues: { path: PropertyKey[]; message: string }[]) => Object.fromEntries(issues.map((issue) => [String(issue.path[0]), issue.message]));
 
 export async function saveRencana(input: RencanaInput, options: { id?: string }): Promise<ActionResult<{ id: string }>> {
+  if (!isValid(editOptions, options)) return { ok: false, error: "Data tidak valid." };
   const parsed = rencanaInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Periksa kembali isian yang ditandai.", fields: fieldErrors(parsed.error.issues) };
   try {
@@ -31,6 +38,7 @@ export async function saveRencana(input: RencanaInput, options: { id?: string })
 
 export async function deleteRencana(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     await manager();
     await repo.deleteRencana(id);
     refresh();
@@ -43,6 +51,7 @@ export async function deleteRencana(id: string): Promise<ActionResult> {
 /** Alihkan kegiatan ke tahun berikutnya (kegiatan asal menjadi "Ditunda"). */
 export async function deferRencana(id: string): Promise<ActionResult<{ newId: string; previous: RencanaStatus; year: number; period: string }>> {
   try {
+    arg(idSchema, id);
     const actor = await manager();
     const data = await repo.deferRencana(id, actor);
     refresh();
@@ -54,6 +63,9 @@ export async function deferRencana(id: string): Promise<ActionResult<{ newId: st
 
 export async function undoDeferRencana(id: string, newId: string, previous: RencanaStatus): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
+    arg(idSchema, newId);
+    arg(rencanaStatus, previous);
     await manager();
     await repo.undoDefer(id, newId, previous);
     refresh();
@@ -73,9 +85,9 @@ async function importContext(codes: string[]) {
 export async function previewRencanaImport(form: FormData): Promise<ActionResult<RencanaImportResult>> {
   try {
     // Izin dicek sebelum berkas dibaca: mengurai .xlsx/.zip itu berat dan tidak boleh dipicu tanpa hak impor.
-    await manager();
+    await assertImportQuota((await manager()).id);
     const file = form.get("file");
-    if (!(file instanceof File) || !file.size) throw new Error("Pilih berkas .xlsx.");
+    assertUploadFile(file, "Pilih berkas .xlsx.");
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
     return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };
@@ -87,6 +99,9 @@ export async function previewRencanaImport(form: FormData): Promise<ActionResult
 /** Langkah 2 impor: simpan baris tanpa galat. Validasi diulang di server. */
 export async function commitRencanaImport(rows: RencanaImportRow[], options: { update: boolean }): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   try {
+    arg(importRows, rows);
+    arg(updateOption, options);
+    await assertImportQuota((await manager()).id);
     const { actor, ctx } = await importContext(rows.map((r) => r.code).filter((c): c is string => !!c));
     const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
@@ -121,6 +136,7 @@ export async function saveIndicator(input: unknown): Promise<ActionResult<{ id: 
 
 export async function deleteIndicator(id: string): Promise<ActionResult> {
   try {
+    arg(idSchema, id);
     await manager();
     await repo.deleteIndicator(id);
     refresh();

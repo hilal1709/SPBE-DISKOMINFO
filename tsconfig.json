@@ -39,6 +39,7 @@
     ".next-strix/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "strix_runs"
   ]
 }

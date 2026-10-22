@@ -9,26 +9,23 @@ import { NIL_UUID } from "@/lib/constants";
 import { can, type Actor } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
 
-const MAX_SESSION_MS = 12 * 60 * 60 * 1000;
-
-type SessionLike ={ id: string; name?: string | null; role: Role; opdId?: string | null; authAt?: number };
+type SessionLike = { id: string; name?: string | null; role: Role; opdId?: string | null; sid?: string };
 
 /**
  * Actor untuk pengguna sesi: peran, OPD, dan status dibaca ulang dari database agar perubahan akun berlaku seketika
- * (JWT hanya penanda identitas). Null bila akun sudah dinonaktifkan/dihapus, atau sesi terbit sebelum sandinya terakhir
- * diganti/di-reset (token lama tanpa `authAt` juga dicabut).
+ * (JWT hanya penanda identitas + id sesi). Null bila akun sudah dinonaktifkan/dihapus, atau sesinya tidak sah lagi di
+ * tabel sessions (logout, dicabut, lewat 8 jam, tidak aktif 30 menit, terbit sebelum sandi diganti). Token lama tanpa
+ * id sesi juga ditolak.
  */
 export async function actorFor(user: SessionLike): Promise<Actor | null> {
   let { name, role, opdId } = { name: user.name ?? "Pengguna", role: user.role, opdId: user.opdId ?? null };
   if (user.id === "demo-admin" && process.env.NODE_ENV === "production") return null;
   if (getDb() && user.id !== "demo-admin") {
-    // Sesi aktif terus diperpanjang JWT; setelah 12 jam sejak masuk tetap wajib login ulang.
-    if (Date.now() - (user.authAt ?? 0) > MAX_SESSION_MS) return null;
-    // Akun + hak akses perannya dalam satu query (setiap halaman CMS & server action melewati ini). Galat DB dilempar
-    // (gagal-tertutup): peran dari JWT tidak dipakai karena bisa sudah dicabut.
-    const fresh = await sessionAccess(user.id);
-    if (!fresh || !fresh.active) return null;
-    if (fresh.password_changed_at && fresh.password_changed_at.getTime() > (user.authAt ?? 0)) return null;
+    if (!user.sid) return null;
+    // Akun + hak akses perannya + keabsahan sesi dalam satu query (setiap halaman CMS & server action melewati ini). Galat
+    // DB dilempar (gagal-tertutup): peran dari JWT tidak dipakai karena bisa sudah dicabut.
+    const fresh = await sessionAccess(user.id, user.sid);
+    if (!fresh || !fresh.active || !fresh.session_ok) return null;
     ({ name, role, opd_id: opdId } = fresh);
     const access = roleGrant(role, fresh.custom_label, fresh.permissions);
     return {

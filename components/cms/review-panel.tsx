@@ -138,7 +138,6 @@ export function ReviewActions({
               disabled={pending}
               onClick={() => {
                 if (!rejecting) return setRejecting(true);
-                if (!note.trim()) return void toast.error("Tuliskan catatan alasan pengembalian.");
                 act("reject");
               }}
             >
