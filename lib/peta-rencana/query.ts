@@ -1,9 +1,15 @@
 import type { Rencana } from "@/lib/types";
+import type { RencanaStatus } from "./muatan";
 
 /** `period` selalu satu periode (single-select), default periode aktif. */
 export type RencanaFilter = { period: string; tahun: string[]; pd: string[]; sasaran: string[]; muatan: string[]; status: string[] };
 
 export const emptyFilter = (period: string): RencanaFilter => ({ period, tahun: [], pd: [], sasaran: [], muatan: [], status: [] });
+
+/** Kartu memilih satu status; klik ulang melepasnya tanpa menghapus filter lain. */
+export function withRencanaStatus(filter: RencanaFilter, status: RencanaStatus): RencanaFilter {
+  return { ...filter, status: filter.status.length === 1 && filter.status[0] === status ? [] : [status] };
+}
 
 const lists = ["tahun", "pd", "sasaran", "muatan", "status"] as const;
 /** Nama parameter URL per filter (sasaran disimpan sebagai indeks agar URL pendek). */

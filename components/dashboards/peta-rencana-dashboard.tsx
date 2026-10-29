@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { muatanConfig, muatanKeys, muatanOptions, statusConfig, statusKeys, statusOptions, type Muatan } from "@/lib/peta-rencana/muatan";
-import { activeFilterCount, emptyFilter, filterFromParams, filterRencana, filterToParams, sanitizeFilter, yearsOf, type RencanaFilter } from "@/lib/peta-rencana/query";
+import { activeFilterCount, emptyFilter, filterFromParams, filterRencana, filterToParams, sanitizeFilter, withRencanaStatus, yearsOf, type RencanaFilter } from "@/lib/peta-rencana/query";
 import { pdByCode, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
 import { formatNumber } from "@/lib/format";
@@ -77,17 +77,24 @@ export function PetaRencanaDashboard({
     setFilter((c) => ({ ...c, [key]: toggle(c[key], value) }));
     if (adding) toast("Filter diterapkan", { description: label, action: { label: "Urungkan", onClick: () => setFilter(before) } });
   };
+  const selectStatus = (status: Rencana["status"] | null) => {
+    const before = latest.current;
+    const next = status ? withRencanaStatus(before, status) : { ...before, status: [] };
+    setFilter(next);
+    if (status && next.status.length) toast("Filter diterapkan", { description: statusConfig[status].label, action: { label: "Urungkan", onClick: () => setFilter(before) } });
+  };
 
   const rows = useMemo(() => filterRencana(all, filter).sort((a, b) => a.year - b.year || a.name.localeCompare(b.name)), [all, filter]);
   const withoutTahun = useMemo(() => filterRencana(all, filter, { except: "tahun" }), [all, filter]);
   const withoutMuatan = useMemo(() => filterRencana(all, filter, { except: "muatan" }), [all, filter]);
   const withoutSasaran = useMemo(() => filterRencana(all, filter, { except: "sasaran" }), [all, filter]);
+  const withoutStatus = useMemo(() => filterRencana(all, filter, { except: "status" }), [all, filter]);
   const years = yearsOf(filter.period);
   const indicators = useMemo(() => source.indicators.filter((i) => i.period === filter.period), [source, filter.period]);
 
-  const count = (status: Rencana["status"]) => rows.filter((r) => r.status === status).length;
-  const terlaksana = count("terlaksana");
-  const dialihkan = rows.filter((r) => r.source === "usulan_tertunda").length;
+  const count = (status: Rencana["status"]) => withoutStatus.filter((r) => r.status === status).length;
+  const terlaksana = rows.filter((r) => r.status === "terlaksana").length;
+  const dialihkan = withoutStatus.filter((r) => r.source === "usulan_tertunda").length;
   const yearStats: YearStat[] = years.map((year) => {
     const list = withoutTahun.filter((r) => String(r.year) === year);
     const muatan: Partial<Record<Muatan, number>> = {};
@@ -114,7 +121,7 @@ export function PetaRencanaDashboard({
         storageKey="spbe:peta-rencana-hint"
         illustration="roadmap"
         tips={[
-          "Klik tonggak tahun, petak muatan, atau batang grafik untuk memfilter seluruh dashboard.",
+          "Klik kartu status, tonggak tahun, petak muatan, atau batang grafik untuk memfilter seluruh dashboard.",
           "Klik sasaran strategis untuk melihat inisiatif, indikator, dan target tiap tahun.",
           "Atur kolom katalog lewat menu Kolom; klik baris untuk evaluasi & realisasi kegiatan.",
         ]}
@@ -138,6 +145,14 @@ export function PetaRencanaDashboard({
         <FilterChips chips={chips} />
       </FilterBar>
 
+      <StatRow>
+        <StatCard tone="teal" label="Total kegiatan" active={!filter.status.length} onClick={() => selectStatus(null)} value={withoutStatus.length} hint={`${new Set(withoutStatus.map((r) => r.program)).size} program · Semua status`} />
+        <StatCard tone="amber" label="Terlaksana" active={filter.status.length === 1 && filter.status[0] === "terlaksana"} onClick={() => selectStatus("terlaksana")} value={count("terlaksana")} hint={`${Math.round(count("terlaksana") / (withoutStatus.length || 1) * 100)}% dari rencana`} />
+        <StatCard tone="yellow" label="Berjalan" active={filter.status.length === 1 && filter.status[0] === "berjalan"} onClick={() => selectStatus("berjalan")} value={count("berjalan")} />
+        <StatCard tone="orange" label="Ditunda" active={filter.status.length === 1 && filter.status[0] === "ditunda"} onClick={() => selectStatus("ditunda")} value={count("ditunda")} hint={`${formatNumber(dialihkan)} dialihkan ke tahun berikutnya`} />
+        <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} PD`} />
+      </StatRow>
+
       {rows.length === 0 ? (
         <Card data-reveal>
           <EmptyState illustration="filter-empty" title="Tidak ada kegiatan" description="Tidak ada kegiatan rencana yang cocok dengan kombinasi filter ini.">
@@ -146,14 +161,6 @@ export function PetaRencanaDashboard({
         </Card>
       ) : (
         <>
-          <StatRow>
-            <StatCard tone="teal" label="Total kegiatan" value={rows.length} hint={`${new Set(rows.map((r) => r.program)).size} program`} />
-            <StatCard tone="amber" label="Terlaksana" value={terlaksana} hint={`${Math.round((terlaksana / rows.length) * 100)}% dari rencana`} />
-            <StatCard tone="yellow" label="Berjalan" value={count("berjalan")} />
-            <StatCard tone="orange" label="Ditunda" value={count("ditunda")} hint={`${formatNumber(dialihkan)} dialihkan ke tahun berikutnya`} />
-            <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} PD`} />
-          </StatRow>
-
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1fr_18rem]">
             <YearTrack stats={yearStats} current={currentYear} selected={filter.tahun} onToggle={(y) => clickFilter(`Tahun ${y}`, "tahun", y)} />
             <Card data-reveal className="gap-3">
