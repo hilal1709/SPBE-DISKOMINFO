@@ -174,9 +174,9 @@ export function InfrastrukturDashboard({
         <>
           <StatRow>
             <StatCard tone="teal" label="Komponen infrastruktur" value={total} hint={`${countBy(rows, "jenis").size} dari 10 jenis komponen`} />
-            <StatCard tone="orange" label="Kapasitas penyimpanan" value={Math.round(storage / 1024)} suffix=" TB" hint="server dan media penyimpan" />
-            <StatCard tone="yellow" label="Bandwidth internet" value={internet / 1000} decimals={1} suffix=" Gbps" hint="seluruh fasilitas komputasi" />
-            <StatCard tone="amber" label="Milik sendiri" value={percent(rows.filter((r) => r.kepemilikan === "milik_sendiri").length, owned)} suffix="%" hint={`${formatNumber(owned)} komponen berstatus kepemilikan`} />
+            <StatCard tone="orange" label="Kapasitas penyimpanan" active={filter.jenis.length === 2 && filter.jenis.includes("server") && filter.jenis.includes("penyimpanan")} onClick={() => clickFilter("Server dan penyimpanan", (c) => ({ ...c, jenis: c.jenis.length === 2 && c.jenis.includes("server") && c.jenis.includes("penyimpanan") ? [] : ["server", "penyimpanan"] }), true)} value={Math.round(storage / 1024)} suffix=" TB" hint="server dan media penyimpan" />
+            <StatCard tone="yellow" label="Bandwidth internet" active={filter.jenis.includes("fasilitas")} onClick={() => toggleJenis("fasilitas")} value={internet / 1000} decimals={1} suffix=" Gbps" hint="seluruh fasilitas komputasi" />
+            <StatCard tone="amber" label="Milik sendiri" active={filter.kepemilikan.includes("milik_sendiri")} onClick={() => clickFilter("Milik sendiri", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "milik_sendiri") }), !filter.kepemilikan.includes("milik_sendiri"))} value={percent(rows.filter((r) => r.kepemilikan === "milik_sendiri").length, owned)} suffix="%" hint={`${formatNumber(owned)} komponen berstatus kepemilikan`} />
             <StatCard tone="sky" label="Aplikasi terlayani" value={apps} hint={`oleh ${countBy(rows, "opd").size} instansi pemilik komponen`} />
           </StatRow>
 
@@ -315,7 +315,7 @@ export function InfrastrukturDashboard({
             </div>
           </section>
 
-          <DataTable
+          <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog infrastruktur"
             rows={rows}
             rowId={(r) => r.id}

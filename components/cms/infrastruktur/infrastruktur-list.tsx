@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { matchesCmsPeriod } from "@/lib/cms/list-navigation";
+import { useListFilters } from "@/components/cms/use-list-filters";
 import { useMemo, useState } from "react";
 import { Add01Icon, Download04Icon } from "@hugeicons/core-free-icons";
 import { useRaiSet } from "@/components/infrastruktur/rai-context";
@@ -36,18 +38,17 @@ const tabs: { value: Tab; label: string }[] = [
 export function InfrastrukturList({ rows, actor, periods }: { rows: InfrastrukturRecord[]; actor: Actor; periods: PeriodOptions }) {
   const rais = useRaiSet();
   const rai = (code: string | null, period: string) => (code ? rais.forPeriod(period).label(code) : "—");
-  const [tab, setTab] = useState<Tab>("all");
+  const { tab, setTab, period, setPeriod } = useListFilters();
   const [pd, setPd] = useState<string[]>([]);
   const [jenis, setJenis] = useState<string[]>([]);
   const [owner, setOwner] = useState<string[]>([]);
-  const [period, setPeriod] = useState<string>(periods.active);
   const [selected, setSelected] = useState<InfrastrukturRecord | null>(null);
 
   /** Baris sesuai filter (tanpa tab status), dasar hitungan di tiap tab. */
   const scoped = useMemo(
     () =>
       rows.filter(
-        (r) => (!pd.length || pd.includes(r.opdCode)) && (!jenis.length || jenis.includes(r.jenis)) && (!owner.length || (!!r.kepemilikan && owner.includes(r.kepemilikan))) && r.period === period,
+        (r) => (!pd.length || pd.includes(r.opdCode)) && (!jenis.length || jenis.includes(r.jenis)) && (!owner.length || (!!r.kepemilikan && owner.includes(r.kepemilikan))) && matchesCmsPeriod(r.period, period),
       ),
     [rows, pd, jenis, owner, period],
   );
@@ -92,7 +93,7 @@ export function InfrastrukturList({ rows, actor, periods }: { rows: Infrastruktu
           ...(can.readAll(actor) ? [{ label: "Instansi", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Komponen", wide: true, multiple: true, options: jenisOptions, values: jenis, onValuesChange: setJenis },
           { label: "Kepemilikan", multiple: true, options: [...kepemilikanOptions], values: owner, onValuesChange: setOwner },
-          { label: "Periode", required: true, options: periods.periods, value: period, onChange: setPeriod },
+          { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
         ]}
       />
 

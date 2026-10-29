@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { zipSync } from "fflate";
-import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
 import { defaultsFor, reviewTarget, type Actor } from "@/lib/permissions";
 import { assertAiInput } from "@/lib/security/rate-limit";
 import { arg, idSchema, importOptions, importRows, reviewArgs, roleKey, saveOptions, yearSchema } from "@/lib/security/schemas";
@@ -26,6 +26,14 @@ test("status impor hanya draf/diajukan", () => {
   assert.equal(importStatus("draft"), "draft");
   assert.equal(importStatus("submitted"), "submitted");
   for (const s of ["approved", "verified", "rejected", undefined, 1]) assert.throws(() => importStatus(s));
+});
+
+test("langsung ajukan pada impor juga mengajukan data lama dan data yang dikembalikan", () => {
+  for (const current of ["draft", "rejected", "submitted", "verified", "approved"] as const) {
+    assert.equal(importUpdateStatus(current, "submitted"), "submitted");
+    assert.equal(importUpdateStatus(current, "draft"), current);
+  }
+  assert.throws(() => importUpdateStatus("draft", "approved"));
 });
 
 test("impor tidak boleh menimpa rekaman OPD lain atau yang sedang ditinjau", () => {

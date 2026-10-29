@@ -58,17 +58,21 @@ type Props<T> = {
   pageSize?: number;
   minWidth?: number;
   server?: ServerPaging;
+  /** Mengulang halaman saat filter dashboard berubah, tanpa menghapus pencarian. */
+  resetPageKey?: string;
 };
 
 const collator = new Intl.Collator("id", { numeric: true });
 
 /** Tabel katalog dengan pencarian, sort, paginasi, pilihan kolom, aksi detail, dan empty state berilustrasi. */
-export function DataTable<T>({ title, description, rows, columns, rowId, searchText, searchPlaceholder = "Cari data", actions, onView, onRowClick, limit, pageSize, minWidth = 860, server }: Props<T>) {
+export function DataTable<T>({ title, description, rows, columns, rowId, searchText, searchPlaceholder = "Cari data", actions, onView, onRowClick, limit, pageSize, minWidth = 860, server, resetPageKey }: Props<T>) {
   const [query, setQuery] = useState(server?.query ?? "");
   const [localSort, setSort] = useState<{ header: string; dir: 1 | -1 } | null>(null);
   const serverSortHeader = server?.sort && columns.find((c) => c.sortKey === server.sort!.key)?.header;
   const sort = server ? (serverSortHeader ? { header: serverSortHeader, dir: server.sort!.dir } : null) : localSort;
-  const [page, setPage] = useState(0);
+  const [paging, setPaging] = useState({ page: 0, key: resetPageKey });
+  const page = paging.key === resetPageKey ? paging.page : 0;
+  const setPage = (next: number) => setPaging({ page: next, key: resetPageKey });
   const body = useRef<HTMLTableSectionElement>(null);
   const phone = useIsPhone();
   /** Pilihan kolom pengguna; sebelum memilih, ponsel menyembunyikan semua kolom sekunder (hideable). */

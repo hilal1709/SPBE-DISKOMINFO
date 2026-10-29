@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { matchesCmsPeriod } from "@/lib/cms/list-navigation";
+import { useListFilters } from "@/components/cms/use-list-filters";
 import { useMemo, useState } from "react";
 import { Add01Icon, Download04Icon } from "@hugeicons/core-free-icons";
 import { useRaaSet } from "@/components/aplikasi/raa-context";
@@ -36,16 +38,15 @@ export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[];
   const raas = useRaaSet();
   /** Nama RAA mengikuti versi RAA periode masing-masing aplikasi. */
   const raa = (code: string | null, period: string) => (code ? raas.forPeriod(period).label(code) : "—");
-  const [tab, setTab] = useState<Tab>("all");
+  const { tab, setTab, period, setPeriod } = useListFilters();
   const [pd, setPd] = useState<string[]>([]);
   const [basis, setBasis] = useState<string[]>([]);
   const [owner, setOwner] = useState<string[]>([]);
-  const [period, setPeriod] = useState<string>(periods.active);
   const [selected, setSelected] = useState<AplikasiRecord | null>(null);
 
   /** Baris sesuai filter (tanpa tab status), dasar hitungan di tiap tab. */
   const scoped = useMemo(
-    () => rows.filter((r) => (!pd.length || pd.includes(r.opdCode)) && (!basis.length || basis.includes(r.basis)) && (!owner.length || owner.includes(r.kepemilikan)) && r.period === period),
+    () => rows.filter((r) => (!pd.length || pd.includes(r.opdCode)) && (!basis.length || basis.includes(r.basis)) && (!owner.length || owner.includes(r.kepemilikan)) && matchesCmsPeriod(r.period, period)),
     [rows, pd, basis, owner, period],
   );
   const counts = useMemo(() => {
@@ -89,7 +90,7 @@ export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[];
           ...(can.readAll(actor) ? [{ label: "Unit operasional", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Basis", multiple: true, options: basisOptions, values: basis, onValuesChange: setBasis },
           { label: "Kepemilikan", multiple: true, options: kepemilikanOptions, values: owner, onValuesChange: setOwner },
-          { label: "Periode", required: true, options: periods.periods, value: period, onChange: setPeriod },
+          { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
         ]}
       />
 

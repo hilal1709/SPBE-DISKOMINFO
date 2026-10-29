@@ -1,4 +1,5 @@
 import type { ProbisTab } from "@/lib/probis/repo";
+import { ALL_CMS_PERIODS } from "@/lib/cms/list-navigation";
 
 /** Tampilan tabel probis CMS yang disimpan di URL (bisa dibagikan, dan dibaca server untuk paginasi). */
 export type ProbisView = {
@@ -19,7 +20,7 @@ const TABS: ProbisTab[] = ["all", "review", "draft", "submitted", "verified", "a
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 const list = (v: string | string[] | undefined) => one(v).split(",").filter(Boolean);
 
-export function parseProbisParams(params: Record<string, string | string[] | undefined>, activePeriod: string): ProbisView {
+export function parseProbisParams(params: Record<string, string | string[] | undefined>): ProbisView {
   const tab = one(params.tab) as ProbisTab;
   const page = Number.parseInt(one(params.hal), 10);
   const key = one(params.urut);
@@ -27,7 +28,7 @@ export function parseProbisParams(params: Record<string, string | string[] | und
     tab: TABS.includes(tab) ? tab : "all",
     pd: list(params.pd),
     rab1: list(params.rab1),
-    period: one(params.periode) || activePeriod,
+    period: one(params.periode) || ALL_CMS_PERIODS,
     q: one(params.q).slice(0, 100),
     page: Number.isFinite(page) && page > 1 ? Math.min(page, 10_000) - 1 : 0,
     sort: key ? { key, dir: one(params.arah) === "desc" ? -1 : 1 } : null,
@@ -35,12 +36,12 @@ export function parseProbisParams(params: Record<string, string | string[] | und
 }
 
 /** Kebalikan `parseProbisParams`; nilai bawaan tidak ditulis agar URL tetap pendek. */
-export function probisParams(view: ProbisView, activePeriod: string) {
+export function probisParams(view: ProbisView) {
   const out = new URLSearchParams();
   if (view.tab !== "all") out.set("tab", view.tab);
   if (view.pd.length) out.set("pd", view.pd.join(","));
   if (view.rab1.length) out.set("rab1", view.rab1.join(","));
-  if (view.period !== activePeriod) out.set("periode", view.period);
+  if (view.period !== ALL_CMS_PERIODS) out.set("periode", view.period);
   if (view.q.trim()) out.set("q", view.q.trim());
   if (view.page > 0) out.set("hal", String(view.page + 1));
   if (view.sort) {

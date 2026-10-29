@@ -109,6 +109,7 @@ export function KeamananDashboard({
   const active = activeFilterCount(filter, activePeriod);
   const removeFrom = (key: "pd" | "jenis" | "tahun", code: string) => () => setFilter((c) => ({ ...c, [key]: c[key].filter((v) => v !== code) }));
   const chips: Chip[] = [
+    ...(filter.berlaku ? [{ id: "berlaku", group: "Standar", label: "Masih berlaku", onRemove: () => setFilter((c) => ({ ...c, berlaku: false })) }] : []),
     ...filter.jenis.map((code) => ({ id: `jenis:${code}`, group: "Kegiatan", label: kegiatanConfig[code as Kegiatan].short, onRemove: removeFrom("jenis", code) })),
     ...filter.pd.map((code) => ({ id: `pd:${code}`, group: "Instansi", label: pdName(code), onRemove: removeFrom("pd", code) })),
     ...filter.tahun.map((code) => ({ id: `tahun:${code}`, group: "Tahun", label: code, onRemove: removeFrom("tahun", code) })),
@@ -154,9 +155,9 @@ export function KeamananDashboard({
         <>
           <StatRow>
             <StatCard tone="teal" label="Kegiatan keamanan" value={rows.length} hint={`${new Set(rows.map((r) => r.jenis)).size} dari 7 jenis kegiatan`} />
-            <StatCard tone="orange" label="Standar berlaku" value={berlaku} hint={`dari ${formatNumber(standar.length)} standar & prosedur`} />
-            <StatCard tone="yellow" label="Audit keamanan" value={audits.length} hint={`${new Set(audits.map((r) => r.opd)).size} instansi diaudit/mengaudit`} />
-            <StatCard tone="amber" label="Insiden ditangani" value={insiden.length} hint={scores.length ? `kematangan rata-rata ${maturity.toFixed(1).replace(".", ",")} dari 5` : "belum ada nilai kematangan"} />
+            <StatCard tone="orange" label="Standar berlaku" active={!!filter.berlaku} onClick={() => clickFilter("Standar berlaku", (c) => ({ ...c, berlaku: !c.berlaku }), !filter.berlaku)} value={berlaku} hint={`dari ${formatNumber(standar.length)} standar & prosedur`} />
+            <StatCard tone="yellow" label="Audit keamanan" active={filter.jenis.includes("audit")} onClick={() => toggleJenis("audit")} value={audits.length} hint={`${new Set(audits.map((r) => r.opd)).size} instansi diaudit/mengaudit`} />
+            <StatCard tone="amber" label="Insiden ditangani" active={filter.jenis.includes("insiden")} onClick={() => toggleJenis("insiden")} value={insiden.length} hint={scores.length ? `kematangan rata-rata ${maturity.toFixed(1).replace(".", ",")} dari 5` : "belum ada nilai kematangan"} />
             <StatCard tone="sky" label="Instansi pelaksana" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
           </StatRow>
 
@@ -279,7 +280,7 @@ export function KeamananDashboard({
             </Card>
           </section>
 
-          <DataTable
+          <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog kegiatan keamanan"
             rows={rows}
             rowId={(r) => r.id}

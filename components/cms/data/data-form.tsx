@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { savedListHref } from "@/lib/cms/list-navigation";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AiMagicIcon, ArrowDown01Icon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
@@ -465,7 +466,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
         </CardContent>
       </Card>
 
-      <Dialog open={!!done} onOpenChange={(open) => !open && router.push("/cms/data")}>
+      <Dialog open={!!done} onOpenChange={(open) => !open && router.push(savedListHref("/cms/data", !!done?.submitted, values.period, record?.status))}>
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Data diajukan" : "Draf tersimpan"}</DialogTitle>
@@ -474,7 +475,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/data/${record.id}`) : (setDone(null), setValues(fromRecord(null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}
             </Button>
-            <Button onClick={() => router.push("/cms/data")}>
+            <Button onClick={() => router.push(savedListHref("/cms/data", !!done?.submitted, values.period, record?.status))}>
               <Icon icon={CheckmarkCircle02Icon} size={16} />
               Lihat daftar
             </Button>

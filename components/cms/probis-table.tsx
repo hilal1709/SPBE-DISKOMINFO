@@ -63,7 +63,7 @@ export function ProbisTable({
 
   /** Ubah tampilan lewat URL; server menghitung halaman baru tanpa memuat ulang halaman. */
   const update = (patch: Partial<ProbisView>) => {
-    const query = probisParams({ ...view, page: 0, ...patch }, periods.active).toString();
+    const query = probisParams({ ...view, page: 0, ...patch }).toString();
     startTransition(() => router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false }));
   };
   const setTab = (value: Tab) => update({ tab: value });

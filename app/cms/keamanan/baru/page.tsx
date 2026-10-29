@@ -1,3 +1,4 @@
+import { ExistingRecordSearch } from "@/components/cms/existing-record-search";
 import { KeamananForm } from "@/components/cms/keamanan/keamanan-form";
 import { NoAccess } from "@/components/cms/no-access";
 import { can, currentActor } from "@/lib/access";
@@ -11,5 +12,5 @@ export default async function NewKeamananPage({ searchParams }: { searchParams: 
   const locked = can.lockedOpd(actor);
   const { kegiatan } = await searchParams;
   const jenis = (kegiatanKeys as readonly string[]).includes(kegiatan ?? "") ? (kegiatan as Kegiatan) : null;
-  return <KeamananForm record={null} initialJenis={jenis} lockedOpd={locked ? await opdCodeOf(locked) : null} periods={await periodOptions()} />;
+  return <><ExistingRecordSearch domain="keamanan" /><KeamananForm record={null} initialJenis={jenis} lockedOpd={locked ? await opdCodeOf(locked) : null} periods={await periodOptions()} /></>;
 }

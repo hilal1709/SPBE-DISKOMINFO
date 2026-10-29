@@ -1,3 +1,4 @@
+"use client";
 import { Sparkline } from "@/components/charts";
 import { CountUp } from "@/components/motion/count-up";
 import { SpotlightCard } from "@/components/motion/spotlight-card";
@@ -26,6 +27,8 @@ export function StatCard({
   trend,
   footer,
   className,
+  onClick,
+  active = false,
 }: {
   label: string;
   value: number;
@@ -38,14 +41,17 @@ export function StatCard({
   /** Konten tambahan di bawah angka (mis. bar komposisi). */
   footer?: React.ReactNode;
   className?: string;
+  onClick?: () => void;
+  active?: boolean;
 }) {
   const solid = tone !== "plain";
   return (
     <SpotlightCard
-      className={cn("gap-1 px-5 py-5", tones[tone], solid && "text-on-brand", className)}
+      className={cn("gap-1 px-5 py-5", tones[tone], solid && "text-on-brand", active && "ring-2 ring-foreground ring-offset-2 ring-offset-background", className)}
       style={solid ? ({ "--spot-color": "rgb(255 255 255 / 0.32)" } as React.CSSProperties) : undefined}
       data-reveal
     >
+      {onClick && <button type="button" onClick={onClick} aria-label={`${active ? "Hapus filter" : "Filter"}: ${label}`} aria-pressed={active} className="absolute inset-0 z-10 cursor-pointer rounded-[inherit] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-inset focus-visible:outline-none" />}
       <p className={cn("text-sm font-semibold", !solid && "text-muted-foreground")}>{label}</p>
       <p className="mt-1 text-4xl font-bold tracking-tight">
         <CountUp value={value} suffix={suffix} decimals={decimals} />

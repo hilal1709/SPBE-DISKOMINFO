@@ -136,6 +136,7 @@ export function DataDashboard({
   const active = activeFilterCount(filter, activePeriod);
   const removeFrom = (key: "pd" | "sifat" | "jenis" | "validitas", code: string) => () => setFilter((c) => ({ ...c, [key]: c[key].filter((v) => v !== code) }));
   const chips: Chip[] = [
+    ...(filter.lintas ? [{ id: "lintas", group: "Produsen", label: "Lintas PD", onRemove: () => setFilter((c) => ({ ...c, lintas: false })) }] : []),
     ...filter.pd.map((code) => ({ id: `pd:${code}`, group: "Wali", label: pdName(code), onRemove: removeFrom("pd", code) })),
     ...filter.sifat.map((code) => ({ id: `sifat:${code}`, group: "Sifat", label: sifatLabel[code as Sifat], onRemove: removeFrom("sifat", code) })),
     ...filter.jenis.map((code) => ({ id: `jenis:${code}`, group: "Jenis", label: jenisLabel[code as Jenis], onRemove: removeFrom("jenis", code) })),
@@ -191,8 +192,8 @@ export function DataDashboard({
           <StatRow>
             <StatCard tone="teal" label="Jumlah data" value={rows.length} hint={`${tree.length} data pokok RAD`} />
             <StatCard tone="orange" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
-            <StatCard tone="yellow" label="Data terbuka" value={sifat.get("terbuka") ?? 0} hint={`${percent(sifat.get("terbuka") ?? 0, rows.length)}% dari seluruh data`} />
-            <StatCard tone="amber" label="Produsen lintas PD" value={lintas} hint="produsen berbeda dari wali" />
+            <StatCard tone="yellow" label="Data terbuka" active={filter.sifat.includes("terbuka")} onClick={() => clickFilter("Data terbuka", (c) => ({ ...c, sifat: toggle(c.sifat, "terbuka") }), !filter.sifat.includes("terbuka"))} value={sifat.get("terbuka") ?? 0} hint={`${percent(sifat.get("terbuka") ?? 0, rows.length)}% dari seluruh data`} />
+            <StatCard tone="amber" label="Produsen lintas PD" active={!!filter.lintas} onClick={() => clickFilter("Produsen lintas PD", (c) => ({ ...c, lintas: !c.lintas }), !filter.lintas)} value={lintas} hint="produsen berbeda dari wali" />
           </StatRow>
 
           <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
@@ -266,7 +267,7 @@ export function DataDashboard({
             </Card>
           </section>
 
-          <DataTable
+          <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog data"
             rows={rows}
             rowId={(d) => d.id}

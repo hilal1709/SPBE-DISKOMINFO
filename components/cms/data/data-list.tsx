@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { matchesCmsPeriod } from "@/lib/cms/list-navigation";
+import { useListFilters } from "@/components/cms/use-list-filters";
 import { useMemo, useState } from "react";
 import { Add01Icon, Download04Icon } from "@hugeicons/core-free-icons";
 import { DataTable } from "@/components/blocks/data-table";
@@ -37,16 +39,15 @@ export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: 
   const rads = useRadSet();
   /** Nama RAD mengikuti versi RAD periode masing-masing data. */
   const rad = (code: string | null, period: string) => (code ? rads.forPeriod(period).label(code) : "—");
-  const [tab, setTab] = useState<Tab>("all");
+  const { tab, setTab, period, setPeriod } = useListFilters();
   const [pd, setPd] = useState<string[]>([]);
   const [sifat, setSifat] = useState<string[]>([]);
   const [jenis, setJenis] = useState<string[]>([]);
-  const [period, setPeriod] = useState<string>(periods.active);
   const [selected, setSelected] = useState<DataRecord | null>(null);
 
   /** Baris sesuai filter (tanpa tab status), dasar hitungan di tiap tab. */
   const scoped = useMemo(
-    () => rows.filter((r) => (!pd.length || pd.includes(r.opdCode)) && (!sifat.length || sifat.includes(r.sifat)) && (!jenis.length || jenis.includes(r.jenis)) && r.period === period),
+    () => rows.filter((r) => (!pd.length || pd.includes(r.opdCode)) && (!sifat.length || sifat.includes(r.sifat)) && (!jenis.length || jenis.includes(r.jenis)) && matchesCmsPeriod(r.period, period)),
     [rows, pd, sifat, jenis, period],
   );
   const counts = useMemo(() => {
@@ -90,7 +91,7 @@ export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: 
           ...(can.readAll(actor) ? [{ label: "Wali data", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Sifat", multiple: true, options: sifatOptions, values: sifat, onValuesChange: setSifat },
           { label: "Jenis", multiple: true, options: jenisOptions, values: jenis, onValuesChange: setJenis },
-          { label: "Periode", required: true, options: periods.periods, value: period, onChange: setPeriod },
+          { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
         ]}
       />
 

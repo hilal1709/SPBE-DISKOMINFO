@@ -19,12 +19,16 @@ export function ExploreHint({
   storageKey: KEY = "spbe:probis-hint",
   illustration = "explore",
   tips = probisTips,
+  title = "Dashboard ini interaktif",
+  description,
 }: {
   sample: boolean;
   /** Kunci localStorage, satu per dashboard. */
   storageKey?: string;
   illustration?: IllustrationName;
   tips?: string[];
+  title?: string;
+  description?: string;
 }) {
   // Ikut dirender server agar tata letak tidak bergeser saat muncul; kartu yang pernah ditutup sudah
   // disembunyikan sebelum tampil oleh HINT_SCRIPT (app/layout.tsx), lalu dilepas setelah mount.
@@ -60,13 +64,14 @@ export function ExploreHint({
       <div className="grid gap-1.5 text-sm text-accent-foreground">
         <p className="font-semibold">
           {sample && <span className="mr-2 rounded-full bg-brand-charcoal px-2.5 py-0.5 text-[11px] font-bold text-white">Data contoh</span>}
-          Dashboard ini interaktif
+          {title}
         </p>
-        <ul className="grid gap-1 text-xs">
+        {description && <p className="text-xs leading-relaxed">{description}</p>}
+        {!!tips.length && <ul className="grid gap-1 text-xs">
           {tips.map((tip) => (
             <li key={tip}>{tip}</li>
           ))}
-        </ul>
+        </ul>}
       </div>
       <Button variant="ghost" size="icon-sm" onClick={close} aria-label="Tutup petunjuk" className="absolute top-2 right-2 transition-transform hover:rotate-90">
         <Icon icon={Cancel01Icon} size={14} />

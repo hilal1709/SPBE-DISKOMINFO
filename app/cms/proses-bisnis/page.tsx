@@ -8,7 +8,7 @@ import { PAGE_SIZE, parseProbisParams } from "@/lib/probis/table-params";
 export default async function ProbisListPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [actor, periods, params] = await Promise.all([currentActor(), periodOptions(), searchParams]);
   const opdId = opdScope(actor);
-  const view = parseProbisParams(params, periods.active);
+  const view = parseProbisParams(params);
   const load = (page: number) =>
     probisPage({ opdId, tab: view.tab, pd: can.readAll(actor) ? view.pd : [], rab1: view.rab1, period: view.period, q: view.q, page, pageSize: PAGE_SIZE, sort: view.sort });
   const [first, any] = await Promise.all([load(view.page), hasProbis(opdId)]);

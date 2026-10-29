@@ -1,3 +1,4 @@
+import { ExistingRecordSearch } from "@/components/cms/existing-record-search";
 import { InfrastrukturForm } from "@/components/cms/infrastruktur/infrastruktur-form";
 import { NoAccess } from "@/components/cms/no-access";
 import { can, currentActor } from "@/lib/access";
@@ -11,5 +12,5 @@ export default async function NewInfrastrukturPage({ searchParams }: { searchPar
   const locked = can.lockedOpd(actor);
   const { komponen } = await searchParams;
   const jenis = (jenisKeys as readonly string[]).includes(komponen ?? "") ? (komponen as InfraJenis) : null;
-  return <InfrastrukturForm record={null} initialJenis={jenis} lockedOpd={locked ? await opdCodeOf(locked) : null} periods={await periodOptions()} />;
+  return <><ExistingRecordSearch domain="infrastruktur" /><InfrastrukturForm record={null} initialJenis={jenis} lockedOpd={locked ? await opdCodeOf(locked) : null} periods={await periodOptions()} /></>;
 }

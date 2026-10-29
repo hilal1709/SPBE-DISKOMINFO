@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { savedListHref } from "@/lib/cms/list-navigation";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AiMagicIcon, ArrowDown01Icon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
@@ -527,7 +528,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
         </CardContent>
       </Card>
 
-      <Dialog open={!!done} onOpenChange={(open) => !open && router.push("/cms/aplikasi")}>
+      <Dialog open={!!done} onOpenChange={(open) => !open && router.push(savedListHref("/cms/aplikasi", !!done?.submitted, values.period, record?.status))}>
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Aplikasi diajukan" : "Draf tersimpan"}</DialogTitle>
@@ -536,7 +537,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/aplikasi/${record.id}`) : (setDone(null), setValues(fromRecord(null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}
             </Button>
-            <Button onClick={() => router.push("/cms/aplikasi")}>
+            <Button onClick={() => router.push(savedListHref("/cms/aplikasi", !!done?.submitted, values.period, record?.status))}>
               <Icon icon={CheckmarkCircle02Icon} size={16} />
               Lihat daftar
             </Button>

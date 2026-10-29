@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { savedListHref } from "@/lib/cms/list-navigation";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AiMagicIcon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
@@ -462,7 +463,7 @@ export function InfrastrukturForm({
         </CardContent>
       </Card>
 
-      <Dialog open={!!done} onOpenChange={(open) => !open && router.push("/cms/infrastruktur")}>
+      <Dialog open={!!done} onOpenChange={(open) => !open && router.push(savedListHref("/cms/infrastruktur", !!done?.submitted, values.period, record?.status))}>
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Komponen diajukan" : "Draf tersimpan"}</DialogTitle>
@@ -474,7 +475,7 @@ export function InfrastrukturForm({
             >
               {record ? "Tetap di sini" : "Tambah lagi"}
             </Button>
-            <Button onClick={() => router.push("/cms/infrastruktur")}>
+            <Button onClick={() => router.push(savedListHref("/cms/infrastruktur", !!done?.submitted, values.period, record?.status))}>
               <Icon icon={CheckmarkCircle02Icon} size={16} />
               Lihat daftar
             </Button>

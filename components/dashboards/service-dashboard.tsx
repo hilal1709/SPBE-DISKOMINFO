@@ -177,8 +177,8 @@ export function ServiceDashboard({
           <StatRow>
             <StatCard tone="teal" label="Jumlah layanan" value={rows.length} hint={`${formatNumber(rows.length - publik)} administrasi pemerintahan`} />
             <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
-            <StatCard tone="yellow" label="Terdigitalisasi" value={digital} hint="elektronik + hybrid" />
-            <StatCard tone="amber" label="Layanan publik" value={publik} />
+            <StatCard tone="yellow" label="Terdigitalisasi" active={filter.metode.length === 2 && filter.metode.includes("elektronik") && filter.metode.includes("hybrid")} onClick={() => clickFilter("Elektronik dan hybrid", (c) => ({ ...c, metode: c.metode.length === 2 && c.metode.includes("elektronik") && c.metode.includes("hybrid") ? [] : ["elektronik", "hybrid"] }), true)} value={digital} hint="elektronik + hybrid" />
+            <StatCard tone="amber" label="Layanan publik" active={filter.ral1.includes("RAL.01")} onClick={() => clickFilter("Layanan publik", (c) => withRal(c, { ral1: toggle(c.ral1, "RAL.01") }, rals.forPeriod(c.period)), !filter.ral1.includes("RAL.01"))} value={publik} />
           </StatRow>
 
           <section className="grid gap-5 *:min-w-0 lg:grid-cols-2">
@@ -239,7 +239,7 @@ export function ServiceDashboard({
             </CardContent>
           </Card>
 
-          <DataTable
+          <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog layanan"
             rows={rows}
             rowId={(l) => l.id}

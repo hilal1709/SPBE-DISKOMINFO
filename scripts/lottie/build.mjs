@@ -3,6 +3,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spbeOverview, domainIntegration } from "./portal.mjs";
 import {
   anim, composition, curve, ease, ellipse, fill, group, layer, palette as c, path, pingPong, rect, stroke, trim,
 } from "./lib.mjs";
@@ -661,10 +662,12 @@ function gapBridge() {
 }
 
 const builds = {
+  "spbe-overview": spbeOverview, "domain-integration": domainIntegration,
   loader, empty, "login-hero": loginHero, "not-found": notFound, error, building, success, explore, "filter-empty": filterEmpty,
   "service-desk": serviceDesk, "data-catalog": dataCatalog, "app-ecosystem": appEcosystem, "data-center": dataCenter, "security-shield": securityShield, roadmap, "gap-bridge": gapBridge,
 };
 for (const [name, build] of Object.entries(builds)) {
+  if (process.argv.length > 2 && !process.argv.slice(2).includes(name)) continue;
   const json = JSON.stringify(build());
   writeFileSync(join(out, `${name}.json`), json);
   console.log(`${name}.json  ${(json.length / 1024).toFixed(1)} KB`);

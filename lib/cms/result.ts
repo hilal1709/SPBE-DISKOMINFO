@@ -25,6 +25,8 @@ export function refresh({ reference = false }: { reference?: boolean } = {}) {
   expire(TAGS.content, ...(reference ? [TAGS.reference] : []));
   revalidatePath("/cms", "layout");
   revalidatePath("/");
+  revalidatePath("/proses-bisnis");
+  revalidatePath("/integrasi");
   revalidatePath("/layanan");
   revalidatePath("/data");
   revalidatePath("/aplikasi");

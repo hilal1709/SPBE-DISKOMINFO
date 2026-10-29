@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
 import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { cached, TAGS } from "@/lib/cache";
@@ -390,13 +390,15 @@ export function importRows(rows: (ProbisValues & { code?: string | null })[], ac
       const ref = refOf(row);
       if (existing) {
         assertImportUpdate(actor, existing);
+        const to = importUpdateStatus(existing.status, status);
         await client.query(
           `update process_businesses set name=$2, description=$3, rab_l4=$4, rab_l5=$5, strategic_goal=$6, iku=$7, iku_target=$8, iku_realization=$9,
-             probis_status=$10, opd_id=$11, period_id=$12, rab_id=$13, rab_review = false, updated_at = now() where id = $1`,
-          [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.rab_id],
+             probis_status=$10, opd_id=$11, period_id=$12, rab_id=$13, rab_review = false, updated_at = now(),
+             status=$14::text::submission_status, submitted_by=case when $14::text = 'submitted' then $15::uuid else submitted_by end where id = $1`,
+          [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.rab_id, to, actor.id],
         );
         touched.push(existing.id);
-        reviews.push([existing.id, actor.id, actor.name, existing.status, existing.status, "Diperbarui lewat impor"]);
+        reviews.push([existing.id, actor.id, actor.name, existing.status, to, to !== existing.status ? "Diajukan lewat impor" : "Diperbarui lewat impor"]);
         updated++;
       } else {
         const id = randomUUID();

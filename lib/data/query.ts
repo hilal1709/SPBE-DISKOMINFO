@@ -3,7 +3,7 @@ import type { RabTreeNode } from "@/lib/probis/query";
 import type { DataInfo } from "@/lib/types";
 
 /** `period` selalu satu periode (single-select), default periode aktif. `pd` = wali data. */
-export type DataFilter = { pd: string[]; sifat: string[]; jenis: string[]; validitas: string[]; period: string; rad1: string[]; rad2: string[]; rad3: string[] };
+export type DataFilter = { lintas?: boolean; pd: string[]; sifat: string[]; jenis: string[]; validitas: string[]; period: string; rad1: string[]; rad2: string[]; rad3: string[] };
 
 export const emptyFilter = (period: string): DataFilter => ({ pd: [], sifat: [], jenis: [], validitas: [], period, rad1: [], rad2: [], rad3: [] });
 
@@ -11,11 +11,11 @@ const listKeys = ["pd", "sifat", "jenis", "validitas", "rad1", "rad2", "rad3"] a
 const field = { pd: "wali", sifat: "sifat", jenis: "jenis", validitas: "validitas", rad1: "rad1", rad2: "rad2", rad3: "rad3" } as const;
 
 export function filterData(rows: DataInfo[], f: DataFilter) {
-  return rows.filter((d) => d.period === f.period && listKeys.every((key) => !f[key].length || f[key].includes(d[field[key]] ?? "")));
+  return rows.filter((d) => d.period === f.period && (!f.lintas || d.produsen !== d.wali) && listKeys.every((key) => !f[key].length || f[key].includes(d[field[key]] ?? "")));
 }
 
 export function activeFilterCount(f: DataFilter, defaultPeriod: string) {
-  return listKeys.filter((key) => f[key].length).length + (f.period !== defaultPeriod ? 1 : 0);
+  return Number(!!f.lintas) + listKeys.filter((key) => f[key].length).length + (f.period !== defaultPeriod ? 1 : 0);
 }
 
 export function countBy(rows: DataInfo[], key: "wali" | "sifat" | "jenis" | "validitas" | "rad1" | "rad2") {
@@ -48,13 +48,14 @@ export function radOptions(f: DataFilter, rad: RabIndex) {
 /** Serialisasi filter ke/dari query string agar tampilan bisa dibagikan. */
 export function filterFromParams(params: URLSearchParams, defaultPeriod: string): DataFilter {
   const list = (key: string) => params.get(key)?.split(",").filter(Boolean) ?? [];
-  return { pd: list("pd"), sifat: list("sifat"), jenis: list("jenis"), validitas: list("validitas"), period: params.get("periode") ?? defaultPeriod, rad1: list("rad1"), rad2: list("rad2"), rad3: list("rad3") };
+  return { lintas: params.get("lintas") === "1", pd: list("pd"), sifat: list("sifat"), jenis: list("jenis"), validitas: list("validitas"), period: params.get("periode") ?? defaultPeriod, rad1: list("rad1"), rad2: list("rad2"), rad3: list("rad3") };
 }
 
 /** Buang nilai URL yang tidak dikenal (tautan lama/salah ketik) agar tidak menjadi chip kosong. */
 export function sanitizeFilter(f: DataFilter, valid: { periods: string[]; defaultPeriod: string; pd: Set<string>; sifat: Set<string>; jenis: Set<string>; validitas: Set<string>; rad: RabIndex }): DataFilter {
   const radLevel = (level: number) => (code: string) => valid.rad.byCode.get(code)?.level === level;
   return {
+    lintas: f.lintas === true,
     pd: f.pd.filter((v) => valid.pd.has(v)),
     sifat: f.sifat.filter((v) => valid.sifat.has(v)),
     jenis: f.jenis.filter((v) => valid.jenis.has(v)),
@@ -68,6 +69,7 @@ export function sanitizeFilter(f: DataFilter, valid: { periods: string[]; defaul
 
 export function filterToParams(f: DataFilter, defaultPeriod: string) {
   const params = new URLSearchParams();
+  if (f.lintas) params.set("lintas", "1");
   for (const key of listKeys) if (f[key].length) params.set(key, f[key].join(","));
   if (f.period !== defaultPeriod) params.set("periode", f.period);
   return params;

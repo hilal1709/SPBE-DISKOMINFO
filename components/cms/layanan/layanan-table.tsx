@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { matchesCmsPeriod } from "@/lib/cms/list-navigation";
+import { useListFilters } from "@/components/cms/use-list-filters";
 import { useMemo, useState } from "react";
 import { Add01Icon, Download04Icon } from "@hugeicons/core-free-icons";
 import { DataTable } from "@/components/blocks/data-table";
@@ -37,18 +39,17 @@ export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; 
   const rals = useRalSet();
   /** Nama RAL mengikuti versi RAL periode masing-masing layanan. */
   const ral = (code: string | null, period: string) => (code ? rals.forPeriod(period).label(code) : "—");
-  const [tab, setTab] = useState<Tab>("all");
+  const { tab, setTab, period, setPeriod } = useListFilters();
   const [pd, setPd] = useState<string[]>([]);
   const [metode, setMetode] = useState<string[]>([]);
   const [target, setTarget] = useState<string[]>([]);
-  const [period, setPeriod] = useState<string>(periods.active);
   const [selected, setSelected] = useState<LayananRecord | null>(null);
 
   /** Baris sesuai filter (tanpa tab status), dasar hitungan di tiap tab. */
   const scoped = useMemo(
     () =>
       rows.filter(
-        (r) => (!pd.length || pd.includes(r.opdCode)) && (!metode.length || metode.includes(r.metode)) && (!target.length || target.includes(r.target)) && (period === "__all" || r.period === period),
+        (r) => (!pd.length || pd.includes(r.opdCode)) && (!metode.length || metode.includes(r.metode)) && (!target.length || target.includes(r.target)) && matchesCmsPeriod(r.period, period),
       ),
     [rows, pd, metode, target, period],
   );

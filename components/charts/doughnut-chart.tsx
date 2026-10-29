@@ -7,29 +7,29 @@ import { formatNumber } from "@/lib/format";
 
 
 /** Plugin kecil: total & keterangan di tengah donat (seperti "342" pada referensi). */
-const centerLabel = (value: string, caption: string): Plugin<"doughnut"> => ({
+const centerLabel = (value: string, caption: string, semicircle: boolean): Plugin<"doughnut"> => ({
   id: "centerLabel",
   afterDraw(chart) {
     const { ctx, chartArea } = chart;
     const x = (chartArea.left + chartArea.right) / 2;
-    const y = (chartArea.top + chartArea.bottom) / 2;
+    const y = semicircle ? chart.getDatasetMeta(0).data[0]?.y ?? chartArea.bottom : (chartArea.top + chartArea.bottom) / 2;
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = token("--foreground");
     ctx.font = `700 22px ${fontFamily()}`;
-    ctx.fillText(value, x, y - 8);
+    ctx.fillText(value, x, y - (semicircle ? 27 : 8));
     ctx.fillStyle = token("--muted-foreground");
     ctx.font = `500 11px ${fontFamily()}`;
-    ctx.fillText(caption, x, y + 14);
+    ctx.fillText(caption, x, y + (semicircle ? -7 : 14));
     ctx.restore();
   },
 });
 
-type Props = { labels: string[]; data: number[]; caption?: string; colors?: string[] };
+type Props = { labels: string[]; data: number[]; caption?: string; colors?: string[]; onSelect?: (index: number) => void; legend?: boolean; percentages?: boolean; semicircle?: boolean };
 
 /** Donat komposisi dengan total di tengah dan legend titik di bawah. */
-export default function DoughnutChart({ labels, data, caption = "Total", colors }: Props) {
+export default function DoughnutChart({ labels, data, caption = "Total", colors, onSelect, legend = true, percentages = false, semicircle = false }: Props) {
   const [ref, inView] = useInView<HTMLDivElement>();
   configureCharts();
   const palette = colors?.map(resolveColor) ?? seriesColors();
@@ -42,10 +42,13 @@ export default function DoughnutChart({ labels, data, caption = "Total", colors 
           data={{ labels, datasets: [{ data, backgroundColor: palette, borderColor: token("--card"), borderWidth: 3, hoverOffset: 6, borderRadius: 4 }] }}
           options={{
             cutout: "68%",
+            ...(semicircle && { rotation: -90, circumference: 180 }),
+            onClick: onSelect ? (_, elements) => { if (elements[0]) onSelect(elements[0].index); } : undefined,
+            onHover: onSelect ? (event, elements) => (event.native?.target as HTMLElement | undefined)?.style.setProperty("cursor", elements.length ? "pointer" : "default") : undefined,
             animation: prefersReducedMotion() ? false : { animateRotate: true, duration: 1000 },
-            plugins: { legend: { position: "bottom" } },
+            plugins: { legend: { display: legend, position: "bottom" }, ...(percentages && { tooltip: { callbacks: { label: (item) => `${item.label}: ${formatNumber(data[item.dataIndex])} (${total ? (data[item.dataIndex] / total * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 }) : 0}%)` } } }) },
           }}
-          plugins={[centerLabel(formatNumber(total), caption)]}
+          plugins={[centerLabel(formatNumber(total), caption, semicircle)]}
         />
       )}
     </div>

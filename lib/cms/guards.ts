@@ -18,3 +18,8 @@ export function assertImportUpdate(actor: Actor, existing: { code: string; statu
 export function assertStillEditable(actor: Actor, status: SubmissionStatus) {
   if (!can.edit(actor, { status, opdId: actor.opdId })) throw new Error("Status rekaman sudah berubah sehingga tidak dapat disunting. Muat ulang halaman.");
 }
+
+/** Pilihan ajukan juga berlaku pada data lama; simpan draf tidak menarik status review yang sudah ada. */
+export function importUpdateStatus(current: SubmissionStatus, requested: SubmissionStatus): SubmissionStatus {
+  return importStatus(requested) === "submitted" ? "submitted" : current;
+}

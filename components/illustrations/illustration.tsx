@@ -29,6 +29,8 @@ const catalog = {
   "security-shield": { load: () => import("./data/security-shield.json"), ratio: "3 / 2", still: 140 },
   roadmap: { load: () => import("./data/roadmap.json"), ratio: "3 / 2", still: 130 },
   "gap-bridge": { load: () => import("./data/gap-bridge.json"), ratio: "3 / 2", still: 150 },
+  "spbe-overview": { load: () => import("./data/spbe-overview.json"), ratio: "3 / 2", still: 160 },
+  "domain-integration": { load: () => import("./data/domain-integration.json"), ratio: "3 / 2", still: 160 },
 } as const;
 
 export type IllustrationName = keyof typeof catalog;

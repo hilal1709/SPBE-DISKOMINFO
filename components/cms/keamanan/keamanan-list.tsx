@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { matchesCmsPeriod } from "@/lib/cms/list-navigation";
+import { useListFilters } from "@/components/cms/use-list-filters";
 import { useMemo, useState } from "react";
 import { Add01Icon, Download04Icon } from "@hugeicons/core-free-icons";
 import { DataTable } from "@/components/blocks/data-table";
@@ -33,13 +35,12 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar kegiatan keamanan CMS: tab status, filter kegiatan, tabel ramping, detail via pop-up. */
 export function KeamananList({ rows, actor, periods }: { rows: KeamananRecord[]; actor: Actor; periods: PeriodOptions }) {
-  const [tab, setTab] = useState<Tab>("all");
+  const { tab, setTab, period, setPeriod } = useListFilters();
   const [pd, setPd] = useState<string[]>([]);
   const [jenis, setJenis] = useState<string[]>([]);
-  const [period, setPeriod] = useState<string>(periods.active);
   const [selected, setSelected] = useState<KeamananRecord | null>(null);
 
-  const scoped = useMemo(() => rows.filter((r) => (!pd.length || pd.includes(r.opdCode)) && (!jenis.length || jenis.includes(r.jenis)) && r.period === period), [rows, pd, jenis, period]);
+  const scoped = useMemo(() => rows.filter((r) => (!pd.length || pd.includes(r.opdCode)) && (!jenis.length || jenis.includes(r.jenis)) && matchesCmsPeriod(r.period, period)), [rows, pd, jenis, period]);
   const counts = useMemo(() => {
     const map = new Map<string, number>([["all", scoped.length]]);
     for (const r of scoped) map.set(r.status, (map.get(r.status) ?? 0) + 1);
@@ -77,7 +78,7 @@ export function KeamananList({ rows, actor, periods }: { rows: KeamananRecord[];
         filters={[
           ...(can.readAll(actor) ? [{ label: "Instansi", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Kegiatan", wide: true, multiple: true, options: kegiatanOptions, values: jenis, onValuesChange: setJenis },
-          { label: "Periode", required: true, options: periods.periods, value: period, onChange: setPeriod },
+          { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
         ]}
       />
 

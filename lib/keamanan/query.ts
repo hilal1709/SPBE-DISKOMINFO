@@ -1,17 +1,18 @@
+import { masihBerlaku } from "./jenis";
 import type { KegiatanKeamanan } from "@/lib/types";
 
 /** `period` selalu satu periode (single-select), default periode aktif. `tahun` = tahun kegiatan. */
-export type KeamananFilter = { pd: string[]; jenis: string[]; tahun: string[]; period: string };
+export type KeamananFilter = { berlaku?: boolean; pd: string[]; jenis: string[]; tahun: string[]; period: string };
 
 export const emptyFilter = (period: string): KeamananFilter => ({ pd: [], jenis: [], tahun: [], period });
 
 const yearOf = (r: KegiatanKeamanan) => r.tanggal?.slice(0, 4) ?? "";
 
 export function filterKeamanan(rows: KegiatanKeamanan[], f: KeamananFilter) {
-  return rows.filter((r) => r.period === f.period && (!f.pd.length || f.pd.includes(r.opd)) && (!f.jenis.length || f.jenis.includes(r.jenis)) && (!f.tahun.length || f.tahun.includes(yearOf(r))));
+  return rows.filter((r) => r.period === f.period && (!f.berlaku || masihBerlaku(r)) && (!f.pd.length || f.pd.includes(r.opd)) && (!f.jenis.length || f.jenis.includes(r.jenis)) && (!f.tahun.length || f.tahun.includes(yearOf(r))));
 }
 
-export const activeFilterCount = (f: KeamananFilter, defaultPeriod: string) => [f.pd, f.jenis, f.tahun].filter((l) => l.length).length + (f.period !== defaultPeriod ? 1 : 0);
+export const activeFilterCount = (f: KeamananFilter, defaultPeriod: string) => Number(!!f.berlaku) + [f.pd, f.jenis, f.tahun].filter((l) => l.length).length + (f.period !== defaultPeriod ? 1 : 0);
 
 /** Tahun-tahun dalam periode "2025–2029". */
 export const yearsOf = (period: string) => {
@@ -21,18 +22,19 @@ export const yearsOf = (period: string) => {
 
 export function filterFromParams(params: URLSearchParams, defaultPeriod: string): KeamananFilter {
   const list = (key: string) => params.get(key)?.split(",").filter(Boolean) ?? [];
-  return { pd: list("pd"), jenis: list("kegiatan"), tahun: list("tahun"), period: params.get("periode") ?? defaultPeriod };
+  return { berlaku: params.get("berlaku") === "1", pd: list("pd"), jenis: list("kegiatan"), tahun: list("tahun"), period: params.get("periode") ?? defaultPeriod };
 }
 
 /** Buang nilai URL yang tidak dikenal (tautan lama/salah ketik) agar tidak menjadi chip kosong. */
 export function sanitizeFilter(f: KeamananFilter, valid: { periods: string[]; defaultPeriod: string; pd: Set<string>; jenis: Set<string> }): KeamananFilter {
   const period = valid.periods.includes(f.period) ? f.period : valid.defaultPeriod;
   const years = new Set(yearsOf(period));
-  return { pd: f.pd.filter((v) => valid.pd.has(v)), jenis: f.jenis.filter((v) => valid.jenis.has(v)), tahun: f.tahun.filter((v) => years.has(v)), period };
+  return { berlaku: f.berlaku === true, pd: f.pd.filter((v) => valid.pd.has(v)), jenis: f.jenis.filter((v) => valid.jenis.has(v)), tahun: f.tahun.filter((v) => years.has(v)), period };
 }
 
 export function filterToParams(f: KeamananFilter, defaultPeriod: string) {
   const params = new URLSearchParams();
+  if (f.berlaku) params.set("berlaku", "1");
   if (f.pd.length) params.set("pd", f.pd.join(","));
   if (f.jenis.length) params.set("kegiatan", f.jenis.join(","));
   if (f.tahun.length) params.set("tahun", f.tahun.join(","));

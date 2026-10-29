@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { savedListHref } from "@/lib/cms/list-navigation";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { AiMagicIcon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
@@ -297,7 +298,7 @@ export function KeamananForm({
         </CardContent>
       </Card>
 
-      <Dialog open={!!done} onOpenChange={(open) => !open && router.push("/cms/keamanan")}>
+      <Dialog open={!!done} onOpenChange={(open) => !open && router.push(savedListHref("/cms/keamanan", !!done?.submitted, values.period, record?.status))}>
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Kegiatan diajukan" : "Draf tersimpan"}</DialogTitle>
@@ -306,7 +307,7 @@ export function KeamananForm({
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/keamanan/${record.id}`) : (setDone(null), setValues(fromRecord(null, values.jenis || null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}
             </Button>
-            <Button onClick={() => router.push("/cms/keamanan")}>
+            <Button onClick={() => router.push(savedListHref("/cms/keamanan", !!done?.submitted, values.period, record?.status))}>
               <Icon icon={CheckmarkCircle02Icon} size={16} />
               Lihat daftar
             </Button>

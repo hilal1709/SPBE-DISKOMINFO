@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import { assertImportUpdate, assertStillEditable, importStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import type { LayananRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
@@ -282,11 +282,12 @@ export function importRows(rows: (LayananValues & { code?: string | null })[], a
           continue;
         }
         assertImportUpdate(actor, existing);
+        const to = importUpdateStatus(existing.status, status);
         const ref = await ids(client, row, batch);
-        await client.query(`${UPDATE} where id = $1`, [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.ral_id, ref.rab_id]);
+        await client.query(`${UPDATE}, status = $19::text::submission_status, submitted_by = case when $19::text = 'submitted' then $20::uuid else submitted_by end where id = $1`, [existing.id, ...columns(row), ref.opd_id, ref.period_id, ref.ral_id, ref.rab_id, to, actor.id]);
         await linkDeep(client, existing.id, batch);
         await linkProbis(client, existing.id, ref.probis);
-        await review(client, existing.id, actor, existing.status, existing.status, "Diperbarui lewat impor", batch);
+        await review(client, existing.id, actor, existing.status, to, to !== existing.status ? "Diajukan lewat impor" : "Diperbarui lewat impor", batch);
         updated++;
       } else {
         await insert(client, row, actor, status, row.code ?? undefined, batch);

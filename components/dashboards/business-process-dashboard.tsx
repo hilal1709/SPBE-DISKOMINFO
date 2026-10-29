@@ -157,8 +157,8 @@ export function BusinessProcessDashboard({
           <StatRow>
             <StatCard tone="teal" label="Jumlah proses bisnis" value={rows.length} hint={`${formatNumber(statusCount.get("as_is") ?? 0)} AS-IS`} />
             <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
-            <StatCard tone="yellow" label="Rencana upgrade" value={statusCount.get("upgrade") ?? 0} hint="pengembangan dari AS-IS" />
-            <StatCard tone="amber" label="Probis baru" value={statusCount.get("new") ?? 0} hint={`${tree.length} sektor RAB terisi`} />
+            <StatCard tone="yellow" label="Rencana upgrade" active={filter.status.includes("upgrade")} onClick={() => clickFilter("Probis upgrade", (c) => ({ ...c, status: toggle(c.status, "upgrade") }), !filter.status.includes("upgrade"))} value={statusCount.get("upgrade") ?? 0} hint="pengembangan dari AS-IS" />
+            <StatCard tone="amber" label="Probis baru" active={filter.status.includes("new")} onClick={() => clickFilter("Probis baru", (c) => ({ ...c, status: toggle(c.status, "new") }), !filter.status.includes("new"))} value={statusCount.get("new") ?? 0} hint={`${tree.length} sektor RAB terisi`} />
           </StatRow>
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1fr_1.15fr]">
@@ -185,7 +185,7 @@ export function BusinessProcessDashboard({
             </Card>
           </section>
 
-          <DataTable
+          <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog proses bisnis"
             rows={rows}
             rowId={(p) => p.id}
