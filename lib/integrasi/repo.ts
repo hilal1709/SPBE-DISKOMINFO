@@ -146,6 +146,34 @@ const relationPage = cached(async (index: number, offset: number) => {
   return rows;
 }, "portal:relation-summary-page-v2", [TAGS.content, TAGS.reference]);
 
+type SecuritySource = "data" | "aplikasi" | "infrastruktur";
+const securitySources: SecuritySource[] = ["data", "aplikasi", "infrastruktur"];
+
+/** Hanya agregat tautan kode yang sah; teks lama dan isi atribut keamanan tidak dikirim ke browser. */
+export async function readSecurityRelationPage(db: Pick<Pool, "query">, source: SecuritySource, offset: number): Promise<RelationSummary[]> {
+  const table = tables.find(([key]) => key === source && securitySources.includes(key as SecuritySource))?.[1];
+  if (!table) throw new Error("Domain sumber keamanan tidak valid.");
+  const { rows } = await db.query<RelationSummary>(`select $1::text as source, 'keamanan'::text as target,
+    so.code as "sourceOpd", to_.code as "targetOpd", p.name as period, count(*)::int as count
+    from ${table} s
+    cross join lateral jsonb_each(case when jsonb_typeof(s.security)='object' then s.security else '{}'::jsonb end) e
+    cross join lateral (
+      select distinct value #>> '{}' as code
+      from jsonb_array_elements(case when jsonb_typeof(e.value)='array' then e.value else '[]'::jsonb end)
+      where jsonb_typeof(value)='string'
+    ) refs
+    join security_activities t on t.code=refs.code and t.kind=e.key and t.period_id=s.period_id and t.status='approved'
+    join opd so on so.id=s.opd_id join opd to_ on to_.id=t.opd_id join architecture_periods p on p.id=s.period_id
+    where s.status='approved'
+    group by so.code, to_.code, p.name order by so.code, to_.code, p.name limit $2 offset $3`, [source, PAGE_SIZE, offset]);
+  return rows;
+}
+
+const securityRelationPage = cached(async (source: SecuritySource, offset: number) => {
+  const db = getDb(); if (!db) throw new Error("Database belum tersedia.");
+  return readSecurityRelationPage(db, source, offset);
+}, "portal:security-relation-summary-page-v1", [TAGS.content, TAGS.reference]);
+
 async function collect<T>(page: (offset: number) => Promise<T[]>): Promise<T[]> {
   const result: T[] = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
@@ -154,12 +182,24 @@ async function collect<T>(page: (offset: number) => Promise<T[]>): Promise<T[]> 
   }
 }
 
-export async function loadOverview(securityVisible: boolean) {
+type OverviewReaders = {
+  summary: (domain: DomainKey, offset: number) => Promise<DomainSummary[]>;
+  relations: (index: number, offset: number) => Promise<RelationSummary[]>;
+  securityRelations: (source: SecuritySource, offset: number) => Promise<RelationSummary[]>;
+};
+
+/** Izin diputuskan server sebelum bacaan ber-cache dipanggil; pengunjung umum tidak membaca relasi keamanan. */
+export async function readOverviewFromPages(securityVisible: boolean, readers: OverviewReaders) {
   try {
-    const [summary, relations] = await Promise.all([
-      Promise.all(tables.filter(([key]) => securityVisible || key !== "keamanan").map(([key]) => collect((offset) => summaryPage(key, offset)))),
-      Promise.all(junctions.map((_, index) => collect((offset) => relationPage(index, offset)))),
+    const [summary, relations, security] = await Promise.all([
+      Promise.all(tables.filter(([key]) => securityVisible || key !== "keamanan").map(([key]) => collect((offset) => readers.summary(key, offset)))),
+      Promise.all(junctions.map((_, index) => collect((offset) => readers.relations(index, offset)))),
+      securityVisible ? Promise.all(securitySources.map((source) => collect((offset) => readers.securityRelations(source, offset)))) : [],
     ]);
-    return { summary: summary.flat(), relations: relations.flat(), available: true };
+    return { summary: summary.flat(), relations: [...relations.flat(), ...security.flat()], available: true };
   } catch { return { summary: [], relations: [], available: false }; }
+}
+
+export async function loadOverview(securityVisible: boolean) {
+  return readOverviewFromPages(securityVisible, { summary: summaryPage, relations: relationPage, securityRelations: securityRelationPage });
 }

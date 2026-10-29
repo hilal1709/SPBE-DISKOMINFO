@@ -80,7 +80,7 @@ export function OverviewDashboard({ summary, relations, securityVisible, availab
           })}
         </section>
         <Card><CardHeader className="flex flex-wrap items-center justify-between gap-3"><CardTitle as="h2">Hubungan domain</CardTitle><Button asChild variant="outline"><Link href={domainHref("/integrasi")}>Buka Integrasi Domain</Link></Button></CardHeader><CardContent className="grid gap-3">
-          <p className="text-xs text-muted-foreground">Ringkasan menghitung tautan junction antarrecord tervalidasi pada periode yang sama. Referensi teks dan JSONB dapat ditelusuri di Integrasi Domain.</p>
+          <p className="text-xs text-muted-foreground">Hubungan antarentri tervalidasi pada periode yang sama.{securityVisible && " Termasuk tautan Keamanan dari Data, Aplikasi, dan Infrastruktur."} Klik aliran untuk menelusuri di Integrasi Domain.</p>
           {partial && <p className="text-xs text-muted-foreground">Jumlah inventaris lengkap; ringkasan relasi dibatasi pada cakupan peta interaktif.</p>}
           <DomainSankey relations={links} href={(source) => `${domainHref("/integrasi")}&domain=${source}`} />
         </CardContent></Card>
