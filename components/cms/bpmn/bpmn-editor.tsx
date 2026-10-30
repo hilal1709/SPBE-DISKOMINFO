@@ -113,7 +113,9 @@ export default function BpmnEditor({ id, code, name, initialXml, onDirty }: Prop
       setSelected(list.length === 1 ? describe(list[0]) : null);
     });
     on("tool-manager.update", (e) => setTool(TOOL_NAMES[e.tool as string] ?? "select"));
-    on("commandStack.elements.delete.postExecuted", () => {
+    // bpmn-js juga menjalankan perintah ini dengan daftar kosong setiap kali properti diubah.
+    on("commandStack.elements.delete.postExecuted", (e) => {
+      if (!(e.context as { elements: unknown[] }).elements.length) return;
       toast("Elemen dihapus", { action: { label: "Urungkan", onClick: () => get("commandStack").undo() } });
     });
 
