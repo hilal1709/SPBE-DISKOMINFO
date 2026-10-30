@@ -1,0 +1,31 @@
+/* Tema bpmn-js mengikuti token design system (app/globals.css). Kanvas selalu terang agar diagram terbaca. */
+.bpmn-surface .djs-container {
+  --bio-primary: var(--brand-teal);
+  --bio-primary-surface: color-mix(in oklab, var(--brand-teal) 12%, white);
+  --bio-focus: var(--brand-teal);
+  --bio-focus-surface: color-mix(in oklab, var(--brand-teal) 12%, white);
+  --bio-canvas-accent: var(--brand-teal);
+  --bio-canvas-accent-subtle: color-mix(in oklab, var(--brand-teal) 20%, white);
+  --bio-text: var(--brand-charcoal);
+  --bio-radius-sm: 6px;
+  --bio-radius-md: 8px;
+  --bio-radius-lg: 12px;
+  --palette-entry-hover-color: var(--brand-teal);
+  --palette-entry-selected-color: var(--brand-amber);
+  --context-pad-entry-hover-background-color: color-mix(in oklab, var(--brand-sky) 55%, white);
+  --element-selected-outline-secondary-stroke-color: var(--brand-amber);
+  font-family: inherit;
+}
+
+.bpmn-surface .djs-palette {
+  border-radius: var(--bio-radius-lg);
+  box-shadow: 0 8px 24px -12px color-mix(in oklab, var(--brand-charcoal) 35%, transparent);
+}
+
+/* Logo "powered by bpmn.io" wajib tetap terlihat (lisensi bpmn-js); dipindah ke kanan atas agar tidak tertimpa dock. */
+.bpmn-surface .bjs-powered-by {
+  top: 12px !important;
+  bottom: auto !important;
+  right: 12px !important;
+  z-index: 10;
+}

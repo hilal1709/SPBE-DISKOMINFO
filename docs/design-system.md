@@ -201,6 +201,17 @@ Impor dari `@/components/charts`: `BarChart`, `DoughnutChart`, `Sparkline`.
 | `snap-carousel` (@ddoemonn), `carousel` (@wensity) | `StatRow` (Swiper, peek + bullet pil) |
 | `words-stagger` (@tom_ui) | `WordStagger` (anime.js) |
 | `reveal` (@asanshay), `scroll-reveal` (@cnippet-dev) | AOS `fade-blur` |
+| `v-toolbar-8` canvas zoom, `v-toolbar-3` image editor toolbar (@cnippet-dev), `toolbar-dock` (@ruixen.ui) | `EditorDock` editor diagram BPMN (sorotan meluncur, zoom ber-tween) |
+
+## Editor kanvas (diagram BPMN)
+
+`components/cms/bpmn/`: editor **bpmn-js** untuk diagram proses bisnis (`/cms/proses-bisnis/[id]/diagram`).
+
+- Muat lewat `dynamic(..., { ssr: false })` (bpmn-js butuh `window`); `Skeleton` setinggi kanvas selama memuat.
+- Kanvas selalu terang (`bpmn-surface`, `bg-white`) di mode gelap juga; warna bpmn-js dipetakan ke token di `bpmn-theme.css`, warna garis dibaca dari `--brand-charcoal` (`rendererColors()`).
+- Alat di `EditorDock` mengambang di bawah kanvas, properti elemen di panel kanan (`Sheet` di bawah `lg`), ringkasan elemen dengan `StatRow`.
+- Logo "powered by bpmn.io" wajib tetap terlihat (lisensi).
+- SVG tersimpan hanya ditampilkan lewat `<img>` data URI, tidak pernah disisipkan ke DOM.
 
 ## Ilustrasi (Lottie)
 

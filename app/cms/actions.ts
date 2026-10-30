@@ -23,7 +23,7 @@ import * as rabRepo from "@/lib/probis/rab";
 import * as ralRepo from "@/lib/layanan/ral";
 import type { RefKind, VersionedRef } from "@/lib/reference/versioned";
 import type { RabStatus } from "@/lib/probis/rab-index";
-import { makeProbisInput, type ProbisInput } from "@/lib/probis/schema";
+import { diagramInput, makeProbisInput, type ProbisInput } from "@/lib/probis/schema";
 import type { SubmissionStatus } from "@/lib/types";
 
 export type { ActionResult } from "@/lib/cms/result";
@@ -126,6 +126,36 @@ export async function getProbisReviews(id: string) {
   const current = await repo.getProbis(id);
   if (!current || !can.read(actor, current.opdId)) return [];
   return repo.getReviews(id);
+}
+
+/** Diagram BPMN probis (CMS): dibaca siapa pun yang boleh membaca rekamannya. */
+export async function getProbisDiagram(id: string): Promise<ActionResult<repo.ProbisDiagram>> {
+  try {
+    arg(idSchema, id);
+    const actor = await currentActor();
+    const current = await repo.getProbis(id);
+    if (!current || !can.read(actor, current.opdId)) throw new Error("Probis tidak ditemukan.");
+    return { ok: true, data: await repo.getProbisDiagram(id) };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/** Simpan diagram BPMN; aturan sama dengan menyunting rekamannya (draf/dikembalikan, OPD sendiri). */
+export async function saveProbisDiagram(id: string, input: { xml: string; svg: string }): Promise<ActionResult<{ updatedAt: string }>> {
+  try {
+    arg(idSchema, id);
+    const { xml, svg } = arg(diagramInput, input);
+    const actor = await currentActor();
+    const current = await repo.getProbis(id);
+    if (!current || !can.read(actor, current.opdId)) throw new Error("Probis tidak ditemukan.");
+    if (!can.edit(actor, current)) throw new Error("Diagram hanya dapat diubah saat probis masih draf atau dikembalikan.");
+    const updatedAt = await repo.saveProbisDiagram(id, xml, svg, actor);
+    refresh();
+    return { ok: true, data: { updatedAt } };
+  } catch (error) {
+    return fail(error);
+  }
 }
 
 export async function suggestProbis(input: { name: string; opd: string; note?: string; period?: string }): Promise<ActionResult<ProbisSuggestion>> {
