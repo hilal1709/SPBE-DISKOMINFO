@@ -26,6 +26,18 @@ export function starterXml(name: string) {
 </bpmn:definitions>`;
 }
 
+/** Nama tipe BPMN yang mudah dibaca. */
+export const typeLabel = (type: string) => {
+  const t = type.replace("bpmn:", "");
+  const map: Record<string, string> = {
+    Task: "Aktivitas", UserTask: "Aktivitas pengguna", ServiceTask: "Aktivitas sistem", ManualTask: "Aktivitas manual", SubProcess: "Subproses",
+    StartEvent: "Event mulai", EndEvent: "Event selesai", IntermediateThrowEvent: "Event antara", IntermediateCatchEvent: "Event antara",
+    ExclusiveGateway: "Gateway eksklusif", ParallelGateway: "Gateway paralel", InclusiveGateway: "Gateway inklusif",
+    SequenceFlow: "Alur", Participant: "Pool", Lane: "Lane", DataObjectReference: "Objek data", DataStoreReference: "Penyimpanan data", TextAnnotation: "Catatan",
+  };
+  return map[t] ?? t;
+};
+
 export type DiagramStats = { activities: number; gateways: number; events: number; lanes: number };
 
 /** Hitung elemen dari daftar tipe BPMN (`bpmn:Task`, `bpmn:ExclusiveGateway`, …). */

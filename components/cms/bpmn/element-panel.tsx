@@ -5,20 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { typeLabel } from "./diagram-model";
 
 export type SelectedElement = { id: string; type: string; name: string; documentation: string };
-
-/** Nama tipe BPMN yang mudah dibaca. */
-const typeLabel = (type: string) => {
-  const t = type.replace("bpmn:", "");
-  const map: Record<string, string> = {
-    Task: "Aktivitas", UserTask: "Aktivitas pengguna", ServiceTask: "Aktivitas sistem", ManualTask: "Aktivitas manual", SubProcess: "Subproses",
-    StartEvent: "Event mulai", EndEvent: "Event selesai", IntermediateThrowEvent: "Event antara", IntermediateCatchEvent: "Event antara",
-    ExclusiveGateway: "Gateway eksklusif", ParallelGateway: "Gateway paralel", InclusiveGateway: "Gateway inklusif",
-    SequenceFlow: "Alur", Participant: "Pool", Lane: "Lane", DataObjectReference: "Objek data", DataStoreReference: "Penyimpanan data", TextAnnotation: "Catatan",
-  };
-  return map[t] ?? t;
-};
 
 /** Properti elemen terpilih: nama dan dokumentasi. Masuk dengan slide halus saat pilihan berubah. */
 export function ElementPanel({ element, readOnly, onChange }: { element: SelectedElement | null; readOnly?: boolean; onChange: (patch: Partial<Pick<SelectedElement, "name" | "documentation">>) => void }) {
@@ -51,7 +40,8 @@ export function ElementPanel({ element, readOnly, onChange }: { element: Selecte
       )}
       <div data-field className="grid gap-1.5">
         <Label htmlFor="bpmn-doc">Dokumentasi</Label>
-        <Textarea id="bpmn-doc" rows={6} value={element.documentation} readOnly={readOnly} maxLength={2000} onChange={(e) => onChange({ documentation: e.target.value })} />
+        <p id="bpmn-doc-hint" className="text-xs text-muted-foreground">Pelaksana, dokumen, waktu layanan, atau dasar hukum. Tampil saat elemen disorot dan di daftar keterangan di bawah diagram.</p>
+        <Textarea id="bpmn-doc" aria-describedby="bpmn-doc-hint" rows={6} value={element.documentation} readOnly={readOnly} maxLength={2000} onChange={(e) => onChange({ documentation: e.target.value })} />
       </div>
     </div>
   );

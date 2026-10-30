@@ -29,3 +29,21 @@
   right: 12px !important;
   z-index: 10;
 }
+
+/* Viewer: penanda elemen berdokumentasi dan sorotan saat keterangannya tampil. */
+.bpmn-doc-badge {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--brand-teal);
+  color: white;
+  font: 600 10px/1 var(--font-sans, inherit);
+  font-style: italic;
+  pointer-events: none;
+}
+.bpmn-surface .djs-element.doc-active .djs-visual > :is(rect, circle, polygon, path) {
+  stroke: var(--brand-teal) !important;
+  stroke-width: 3px !important;
+}
