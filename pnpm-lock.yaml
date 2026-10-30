@@ -35,6 +35,9 @@ importers:
       bpmn-js:
         specifier: ^18.31.1
         version: 18.31.1(preact-render-to-string@6.5.11(preact@10.24.3))
+      bpmn-js-create-append-anything:
+        specifier: 2.2.0
+        version: 2.2.0(bpmn-js@18.31.1(preact-render-to-string@6.5.11(preact@10.24.3)))(diagram-js@15.28.1(preact-render-to-string@6.5.11(preact@10.24.3)))
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1
@@ -2024,6 +2027,12 @@ packages:
   body-parser@2.3.0:
     resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
     engines: {node: '>=18'}
+
+  bpmn-js-create-append-anything@2.2.0:
+    resolution: {integrity: sha512-BQrpY+kVQTAb1q3CQTD9ToOtze62E/N93MCXu8LcCpu5qwc7auGXKXTki8rPgg71WhLx6aMr+IEcU8SGX7QLlA==}
+    peerDependencies:
+      bpmn-js: '>= 18.27.0'
+      diagram-js: '>= 15.26.0'
 
   bpmn-js@18.31.1:
     resolution: {integrity: sha512-Hc7LzrgwfcBRUAdI/380Q2v1MJ115atGEVGadawLfDbHdo+r+IkmNj8fuYPFmWglUYt1KYIaC46OeX16HGTKQw==}
@@ -6132,6 +6141,11 @@ snapshots:
       type-is: 2.1.0
     transitivePeerDependencies:
       - supports-color
+
+  bpmn-js-create-append-anything@2.2.0(bpmn-js@18.31.1(preact-render-to-string@6.5.11(preact@10.24.3)))(diagram-js@15.28.1(preact-render-to-string@6.5.11(preact@10.24.3))):
+    dependencies:
+      bpmn-js: 18.31.1(preact-render-to-string@6.5.11(preact@10.24.3))
+      diagram-js: 15.28.1(preact-render-to-string@6.5.11(preact@10.24.3))
 
   bpmn-js@18.31.1(preact-render-to-string@6.5.11(preact@10.24.3)):
     dependencies:

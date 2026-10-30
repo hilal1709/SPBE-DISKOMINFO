@@ -5,6 +5,7 @@ import "bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css";
 import "./bpmn-theme.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Modeler from "bpmn-js/lib/Modeler";
+import { CreateAppendAnythingModule } from "bpmn-js-create-append-anything";
 import { toast } from "sonner";
 import { saveProbisDiagram } from "@/app/cms/actions";
 import { EmptyState } from "@/components/blocks/empty-state";
@@ -99,7 +100,7 @@ export default function BpmnEditor({ id, code, name, initialXml, onDirty }: Prop
   );
 
   useEffect(() => {
-    const m = new Modeler({ container: host.current!, bpmnRenderer: rendererColors() });
+    const m = new Modeler({ container: host.current!, bpmnRenderer: rendererColors(), additionalModules: [CreateAppendAnythingModule] });
     modeler.current = m;
     const on = m.on.bind(m) as (event: string, cb: (e: Record<string, unknown>) => void) => void;
     on("commandStack.changed", () => {
