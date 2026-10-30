@@ -21,7 +21,8 @@ const SELECT = `
   select pb.id, pb.code, pb.name, pb.description, o.code as opd_code, o.name as opd_name, o.id as opd_id,
          ap.name as period, pb.probis_status, pb.status::text as status,
          r1.code as rab1, r2.code as rab2, r3.code as rab3, r4.code as rab4, r5.code as rab5, pb.rab_l4, pb.rab_l5,
-         pb.strategic_goal, pb.iku, pb.iku_target, pb.iku_realization, pb.updated_at, pb.is_sample, pb.rab_review
+         pb.strategic_goal, pb.iku, pb.iku_target, pb.iku_realization, pb.updated_at, pb.is_sample, pb.rab_review,
+         pb.bpmn_xml is not null as has_diagram
   from process_businesses pb
   join opd o on o.id = pb.opd_id
   left join architecture_periods ap on ap.id = pb.period_id
@@ -31,7 +32,7 @@ const SELECT = `
   left join rab_references r2 on r2.id = r3.parent_id
   left join rab_references r1 on r1.id = r2.parent_id`;
 
-type Row = Record<string, string | null> & { updated_at: Date; is_sample: boolean; rab_review: boolean };
+type Row = Record<string, string | null> & { updated_at: Date; is_sample: boolean; rab_review: boolean; has_diagram: boolean };
 
 const toRecord = (r: Row): ProbisRecord => ({
   id: r.id!,
@@ -56,6 +57,7 @@ const toRecord = (r: Row): ProbisRecord => ({
   updatedAt: r.updated_at.toISOString(),
   isSample: r.is_sample,
   rabReview: r.rab_review,
+  hasDiagram: r.has_diagram,
 });
 
 /** Daftar probis sesuai cakupan: operator hanya OPD-nya; `statuses` opsional. */
@@ -188,6 +190,7 @@ async function loadApproved(): Promise<{ rows: Probis[]; sample: boolean }> {
     rab3: r.rab3!,
     rab4: r.rab4,
     rab5: r.rab5,
+    diagram: r.has_diagram ? r.id : null,
   }));
   return { rows: mapped, sample: rows.some((r) => r.is_sample) };
 }
@@ -318,6 +321,39 @@ export function updateProbis(id: string, v: ProbisValues, actor: Actor, submit: 
     return id;
   });
 }
+
+export type ProbisDiagram = { xml: string | null; svg: string | null; updatedAt: string | null };
+
+export async function getProbisDiagram(id: string): Promise<ProbisDiagram> {
+  const { rows } = await db().query("select bpmn_xml, bpmn_svg, bpmn_updated_at from process_businesses where id = $1", [id]);
+  const r = rows[0];
+  return { xml: r?.bpmn_xml ?? null, svg: r?.bpmn_svg ?? null, updatedAt: r?.bpmn_updated_at?.toISOString() ?? null };
+}
+
+/** Simpan diagram; status dicek ulang di baris terkunci karena diagram ikut alur ajuan rekamannya. */
+export function saveProbisDiagram(id: string, xml: string, svg: string, actor: Actor) {
+  return tx(async (client) => {
+    const { rows } = await client.query("select status::text from process_businesses where id = $1 for update", [id]);
+    const status = rows[0]?.status as SubmissionStatus | undefined;
+    if (!status) throw new Error("Probis tidak ditemukan.");
+    assertStillEditable(actor, status);
+    const { rows: saved } = await client.query(
+      "update process_businesses set bpmn_xml = $2, bpmn_svg = $3, bpmn_updated_at = now(), updated_at = now() where id = $1 returning bpmn_updated_at",
+      [id, xml, svg],
+    );
+    return (saved[0].bpmn_updated_at as Date).toISOString();
+  });
+}
+
+/** Diagram probis tervalidasi untuk portal publik (rekaman lain tidak terlihat). */
+export const approvedDiagram = cached(
+  async (id: string) => {
+    const { rows } = await db().query("select bpmn_xml from process_businesses where id = $1 and status = 'approved' and bpmn_xml is not null", [id]);
+    return (rows[0]?.bpmn_xml as string | undefined) ?? null;
+  },
+  "probis/repo:approvedDiagram",
+  [TAGS.content],
+);
 
 export async function deleteProbis(id: string) {
   await db().query("delete from process_businesses where id = $1", [id]);

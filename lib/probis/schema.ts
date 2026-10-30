@@ -44,3 +44,29 @@ export function makeProbisInput(rab: RabIndex) {
 
 export type ProbisInput = z.input<ReturnType<typeof makeProbisInput>>;
 export type ProbisValues = z.output<ReturnType<typeof makeProbisInput>>;
+
+const DIAGRAM_MAX = 2_000_000;
+
+/** Isi SVG yang bisa menjalankan kode atau memuat sumber luar; dibuang sebelum disimpan. */
+function cleanSvg(svg: string) {
+  return svg
+    .replace(/<\?xml[^>]*\?>/g, "")
+    .replace(/<(script|foreignObject|iframe|object|embed)\b[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/<(script|foreignObject|iframe|object|embed)\b[^>]*\/?>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(?:xlink:)?href\s*=\s*("|')(?!#)[^"']*\1/gi, "");
+}
+
+/** Diagram BPMN dari editor: XML BPMN 2.0 tanpa DTD/entitas (XXE), dan snapshot SVG tersanitasi. */
+export const diagramInput = z.object({
+  xml: z
+    .string("Diagram tidak valid.")
+    .max(DIAGRAM_MAX, "Diagram terlalu besar (maks. 2 MB).")
+    .refine((v) => /<(\w+:)?definitions\b/.test(v), "Berkas bukan diagram BPMN 2.0.")
+    .refine((v) => !/<!(DOCTYPE|ENTITY)/i.test(v), "Diagram berisi deklarasi DTD yang tidak diizinkan."),
+  svg: z
+    .string("Diagram tidak valid.")
+    .max(DIAGRAM_MAX, "Gambar diagram terlalu besar.")
+    .refine((v) => /^\s*(<\?xml[^>]*\?>\s*)?(<!--[\s\S]*?-->\s*)*<svg\b/.test(v), "Gambar diagram tidak valid.")
+    .transform(cleanSvg),
+});

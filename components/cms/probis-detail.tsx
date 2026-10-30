@@ -1,11 +1,12 @@
 "use client";
 import { deleteProbis, getProbisReviews, reviewProbis } from "@/app/cms/actions";
 import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
+import { DiagramPreview } from "@/components/cms/bpmn/diagram-preview";
 import { ReviewBadge } from "@/components/cms/review-badge";
 import { ReviewActions, ReviewHistory } from "@/components/cms/review-panel";
 import { useRab } from "@/components/probis/rab-context";
 import { Badge } from "@/components/ui/badge";
-import type { Actor } from "@/lib/permissions";
+import { can, type Actor } from "@/lib/permissions";
 import { statusLabel as probisLabel } from "@/lib/probis/reference";
 import type { ProbisRecord } from "@/lib/types";
 
@@ -64,6 +65,7 @@ export function ProbisDetail({ record, actor, onClose }: { record: ProbisRecord;
         <DetailField label="Diperbarui" value={date.format(new Date(record.updatedAt))} />
       </div>
 
+      <DiagramPreview id={record.id} hasDiagram={record.hasDiagram} editable={can.edit(actor, record)} />
       <ReviewHistory id={record.id} load={getProbisReviews} />
       <ReviewActions record={record} actor={actor} noun="Probis" editHref={`/cms/proses-bisnis/${record.id}`} onReview={reviewProbis} onDelete={deleteProbis} onDone={onClose} />
     </DetailDialog>

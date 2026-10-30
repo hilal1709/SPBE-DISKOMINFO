@@ -1,4 +1,6 @@
 "use client";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
@@ -28,6 +30,9 @@ import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, statusLabel, statusOptions, type PeriodOptions } from "@/lib/probis/reference";
 import type { Probis } from "@/lib/types";
 import { formatNumber } from "@/lib/format";
+
+// bpmn-js hanya dimuat saat probis yang dibuka punya diagram.
+const BpmnViewer = dynamic(() => import("@/components/cms/bpmn/bpmn-viewer").then((m) => m.BpmnViewer), { ssr: false, loading: () => <Skeleton className="h-80 w-full sm:h-96" /> });
 
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
@@ -238,6 +243,13 @@ export function BusinessProcessDashboard({
             <DetailField label="Indikator Kinerja Utama" value={selected.iku} />
             <DetailField label="Periode" value={selected.period} />
           </div>
+          {selected.diagram && (
+            <DetailSection title="Diagram proses">
+              <div data-aos="fade-blur">
+                <BpmnViewer src={`/api/proses-bisnis/${selected.diagram}/diagram`} draw className="h-80 sm:h-96" />
+              </div>
+            </DetailSection>
+          )}
         </DetailDialog>
       )}
     </Reveal>

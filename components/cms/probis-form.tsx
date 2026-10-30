@@ -3,7 +3,7 @@ import Link from "next/link";
 import { savedListHref } from "@/lib/cms/list-navigation";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import { AiMagicIcon, CheckmarkCircle02Icon, SentIcon } from "@hugeicons/core-free-icons";
+import { AiMagicIcon, CheckmarkCircle02Icon, SentIcon, WorkflowSquare10Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { saveProbis, suggestProbis } from "@/app/cms/actions";
 import { RabPicker } from "@/components/blocks/rab-picker";
@@ -290,6 +290,14 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
           <Button asChild variant="ghost" className="mr-auto">
             <Link href="/cms/proses-bisnis">Batal</Link>
           </Button>
+          {record && (
+            <Button asChild variant="ghost">
+              <Link href={`/cms/proses-bisnis/${record.id}/diagram`}>
+                <Icon icon={WorkflowSquare10Icon} size={16} />
+                Editor diagram
+              </Link>
+            </Button>
+          )}
           <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving} onClick={() => submit("draft")}>
             Simpan draf
           </Button>

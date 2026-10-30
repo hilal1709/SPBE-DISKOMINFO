@@ -4,7 +4,7 @@ export type BuiltinRole = "operator_opd" | "organisasi" | "validator_data" | "va
 export type Role = BuiltinRole | (string & {});
 export type SubmissionStatus = "draft" | "submitted" | "verified" | "approved" | "rejected" | "archived";
 export type Service = { id:string; name:string; opd:string; purpose:string; function:string; rab:string; ral:string; method:string; target:string; benefit:string; risk:string; mitigation:string; processBusiness:string; status:SubmissionStatus; period:string; updatedAt:string };
-export type Probis = { id:string; name:string; uraian:string; /** Kode Perangkat Daerah. */ pd:string; status:"new"|"upgrade"|"as_is"; period:string; sasaran:string; iku:string; rab1:string; rab2:string; rab3:string; /** Kode RAB L4/L5 terdaftar (bila ada). */ rab4?:string|null; rab5?:string|null };
+export type Probis = { id:string; name:string; uraian:string; /** Kode Perangkat Daerah. */ pd:string; status:"new"|"upgrade"|"as_is"; period:string; sasaran:string; iku:string; rab1:string; rab2:string; rab3:string; /** Kode RAB L4/L5 terdaftar (bila ada). */ rab4?:string|null; rab5?:string|null; /** UUID probis bila punya diagram BPMN. */ diagram?:string|null };
 
 /** Probis di CMS (satu baris tabel process_businesses beserta referensinya). */
 export type ProbisRecord = {
@@ -32,6 +32,8 @@ export type ProbisRecord = {
   isSample: boolean;
   /** RAB perlu dipetakan ulang setelah periodenya pindah versi RAB. */
   rabReview: boolean;
+  /** Sudah punya diagram BPMN. */
+  hasDiagram: boolean;
 };
 export type ProbisReview = { id: string; actorName: string | null; fromStatus: SubmissionStatus | null; toStatus: SubmissionStatus; note: string | null; createdAt: string };
 
