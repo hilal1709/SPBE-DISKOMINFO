@@ -66,7 +66,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
   const rab = useRab(values.period);
   const [customGoal, setCustomGoal] = useState(() => !!record?.strategicGoal && !sasaranStrategis.includes(record.strategicGoal));
   const [saving, startSaving] = useTransition();
-  const [savingMode, setSavingMode] = useState<"draft" | "submit" | null>(null);
+  const [savingMode, setSavingMode] = useState<"draft" | "submit" | "diagram" | null>(null);
   const [done, setDone] = useState<{ id: string; submitted: boolean } | null>(null);
 
   const [note, setNote] = useState("");
@@ -117,7 +117,8 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
     toast.success("Semua saran diterapkan", { description: "Periksa kembali sebelum menyimpan." });
   };
 
-  const submit = (mode: "draft" | "submit") => {
+  /** `diagram` = simpan sebagai draf lalu buka editor diagram (probis baru perlu id dulu). */
+  const submit = (mode: "draft" | "submit" | "diagram") => {
     setSavingMode(mode);
     startSaving(async () => {
       const result = await saveProbis(values as ProbisInput, { id: record?.id, submit: mode === "submit" });
@@ -128,6 +129,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
         if (first) field(first as keyof Values)?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
+      if (mode === "diagram") return router.push(`/cms/proses-bisnis/${result.data.id}/diagram`);
       setDone({ id: result.data.id, submitted: mode === "submit" });
     });
   };
@@ -290,14 +292,10 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
           <Button asChild variant="ghost" className="mr-auto">
             <Link href="/cms/proses-bisnis">Batal</Link>
           </Button>
-          {record && (
-            <Button asChild variant="ghost">
-              <Link href={`/cms/proses-bisnis/${record.id}/diagram`}>
-                <Icon icon={WorkflowSquare10Icon} size={16} />
-                Editor diagram
-              </Link>
-            </Button>
-          )}
+          <Button type="button" variant="ghost" loading={saving && savingMode === "diagram"} disabled={saving} onClick={() => submit("diagram")}>
+            {!(saving && savingMode === "diagram") && <Icon icon={WorkflowSquare10Icon} size={16} />}
+            Simpan & gambar diagram
+          </Button>
           <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving} onClick={() => submit("draft")}>
             Simpan draf
           </Button>
@@ -363,6 +361,12 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
           <DialogDescription>
             {done?.submitted ? "Menunggu verifikasi Bagian Organisasi." : `${values.name} — ${pdByCode.get(values.opd)?.name ?? ""}`}
           </DialogDescription>
+          {done && !done.submitted && (
+            <Button variant="secondary" className="mt-2" onClick={() => router.push(`/cms/proses-bisnis/${done.id}/diagram`)}>
+              <Icon icon={WorkflowSquare10Icon} size={16} />
+              Gambar diagram
+            </Button>
+          )}
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/proses-bisnis/${record.id}`) : (setDone(null), setValues(fromRecord(null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}

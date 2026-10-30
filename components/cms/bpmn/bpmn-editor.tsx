@@ -237,7 +237,8 @@ export default function BpmnEditor({ id, code, name, initialXml, onDirty }: Prop
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <Card data-aos="fade-blur" className="bpmn-surface relative h-[70dvh] min-h-[460px] overflow-hidden bg-white p-0 text-brand-charcoal">
+        {/* Tanpa data-aos: filter/transform sisa animasi menjadikan kartu acuan `position: fixed`, menu ganti elemen bpmn-js jadi meleset. */}
+        <Card className="bpmn-surface relative h-[70dvh] min-h-[460px] overflow-hidden bg-white p-0 text-brand-charcoal">
           <div ref={host} className="size-full" />
           {!ready && <Skeleton className="absolute inset-3" />}
           {failed && (
