@@ -13,54 +13,50 @@ const probisTips = [
   "Tautan halaman menyimpan filter, jadi bisa langsung dibagikan.",
 ];
 
-/** Kartu sambutan berilustrasi yang menjelaskan interaksi dashboard. Bisa ditutup dan diingat per peramban. */
+/** Kartu sambutan berilustrasi yang menjelaskan interaksi dashboard. Bisa ditutup selama kunjungan saat ini; tampil lagi saat halaman dikunjungi kembali. */
 export function ExploreHint({
   sample,
-  storageKey: KEY = "spbe:probis-hint",
   illustration = "explore",
   tips = probisTips,
   title = "Dashboard ini interaktif",
   description,
 }: {
   sample: boolean;
-  /** Kunci localStorage, satu per dashboard. */
-  storageKey?: string;
   illustration?: IllustrationName;
   tips?: string[];
   title?: string;
   description?: string;
 }) {
-  // Ikut dirender server agar tata letak tidak bergeser saat muncul; kartu yang pernah ditutup sudah
-  // disembunyikan sebelum tampil oleh HINT_SCRIPT (app/layout.tsx), lalu dilepas setelah mount.
   const [show, setShow] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
+  const closing = useRef<gsap.core.Tween | null>(null);
 
   useEffect(() => {
-    let dismissed = false;
-    try {
-      dismissed = localStorage.getItem(KEY) === "1";
-    } catch {}
+    // Next.js dapat mengaktifkan kembali halaman yang disimpan tanpa mereset state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (dismissed) setShow(false);
-  }, [KEY]);
+    setShow(true);
+    const card = ref.current;
+    return () => {
+      closing.current?.kill();
+      closing.current = null;
+      if (card) gsap.set(card, { clearProps: "height,opacity,marginBottom,paddingTop,paddingBottom" });
+    };
+  }, []);
 
   const close = () => {
-    try {
-      localStorage.setItem(KEY, "1");
-    } catch {}
-    let animated = false;
-    gsap.matchMedia().add(MOTION_OK, () => {
-      animated = true;
-      gsap.to(ref.current, { height: 0, opacity: 0, marginBottom: -20, paddingTop: 0, paddingBottom: 0, duration: 0.4, ease: "power2.inOut", onComplete: () => setShow(false) });
-    });
-    if (!animated) setShow(false);
+    if (closing.current) return;
+    if (window.matchMedia(MOTION_OK).matches) {
+      closing.current = gsap.to(ref.current, { height: 0, opacity: 0, marginBottom: -20, paddingTop: 0, paddingBottom: 0, duration: 0.4, ease: "power2.inOut", onComplete: () => { closing.current = null; setShow(false); } });
+    } else {
+      setShow(false);
+    }
   };
 
   if (!show) return null;
 
   return (
-    <Card ref={ref} data-hint={KEY} data-reveal className="relative flex-row items-center gap-4 overflow-hidden border-0 bg-accent py-3 pr-12 pl-3 sm:gap-6">
-      <Illustration name={illustration} className="hidden w-32 shrink-0 sm:block" />
+    <Card ref={ref} data-reveal className="relative flex-row items-center gap-4 overflow-hidden border-0 bg-accent py-3 pr-12 pl-3 sm:gap-6">
+      <Illustration name={illustration} className="w-20 shrink-0 sm:w-32" />
       <div className="grid gap-1.5 text-sm text-accent-foreground">
         <p className="font-semibold">
           {sample && <span className="mr-2 rounded-full bg-brand-charcoal px-2.5 py-0.5 text-[11px] font-bold text-white">Data contoh</span>}

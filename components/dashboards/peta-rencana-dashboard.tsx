@@ -118,7 +118,6 @@ export function PetaRencanaDashboard({
     <Reveal className="grid gap-5">
       <ExploreHint
         sample={sample}
-        storageKey="spbe:peta-rencana-hint"
         illustration="roadmap"
         tips={[
           "Klik kartu status, tonggak tahun, petak muatan, atau batang grafik untuk memfilter seluruh dashboard.",

@@ -69,7 +69,6 @@ export function IntegrationDashboard({ data, periods }: { data: Architecture; pe
   };
   return <Reveal className="grid gap-5">
     <ExploreHint
-      storageKey="spbe:integration-hint"
       illustration="domain-integration"
       sample={data.summary.some((r) => r.sample && r.period === period && (!opds.length || opds.includes(r.opd)))}
       title="Panduan Integrasi Domain"

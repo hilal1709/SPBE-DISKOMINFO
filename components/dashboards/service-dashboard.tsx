@@ -138,7 +138,6 @@ export function ServiceDashboard({
     <Reveal className="grid gap-5">
       <ExploreHint
         sample={sample}
-        storageKey="spbe:layanan-hint"
         illustration="service-desk"
         tips={[
           "Klik petak matriks, urusan, atau nama Perangkat Daerah untuk memfilter seluruh dashboard.",

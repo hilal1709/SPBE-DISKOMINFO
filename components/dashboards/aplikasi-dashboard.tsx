@@ -138,7 +138,6 @@ export function AplikasiDashboard({
     <Reveal className="grid gap-5">
       <ExploreHint
         sample={sample}
-        storageKey="spbe:aplikasi-hint"
         illustration="app-ecosystem"
         tips={[
           "Klik pita alur, batang RAA, basis aplikasi, atau nama unit operasional untuk memfilter seluruh dashboard.",

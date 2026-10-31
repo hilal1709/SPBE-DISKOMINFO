@@ -45,7 +45,6 @@ export function OverviewDashboard({ summary, relations, securityVisible, availab
   return (
     <Reveal className="grid gap-5">
       <ExploreHint
-        storageKey="spbe:overview-hint"
         illustration="spbe-overview"
         sample={filtered.some((r) => r.sample)}
         title="Ringkasan Arsitektur SPBE"

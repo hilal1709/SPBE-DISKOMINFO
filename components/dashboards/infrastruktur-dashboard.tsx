@@ -137,7 +137,6 @@ export function InfrastrukturDashboard({
     <Reveal className="grid gap-5">
       <ExploreHint
         sample={sample}
-        storageKey="spbe:infrastruktur-hint"
         illustration="data-center"
         tips={[
           "Klik kartu komponen di peta lapisan atau simpul di peta keterhubungan untuk memfilter seluruh dashboard.",

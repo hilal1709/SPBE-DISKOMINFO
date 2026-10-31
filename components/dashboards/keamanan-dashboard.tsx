@@ -120,7 +120,6 @@ export function KeamananDashboard({
     <Reveal className="grid gap-5">
       <ExploreHint
         sample={sample}
-        storageKey="spbe:keamanan-hint"
         illustration="security-shield"
         tips={[
           "Klik segmen siklus keamanan, batang tahun, atau petak instansi untuk memfilter seluruh dashboard.",

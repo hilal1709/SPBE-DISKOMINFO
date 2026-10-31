@@ -152,7 +152,6 @@ export function DataDashboard({
     <Reveal className="grid gap-5">
       <ExploreHint
         sample={sample}
-        storageKey="spbe:data-hint"
         illustration="data-catalog"
         tips={[
           "Klik batang jenis × sifat, frekuensi pemutakhiran, atau nama Perangkat Daerah untuk memfilter seluruh dashboard.",
