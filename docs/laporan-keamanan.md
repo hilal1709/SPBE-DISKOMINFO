@@ -135,7 +135,20 @@ Diisi dari artefak run `security-scan` (tab Actions → run terbaru → `securit
 | B5 | Klik ganda dikunci di klien; server menolak transisi ke status yang sama | `workflow.ts` |
 | B11 | Riwayat tetap ada setelah record dihapus (FK `ON DELETE SET NULL` + snapshot) dan penghapusan dicatat | migrasi 026, `lib/cms/audit.ts` |
 | B19 | Kode record yang dihapus tidak dipakai ulang | migrasi 027, `lib/cms/codes.ts` |
-| S4 | Selain domain resmi (`SITE_INDEXABLE=true`), situs `noindex`: robots.txt, meta robots, dan `X-Robots-Tag` | `lib/site.ts`, `next.config.ts` |
+| S4 | Selain domain resmi (`SITE_INDEXABLE=true`), situs `noindex`: robots.txt, meta robots, dan `X-Robots-Tag`. Versi pengembangan/staging bisa dikunci HTTP Basic Auth lewat env `SITE_PASSWORD` (jangan diset di domain resmi) | `lib/site.ts`, `next.config.ts`, `proxy.ts` |
+| S2 | Data Terbatas tampil tanpa uraian/tujuan/informasi terkait; data Tertutup hanya ikut agregat (nama dan relasi tidak dikirim), juga di Integrasi | `lib/data/public.ts` |
+| S3 | Data Tertutup tidak boleh interoperabel (ditolak di formulir & impor); nama bermuatan data pribadi dengan sifat Terbuka diberi peringatan untuk verifikator | `lib/data/classification.ts` |
+| S5 | Kegiatan Peta Rencana bermuatan Keamanan dan Audit hanya ikut agregat di portal publik | `lib/peta-rencana/public.ts` |
+| B17 | Operator OPD melihat Peta Rencana semua OPD, tetapi ekspor hanya kegiatan OPD-nya | `app/api/export/peta-rencana/route.ts` |
+| F8 | Bahasa pemrograman & mesin basis data aplikasi menerima "Tidak berlaku"/"Tidak diketahui" dan tampil sebagai kategori sendiri | `lib/aplikasi/reference.ts` |
+| Dependensi | `next` 16.3.8 → 16.4.1 (2 kritis RCE + 1 tinggi DoS) dan `zod` 4.5.4 → 4.6.7 (1 tinggi); `pnpm audit --prod` bersih | `package.json` |
+
+### Uji lanjutan
+
+- Akun uji per peran untuk staging: `pnpm akun:uji --staging <domain-email> [kode-OPD]`. Skrip membuat Tim Verifikasi, Tim Validasi, Pimpinan, empat verifikator domain, dan Operator OPD dengan sandi sementara acak yang wajib diganti. Skrip menolak berjalan tanpa `--staging`.
+- OWASP ZAP, audit dependensi, dan uji otorisasi per peran sudah ada di workflow `security-scan.yml` (Postgres sementara dengan akun uji).
+- Sisa data UJI-QA (cek 5 Nov 2026): 0 record, 0 riwayat, 0 kode pensiun, 0 akun.
+- Klasifikasi yang perlu ditinjau wali data: 43 data Tertutup yang ditandai interoperabel dan 39 data Terbuka yang bernama data pribadi/kepegawaian (mis. "Data Usul Pensiun"). Semuanya data contoh; formulir sekarang menolak kombinasi pertama dan memberi peringatan untuk yang kedua.
 
 ### CSP `unsafe-inline` (ditinjau ulang)
 

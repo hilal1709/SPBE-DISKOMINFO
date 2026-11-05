@@ -20,7 +20,37 @@ function crossSite(request: Request) {
   }
 }
 
+/** Perbandingan string konstan-waktu (tidak bocor lewat lamanya respons). */
+function same(a: string, b: string) {
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
+}
+
+/**
+ * S4: versi pengembangan/staging bisa dikunci dengan HTTP Basic Auth lewat env SITE_PASSWORD (nama pengguna bebas).
+ * Jangan diset di domain resmi. Tanpa env ini tidak ada perubahan perilaku.
+ */
+function siteLocked(request: Request) {
+  const password = process.env.SITE_PASSWORD;
+  if (!password) return false;
+  const header = request.headers.get("authorization") ?? "";
+  if (!header.startsWith("Basic ")) return true;
+  try {
+    const decoded = atob(header.slice(6));
+    return !same(decoded.slice(decoded.indexOf(":") + 1), password);
+  } catch {
+    return true;
+  }
+}
+
 export const proxy = auth((request) => {
+  if (siteLocked(request)) {
+    return new NextResponse("Akses versi pengembangan memerlukan sandi.", {
+      status: 401,
+      headers: { "WWW-Authenticate": 'Basic realm="SPBE Gresik (pengembangan)", charset="UTF-8"', "Cache-Control": "no-store" },
+    });
+  }
   if (crossSite(request)) return new NextResponse("Forbidden", { status: 403 });
   // Showcase design system hanya untuk pengembang (loading.tsx membuat notFound() di halaman tetap berstatus 200).
   if (request.nextUrl.pathname === "/design-system" && process.env.NODE_ENV === "production") {
@@ -43,5 +73,6 @@ export const proxy = auth((request) => {
   return NextResponse.next();
 });
 
-// Semua halaman yang memuat server action (CMS, akun, login) melewati pemeriksaan Origin di atas.
-export const config = { matcher: ["/cms", "/cms/:path*", "/akun/:path*", "/keamanan/:path*", "/keamanan", "/login", "/design-system"] };
+// Semua halaman (kecuali aset statis) melewati proxy agar SITE_PASSWORD berlaku di seluruh situs; pemeriksaan Origin dan
+// login di atas tetap hanya berdampak pada halaman yang mengubah data (CMS, akun, login).
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|manifest.webmanifest).*)"] };

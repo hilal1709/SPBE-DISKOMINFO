@@ -2,6 +2,7 @@ import { allRencana } from "@/lib/peta-rencana/generate";
 import { PetaRencanaDashboard } from "@/components/dashboards/peta-rencana-dashboard";
 import { DashboardPage } from "@/components/portal/dashboard-page";
 import { listPublicRencana } from "@/lib/peta-rencana/repo";
+import { toPublicRencanaList } from "@/lib/peta-rencana/public";
 import { periodOptions } from "@/lib/probis/periods";
 import { readApproved, samplePeriodOptions } from "@/lib/portal/load";
 import { pageMetadata } from "@/lib/seo";
@@ -19,7 +20,7 @@ export default async function Page() {
   const periods = fromDb ? await periodOptions() : samplePeriodOptions;
   return (
     <DashboardPage path={PATH}>
-      <PetaRencanaDashboard data={fromDb ? data! : allRencana()} sample={!fromDb || !!data?.sample} currentYear={new Date().getFullYear()} periods={periods} />
+      <PetaRencanaDashboard data={fromDb ? data! : toPublicRencanaList(allRencana())} sample={!fromDb || !!data?.sample} currentYear={new Date().getFullYear()} periods={periods} />
     </DashboardPage>
   );
 }

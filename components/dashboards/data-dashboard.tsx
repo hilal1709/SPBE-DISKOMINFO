@@ -105,6 +105,9 @@ export function DataDashboard({
   };
 
   const rows = useMemo(() => filterData(all, filter), [all, filter]);
+  /** S2: data tertutup hanya ikut agregat; katalog dan detail hanya memuat data yang boleh tampil. */
+  const listed = useMemo(() => rows.filter((d) => !d.restricted), [rows]);
+  const closed = rows.length - listed.length;
   /** Widget yang juga berfungsi sebagai filter memakai data tanpa filternya sendiri, agar pilihan lain tetap terlihat. */
   const withoutRad2 = useMemo(() => filterData(all, { ...filter, rad2: [] }), [all, filter]);
   const withoutPd = useMemo(() => filterData(all, { ...filter, pd: [] }), [all, filter]);
@@ -268,7 +271,8 @@ export function DataDashboard({
 
           <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog data"
-            rows={rows}
+            description={closed ? `${formatNumber(closed)} data tertutup tidak ditampilkan; hanya dihitung di ringkasan.` : undefined}
+            rows={listed}
             rowId={(d) => d.id}
             searchText={(d) => `${d.id} ${d.name} ${d.uraian}`}
             searchPlaceholder="Cari nama, ID, atau uraian data"

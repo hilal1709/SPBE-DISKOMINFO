@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode } from "@/lib/probis/reference";
+import { CLOSED_INTEROP_MESSAGE, closedInterop } from "./classification";
 import { isRadLeaf, securityFields, validitasOptions } from "./reference";
 
 const optionalText = z.string().trim().max(2000).optional().transform((v) => v || null);
@@ -50,6 +51,8 @@ export function makeDataInput(rad: RabIndex) {
           ctx.addIssue({ code: "custom", path: [path], message: `Pilih RAD Level ${level} di bawah ${parent || "level di atasnya"}` });
         }
       };
+      // S3: data tertutup tidak boleh interoperabel.
+      if (closedInterop(v)) ctx.addIssue({ code: "custom", path: ["interoperabel"], message: CLOSED_INTEROP_MESSAGE });
       check(v.radL4, v.rad, "radL4", 4);
       check(v.radL5, rad.byCode.get(v.radL4 ?? "")?.level === 4 ? v.radL4 : null, "radL5", 5);
     });

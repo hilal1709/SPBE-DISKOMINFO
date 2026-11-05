@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { forbidden, xlsxResponse } from "@/lib/export/xlsx-response";
-import { can, currentActor } from "@/lib/access";
+import { can, currentActor, opdScope } from "@/lib/access";
 import { listIndicatorsCms, listRencana } from "@/lib/peta-rencana/cms-repo";
 import { indicatorColumns, rencanaColumns, type Column } from "@/lib/peta-rencana/columns";
 
@@ -8,7 +8,10 @@ import { indicatorColumns, rencanaColumns, type Column } from "@/lib/peta-rencan
 export async function GET() {
   const actor = await currentActor().catch(() => null);
   if (!actor || !can.export(actor)) return forbidden();
-  const [rows, indicators] = await Promise.all([listRencana(), listIndicatorsCms()]);
+  const [all, indicators] = await Promise.all([listRencana(), listIndicatorsCms()]);
+  // B17: Operator OPD boleh melihat rencana semua OPD di CMS, tetapi ekspor hanya kegiatan OPD-nya sendiri.
+  const scope = opdScope(actor);
+  const rows = scope ? all.filter((r) => r.opdId === scope) : all;
   const book = XLSX.utils.book_new();
   const sheet = <R,>(cols: Column<R>[], data: R[], name: string) => {
     const ws = XLSX.utils.aoa_to_sheet([cols.map((c) => c.header), ...data.map((r) => cols.map((c) => c.value(r)))]);

@@ -26,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { activeFilterCount, countBy, emptyFilter, filterAplikasi, filterFromParams, filterToParams, raaOptions, sanitizeFilter, type AplikasiFilter } from "@/lib/aplikasi/query";
 import {
   basisLabel, basisOptions, infraFields, kepemilikanColor, kepemilikanLabel, kepemilikanOptions, lisensiLabel, lisensiOptions, sampleRaa,
-  type Basis, type Kepemilikan, type Lisensi,
+  type Basis, type Kepemilikan, type Lisensi, UNKNOWN, isSpecialValue,
 } from "@/lib/aplikasi/reference";
 import { colorByCount } from "@/lib/palette";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
@@ -107,12 +107,19 @@ export function AplikasiDashboard({
   const pdCount = countBy(rows, "operasional").size;
   const splp = rows.filter((a) => a.splp).length;
   const basis = countBy(withoutBasis, "basis");
-  // "Tidak diketahui" tetap ditampilkan (F8) agar jumlah per bahasa sama dengan total aplikasi.
-  const bahasa = [...countBy(rows, "bahasa")].map(([code, value]) => ({ code: code || "Tidak diketahui", label: code || "Tidak diketahui", value }));
+  // F8: "Tidak diketahui" (kosong) dan "Tidak berlaku" tampil sebagai kategori sendiri di urutan terakhir,
+  // sehingga jumlah per bahasa/mesin sama dengan total aplikasi.
+  const bySpecialLast = (x: [string, number], y: [string, number]) => Number(isSpecialValue(x[0])) - Number(isSpecialValue(y[0])) || y[1] - x[1];
+  const bahasa = [...countBy(rows.map((a) => ({ ...a, bahasa: a.bahasa?.trim() || UNKNOWN })), "bahasa")]
+    .sort(bySpecialLast)
+    .map(([code, value]) => ({ code, label: code, value }));
   const mesin = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const a of rows) if (a.mesin) counts.set(a.mesin, (counts.get(a.mesin) ?? 0) + 1);
-    return [...counts].sort((x, y) => y[1] - x[1]);
+    for (const a of rows) {
+      const key = a.mesin?.trim() || UNKNOWN;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts].sort(bySpecialLast);
   }, [rows]);
   const pdRows = useMemo<PdRow[]>(() => {
     const groups = new Map<string, Aplikasi[]>();
@@ -288,7 +295,7 @@ export function AplikasiDashboard({
                       <ul className="flex flex-wrap gap-1.5">
                         {mesin.map(([name, n]) => (
                           <li key={name}>
-                            <Badge variant="muted" className="tabular-nums">
+                            <Badge variant={isSpecialValue(name) ? "outline" : "muted"} className="tabular-nums">
                               {name} · {formatNumber(n)}
                             </Badge>
                           </li>

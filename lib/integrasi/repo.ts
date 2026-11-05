@@ -50,7 +50,12 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
       `select domain, opd, opd_name, period, category, count(*)::int as count, bool_or(sample) as sample
        from (${base}) n where ($1::text='' or period=$1) group by domain, opd, opd_name, period, category`, [period]);
     // S1: pengunjung umum tidak melihat nama komponen infrastruktur yang memuat rincian teknis (versi OS/DB, VPN, dsb.).
-    const publicName = (n: DomainNode) => (!securityVisible && n.domain === "infrastruktur" && MASKED_INFRA.has(n.category) ? `${jenisConfig[n.category as InfraJenis].label} ${n.code}` : n.name);
+    // S2: nama data tertutup juga tidak tampil bagi pengunjung umum (record tetap dihitung di peta hubungan).
+    const publicName = (n: DomainNode) =>
+      securityVisible ? n.name
+      : n.domain === "infrastruktur" && MASKED_INFRA.has(n.category) ? `${jenisConfig[n.category as InfraJenis].label} ${n.code}`
+      : n.domain === "data" && n.category === "tertutup" ? "Data tertutup"
+      : n.name;
     const nodes: DomainNode[] = records.rows.slice(0, NODE_LIMIT).map((n) => ({ id: `${n.domain}:${n.id}`, domain: n.domain, code: n.code, name: publicName(n), opd: n.opd, opdName: n.opd_name, period: n.period, category: n.category }));
     const byId = new Map(nodes.map((n) => [n.id, n]));
     /** Nama asli untuk pencocokan rujukan teks (nama tampilan bisa disamarkan). */

@@ -1,7 +1,9 @@
 "use client";
 import { deleteData, getDataReviews, reviewData } from "@/app/cms/data/actions";
 import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
+import { Banner } from "@/components/blocks/banner";
 import { StatusBadge } from "@/components/blocks/status-badge";
+import { CLOSED_INTEROP_MESSAGE, classificationWarnings, closedInterop } from "@/lib/data/classification";
 import { ReviewBadge } from "@/components/cms/review-badge";
 import { ReviewActions, ReviewHistory } from "@/components/cms/review-panel";
 import { QueueList } from "@/components/cms/review-queue";
@@ -102,6 +104,9 @@ export function DataDetail({ record, actor, onClose }: { record: DataRecord; act
         </DetailSection>
       )}
 
+      {[...classificationWarnings(record), ...(closedInterop(record) ? [CLOSED_INTEROP_MESSAGE] : [])].map((w) => (
+        <Banner key={w} variant="warning" label="Tinjau klasifikasi" dismissible={false}>{w}</Banner>
+      ))}
       <ReviewHistory id={record.id} load={getDataReviews} />
       <ReviewActions record={record} actor={actor} noun="Data" domain="data" editHref={`/cms/data/${record.id}`} onReview={reviewData} onDelete={deleteData} onDone={onClose} />
     </DetailDialog>

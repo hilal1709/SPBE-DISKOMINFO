@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AplikasiSuggestion } from "@/lib/ai/aplikasi-suggest";
-import { basisLabel, basisOptions, infraFields, instansiPusat, kepemilikanLabel, kepemilikanOf, lisensiOptions, mesinOptions, type Basis, type Lisensi } from "@/lib/aplikasi/reference";
+import { basisLabel, basisOptions, infraFields, instansiPusat, kepemilikanLabel, kepemilikanOf, lisensiOptions, mesinOptions, bahasaOptions, type Basis, type Lisensi } from "@/lib/aplikasi/reference";
 import { flowLines } from "@/lib/aplikasi/data-flow";
 import type { AplikasiInput } from "@/lib/aplikasi/schema";
 import type { SecurityKey } from "@/lib/data/reference";
@@ -332,7 +332,12 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field data-field="bahasa" data-invalid={!!errors.bahasa || undefined} className="rounded-lg">
                   <FieldLabel htmlFor="bahasa">Bahasa pemrograman</FieldLabel>
-                  <Input id="bahasa" value={values.bahasa} onChange={(e) => set("bahasa", e.target.value)} placeholder="mis. PHP" aria-invalid={!!errors.bahasa || undefined} />
+                  <Input id="bahasa" list="bahasa-options" value={values.bahasa} onChange={(e) => set("bahasa", e.target.value)} placeholder="mis. PHP; “Tidak berlaku” bila SaaS/aplikasi pusat" aria-invalid={!!errors.bahasa || undefined} />
+                  <datalist id="bahasa-options">
+                    {bahasaOptions.map((m) => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
                   <FieldError>{errors.bahasa}</FieldError>
                 </Field>
                 <Field data-field="kerangka" className="rounded-lg">

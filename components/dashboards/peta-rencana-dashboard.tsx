@@ -85,6 +85,9 @@ export function PetaRencanaDashboard({
   };
 
   const rows = useMemo(() => filterRencana(all, filter).sort((a, b) => a.year - b.year || a.name.localeCompare(b.name)), [all, filter]);
+  /** S5: kegiatan Keamanan/Audit tetap dihitung, tetapi tidak tampil di katalog publik. */
+  const listed = useMemo(() => rows.filter((r) => !r.restricted), [rows]);
+  const hiddenRows = rows.length - listed.length;
   const withoutTahun = useMemo(() => filterRencana(all, filter, { except: "tahun" }), [all, filter]);
   const withoutMuatan = useMemo(() => filterRencana(all, filter, { except: "muatan" }), [all, filter]);
   const withoutSasaran = useMemo(() => filterRencana(all, filter, { except: "sasaran" }), [all, filter]);
@@ -210,7 +213,8 @@ export function PetaRencanaDashboard({
 
           <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog peta rencana"
-            rows={rows}
+            description={hiddenRows ? `${formatNumber(hiddenRows)} kegiatan Keamanan/Audit hanya dihitung di ringkasan; rinciannya untuk pengguna terdaftar.` : undefined}
+            rows={listed}
             rowId={(r) => `${r.period}:${r.id}`}
             searchText={(r) => `${r.id} ${r.name} ${r.program ?? ""} ${r.inisiatif ?? ""} ${pdName(r.opd)}`}
             searchPlaceholder="Cari kegiatan, program, atau PD"

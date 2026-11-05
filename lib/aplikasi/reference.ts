@@ -20,7 +20,15 @@ export const isRaaLeaf = (raa: { byCode: Map<string, RabNode>; children: (code: 
 };
 
 /** Pilihan umum "Mesin Basis Data" (isian tetap bebas). */
-export const mesinOptions = ["MySQL", "PostgreSQL", "MariaDB", "SQL Server", "Oracle", "MongoDB", "SQLite"];
+/** Nilai khusus kolom teknologi (F8): belum diketahui, atau tidak relevan (mis. aplikasi SaaS/instansi pusat tanpa kode sendiri). */
+export const UNKNOWN = "Tidak diketahui";
+export const NOT_APPLICABLE = "Tidak berlaku";
+export const isSpecialValue = (v: string | null | undefined) => v === UNKNOWN || v === NOT_APPLICABLE;
+
+export const mesinOptions = ["MySQL", "PostgreSQL", "MariaDB", "SQL Server", "Oracle", "MongoDB", "SQLite", UNKNOWN, NOT_APPLICABLE];
+
+/** Pilihan umum "Bahasa Pemrograman" (isian tetap bebas). */
+export const bahasaOptions = ["PHP", "JavaScript", "TypeScript", "Java", "Python", "Go", "C#", "Kotlin", "Dart", UNKNOWN, NOT_APPLICABLE];
 
 export type Basis = Aplikasi["basis"];
 /** Pilihan "Basis Aplikasi" template. */
