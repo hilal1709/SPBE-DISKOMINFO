@@ -36,7 +36,7 @@ export function makeAplikasiInput(raa: RabIndex) {
       raa: z
         .string()
         .refine((v) => isRaaLeaf(raa, v), "Pilih RAA")
-        .refine((v) => raa.active(raa.byCode.get(v)), "RAA ini sudah tidak berlaku, pilih penggantinya"),
+        .refine((v) => { const node = raa.byCode.get(v); return !node || raa.active(node); }, "RAA ini sudah tidak berlaku, pilih penggantinya"),
       raaL4: optionalText,
       raaL5: optionalText,
       /** Kode proses bisnis terkait (periode sama, wajib disetujui) — aplikasi wajib selaras probis (notulen). */

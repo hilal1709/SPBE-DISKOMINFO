@@ -1,8 +1,9 @@
 "use server";
+import { decide, type Decision } from "@/lib/cms/workflow";
 import { assertUploadFile } from "@/lib/security/upload";
 import { arg, idSchema, importOptions, importRows, isValid, opdCode, periodName, reviewArgs, saveOptions } from "@/lib/security/schemas";
 import { suggestLayanan as suggest, type LayananSuggestion } from "@/lib/ai/layanan-suggest";
-import { can, currentActor, stageOf, reviewTarget } from "@/lib/access";
+import { can, currentActor } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
 import { assertAiInput, assertAiQuota, assertImportQuota } from "@/lib/security/rate-limit";
 import * as repo from "@/lib/layanan/cms-repo";
@@ -34,7 +35,7 @@ export async function saveLayanan(input: LayananInput, options: { id?: string; s
   const { ralFor, rabFor } = await refsFor();
   const parsed = makeLayananInput(ralFor(input.period), rabFor(input.period)).safeParse(input);
   if (!parsed.success) {
-    const fields = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
+    const fields = Object.fromEntries(parsed.error.issues.toReversed().map((issue) => [String(issue.path[0]), issue.message]));
     return { ok: false, error: "Periksa kembali isian yang ditandai.", fields };
   }
   try {
@@ -63,7 +64,8 @@ export async function deleteLayanan(id: string): Promise<ActionResult> {
     const current = await repo.getLayanan(id);
     if (!current) throw new Error("Layanan tidak ditemukan.");
     if (!can.edit(actor, current)) throw new Error("Hanya draf atau layanan yang dikembalikan yang dapat dihapus.");
-    await repo.deleteLayanan(id);
+    if (current.status === "approved") throw new Error("Record yang tayang harus ditarik dari portal dulu sebelum dihapus.");
+    await repo.deleteLayanan(id, actor);
     refresh();
     return { ok: true, data: undefined };
   } catch (error) {
@@ -75,32 +77,14 @@ export async function deleteLayanan(id: string): Promise<ActionResult> {
  * Ajukan (operator), verifikasi (tim Bagian Organisasi), validasi (tim Diskominfo), atau kembalikan.
  * Tahap dicek terhadap status saat ini: verifikasi hanya dari "Diajukan", validasi hanya dari "Terverifikasi".
  */
-export async function reviewLayanan(id: string, decision: "submit" | "verify" | "validate" | "reject", note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
+export async function reviewLayanan(id: string, decision: Decision, note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
   try {
     ({ id, decision, note } = arg(reviewArgs, { id, decision, note }));
     const actor = await currentActor();
     const current = await repo.getLayanan(id);
     if (!current) throw new Error("Layanan tidak ditemukan.");
     const from = current.status;
-    let to: SubmissionStatus;
-    let text = note?.trim() || null;
-
-    if (decision === "submit") {
-      if (!can.edit(actor, current)) throw new Error("Layanan ini tidak dapat diajukan.");
-      to = "submitted";
-    } else {
-      const stage = stageOf(from);
-      if (!stage) throw new Error("Layanan ini tidak sedang dalam antrean pemeriksaan.");
-      if (!can.review(actor, stage, "layanan")) throw new Error(`Hanya tim ${stage} yang dapat memproses tahap ini.`);
-      if (decision === "verify" && stage !== "verifikasi") throw new Error("Layanan ini sudah melewati tahap verifikasi.");
-      if (decision === "validate" && stage !== "validasi") throw new Error("Layanan ini belum diverifikasi Bagian Organisasi.");
-      if (decision === "reject") {
-        if (!text) throw new Error("Tuliskan catatan alasan pengembalian.");
-        text = `Dikembalikan tim ${stage}: ${text}`;
-      }
-      to = reviewTarget(decision, stage);
-    }
-
+    const { to, note: text } = await decide({ actor, domain: "layanan", noun: "Layanan", record: current, decision, note });
     await repo.transition(id, from, to, actor, text);
     refresh();
     return { ok: true, data: { status: to } };
@@ -137,6 +121,7 @@ export async function suggestLayanan(input: { name: string; opd: string; note?: 
   try {
     await assertAiQuota((await currentActor()).id);
     assertAiInput(input);
+    if (!input.opd) throw new Error("Pilih Perangkat Daerah dulu agar saran sesuai urusannya.");
     if (input.name.trim().length < 3) throw new Error("Isi nama layanan terlebih dahulu.");
     const { ralFor, rabFor } = await refsFor();
     return { ok: true, data: await suggest({ name: input.name.trim(), opd: input.opd, note: input.note?.trim() }, ralFor(input.period), rabFor(input.period)) };

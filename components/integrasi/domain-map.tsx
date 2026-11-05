@@ -1,6 +1,6 @@
 "use client";
 import { domainKeys, domains, type DomainKey } from "@/lib/domains";
-import type { DomainNode, DomainEdge } from "@/lib/integrasi/model";
+import { RELATION_DEFINITION, relationPairs, type DomainNode, type DomainEdge } from "@/lib/integrasi/model";
 import { cn } from "@/lib/utils";
 
 const positions: Record<DomainKey, { x: number; y: number; color: string }> = {
@@ -25,9 +25,10 @@ export function DomainMap({ nodes, edges, selected, onSelect, securityVisible }:
   for (const n of nodes) totals.set(n.domain, (totals.get(n.domain) ?? 0) + 1);
   for (const e of edges) {
     const a = byId.get(e.source), b = byId.get(e.target);
-    if (!a || !b) continue;
-    linked.add(a.id); linked.add(b.id);
-    if (a.domain === b.domain) continue;
+    if (a && b) { linked.add(a.id); linked.add(b.id); }
+  }
+  const pairs = relationPairs(nodes, edges);
+  for (const [a, b] of pairs) {
     const [source, target] = [a.domain, b.domain].sort() as [DomainKey, DomainKey];
     const key = source + ":" + target;
     const row = relations.get(key) ?? { source, target, count: 0 };
@@ -35,7 +36,7 @@ export function DomainMap({ nodes, edges, selected, onSelect, securityVisible }:
   }
   return <div className="grid gap-4">
     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-      <span><strong>{format(edges.length)}</strong> relasi</span>
+      <span title={RELATION_DEFINITION}><strong>{format(pairs.length)}</strong> relasi antardomain</span>
       <span><strong>{nodes.length ? Math.round(linked.size / nodes.length * 100) : 0}%</strong> record terhubung</span>
       <span className="text-muted-foreground">Klik domain untuk melihat record.</span>
     </div>

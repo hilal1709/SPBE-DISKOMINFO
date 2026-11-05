@@ -21,5 +21,14 @@ export function assertStillEditable(actor: Actor, status: SubmissionStatus) {
 
 /** Pilihan ajukan juga berlaku pada data lama; simpan draf tidak menarik status review yang sudah ada. */
 export function importUpdateStatus(current: SubmissionStatus, requested: SubmissionStatus): SubmissionStatus {
-  return importStatus(requested) === "submitted" ? "submitted" : current;
+  return importStatus(requested) === "submitted" && submittable.has(current) ? "submitted" : current;
+}
+
+const submittable = new Set<SubmissionStatus>(["draft", "rejected"]);
+
+/** Status setelah formulir disimpan: "Ajukan" hanya dari Draf/Dikembalikan (record tayang ditarik lewat aksi Tarik). */
+export function submitTarget(from: SubmissionStatus, submit: boolean): SubmissionStatus {
+  if (!submit) return from;
+  if (!submittable.has(from)) throw new Error(from === "approved" ? "Record ini sudah tayang. Simpan tanpa mengajukan, atau tarik dari portal dulu." : "Record ini sudah diajukan.");
+  return "submitted";
 }

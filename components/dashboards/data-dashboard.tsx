@@ -30,7 +30,7 @@ import { useRadSet } from "@/components/data/rad-context";
 import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { DataInfo } from "@/lib/types";
-import { formatNumber, percent } from "@/lib/format";
+import { formatNumber, percent, formatPercent } from "@/lib/format";
 
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
@@ -105,6 +105,9 @@ export function DataDashboard({
   };
 
   const rows = useMemo(() => filterData(all, filter), [all, filter]);
+  /** S2: data tertutup hanya ikut agregat; katalog dan detail hanya memuat data yang boleh tampil. */
+  const listed = useMemo(() => rows.filter((d) => !d.restricted), [rows]);
+  const closed = rows.length - listed.length;
   /** Widget yang juga berfungsi sebagai filter memakai data tanpa filternya sendiri, agar pilihan lain tetap terlihat. */
   const withoutRad2 = useMemo(() => filterData(all, { ...filter, rad2: [] }), [all, filter]);
   const withoutPd = useMemo(() => filterData(all, { ...filter, pd: [] }), [all, filter]);
@@ -146,7 +149,6 @@ export function DataDashboard({
       filter[key].map((code) => ({ id: `${key}:${code}`, group: `RAD ${i + 1}`, label: radLabel(code), onRemove: () => setRad({ [key]: latest.current[key].filter((v) => v !== code) }) })),
     ),
   ];
-  const total = rows.length || 1;
 
   return (
     <Reveal className="grid gap-5">
@@ -191,7 +193,7 @@ export function DataDashboard({
           <StatRow>
             <StatCard tone="teal" label="Jumlah data" value={rows.length} hint={`${tree.length} data pokok RAD`} />
             <StatCard tone="orange" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
-            <StatCard tone="yellow" label="Data terbuka" active={filter.sifat.includes("terbuka")} onClick={() => clickFilter("Data terbuka", (c) => ({ ...c, sifat: toggle(c.sifat, "terbuka") }), !filter.sifat.includes("terbuka"))} value={sifat.get("terbuka") ?? 0} hint={`${percent(sifat.get("terbuka") ?? 0, rows.length)}% dari seluruh data`} />
+            <StatCard tone="yellow" label="Data terbuka" active={filter.sifat.includes("terbuka")} onClick={() => clickFilter("Data terbuka", (c) => ({ ...c, sifat: toggle(c.sifat, "terbuka") }), !filter.sifat.includes("terbuka"))} value={sifat.get("terbuka") ?? 0} hint={`${formatPercent(sifat.get("terbuka") ?? 0, rows.length)} dari seluruh data`} />
             <StatCard tone="amber" label="Produsen lintas PD" active={!!filter.lintas} onClick={() => clickFilter("Produsen lintas PD", (c) => ({ ...c, lintas: !c.lintas }), !filter.lintas)} value={lintas} hint="produsen berbeda dari wali" />
           </StatRow>
 
@@ -201,12 +203,12 @@ export function DataDashboard({
                 <CardTitle as="h2" className="section-title">Interoperabilitas data</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-center gap-5">
-                <Gauge value={(interop / total) * 100} label="Persentase data interoperabel" caption={`${formatNumber(interop)} dari ${formatNumber(rows.length)} data`} />
+                <Gauge value={percent(interop, rows.length)} label="Persentase data interoperabel" caption={`${formatNumber(interop)} dari ${formatNumber(rows.length)} data`} />
                 <dl className="grid gap-2 text-center">
                   <div className="rounded-lg bg-brand-sky px-2 py-2 text-on-brand">
                     <dt className="text-xs font-medium">Diperbarui realtime</dt>
                     <dd className="font-semibold tabular-nums">
-                      {formatNumber(realtime)} <span className="text-xs font-normal opacity-80">({percent(realtime, rows.length)}%)</span>
+                      {formatNumber(realtime)} <span className="text-xs font-normal opacity-80">({formatPercent(realtime, rows.length)})</span>
                     </dd>
                   </div>
                 </dl>
@@ -268,7 +270,8 @@ export function DataDashboard({
 
           <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog data"
-            rows={rows}
+            description={closed ? `${formatNumber(closed)} data tertutup tidak ditampilkan; hanya dihitung di ringkasan.` : undefined}
+            rows={listed}
             rowId={(d) => d.id}
             searchText={(d) => `${d.id} ${d.name} ${d.uraian}`}
             searchPlaceholder="Cari nama, ID, atau uraian data"

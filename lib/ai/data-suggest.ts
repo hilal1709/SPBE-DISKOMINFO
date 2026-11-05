@@ -4,7 +4,7 @@ import { isRadLeaf, validitasOptions, type Jenis, type Sifat } from "@/lib/data/
 import type { RabIndex, RabNode } from "@/lib/probis/rab-index";
 import { pdByCode } from "@/lib/probis/reference";
 import { geminiJson } from "./gemini";
-import { tokens } from "./text";
+import { MIN_TEXT_SCORE, matchScore, tokens, words } from "./text";
 
 export type DataSuggestInput = { name: string; opd: string; note?: string };
 export type DataSuggestion = {
@@ -51,18 +51,16 @@ function local({ name, opd, note }: DataSuggestInput, rad: RabIndex, rab: RabInd
   const { leaves, entries, weight } = indexOf(rad);
   const pd = pdByCode.get(opd);
   const text = `${name} ${note ?? ""}`;
-  const query = tokens(text);
+  const query = words(text);
   const home = homeRad2(opd, rad, rab);
 
   const ranked = entries
     .map(({ node, own, parent }) => {
-      const hits = query.filter((t) => own.has(t));
-      const parentHits = query.filter((t) => parent.has(t) && !own.has(t));
-      const score = hits.reduce((sum, t) => sum + weight(t), 0) + parentHits.reduce((sum, t) => sum + weight(t) * 0.5, 0);
+      const { text: score, hits } = matchScore(query, own, parent, weight);
       const inHome = home.has(rad2Of(node));
-      return { node, text: score, score: score * (inHome ? 1.3 : 0.7) + (inHome ? 2.5 : 0), hits: [...new Set([...hits, ...parentHits])] };
+      return { node, text: score, score: score * (inHome ? 1.3 : 0.7) + (inHome ? 2.5 : 0), hits };
     })
-    .filter((r) => r.text > 1.2 || r.score >= 2.5)
+    .filter((r) => r.text >= MIN_TEXT_SCORE || r.score >= 2.5)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
   const picks = ranked.length

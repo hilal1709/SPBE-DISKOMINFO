@@ -2,6 +2,7 @@ import { IntegrationDashboard } from "@/components/integrasi/integration-dashboa
 import { DashboardPage } from "@/components/portal/dashboard-page";
 import { canReadSecurity } from "@/lib/integrasi/access";
 import { loadArchitecture } from "@/lib/integrasi/repo";
+import { packArchitecture } from "@/lib/integrasi/model";
 import { periodOptions } from "@/lib/probis/periods";
 import { pageMetadata } from "@/lib/seo";
 
@@ -11,5 +12,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
   const [params, periods] = await Promise.all([searchParams, periodOptions()]);
   const period = periods.periods.includes(params.periode ?? "") ? params.periode! : periods.active;
   const data = await loadArchitecture(securityVisible, period);
-  return <DashboardPage path="/integrasi"><IntegrationDashboard data={data} periods={periods} /></DashboardPage>;
+  return <DashboardPage path="/integrasi"><IntegrationDashboard packed={packArchitecture(data)} periods={periods} /></DashboardPage>;
 }

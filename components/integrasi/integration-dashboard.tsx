@@ -19,11 +19,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { domainKeys, domains, isDomain } from "@/lib/domains";
-import { analyzeImpact, type Architecture, type DomainNode } from "@/lib/integrasi/model";
+import { analyzeImpact, unpackArchitecture, type DomainNode, type PackedArchitecture } from "@/lib/integrasi/model";
 import type { PeriodOptions } from "@/lib/probis/reference";
 
 const storageLabel = { junction: "Relasi tersimpan", jsonb: "Referensi JSONB", text: "Referensi kode/nama" };
-export function IntegrationDashboard({ data, periods }: { data: Architecture; periods: PeriodOptions }) {
+export function IntegrationDashboard({ packed, periods }: { packed: PackedArchitecture; periods: PeriodOptions }) {
+  const data = useMemo(() => unpackArchitecture(packed), [packed]);
   const params = useUrlParams();
   const router = useRouter();
   const [period, setPeriod] = useState(() => periods.periods.includes(params.get("periode") ?? "") ? params.get("periode")! : periods.active);
@@ -67,7 +68,7 @@ export function IntegrationDashboard({ data, periods }: { data: Architecture; pe
       action: { label: "Urungkan", onClick: () => update(period, opds, domain, selectedId) },
     });
   };
-  return <Reveal className="grid gap-5">
+  return <Reveal className="grid grid-cols-[minmax(0,1fr)] gap-5 *:min-w-0">
     <ExploreHint
       illustration="domain-integration"
       sample={data.summary.some((r) => r.sample && r.period === period && (!opds.length || opds.includes(r.opd)))}

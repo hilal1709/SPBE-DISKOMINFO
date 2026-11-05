@@ -1,7 +1,9 @@
 import type { PoolClient } from "pg";
-import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus, submitTarget } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
+import { usedCodesSql } from "@/lib/cms/codes";
+import { deleteWithAudit } from "@/lib/cms/audit";
 import type { KeamananRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import { kegiatanConfig, type Kegiatan } from "./jenis";
 import type { SecurityRef } from "./link";
@@ -90,8 +92,9 @@ async function loadKeamananSummary(opdId: string | null) {
     db().query(`select s.status::text as status, count(*)::int as n from security_activities s ${scope} group by 1`, params),
     db().query(`select count(*) filter (where s.is_sample)::int as samples from security_activities s ${scope}`, params),
     db().query(
-      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, s.name
-       from validation_history vh join security_activities s on s.id = vh.security_activity_id ${scope}
+      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, coalesce(s.name, vh.record_name, '(record terhapus)') as name, vh.event
+       from validation_history vh left join security_activities s on s.id = vh.security_activity_id
+       where (vh.security_activity_id is not null or vh.domain = 'keamanan') ${opdId ? "and coalesce(s.opd_id, vh.record_opd_id) = $1" : ""}
        order by vh.created_at desc limit 8`,
       params,
     ),
@@ -107,6 +110,7 @@ async function loadKeamananSummary(opdId: string | null) {
       toStatus: r.to_status as SubmissionStatus,
       note: r.note as string | null,
       createdAt: (r.created_at as Date).toISOString(),
+      deleted: r.event === "deleted",
     })),
   };
 }
@@ -123,7 +127,7 @@ async function ids(client: PoolClient, v: Pick<KeamananValues, "opd" | "period">
 async function nextCode(client: PoolClient, jenis: Kegiatan, batch?: ImportBatch) {
   const prefix = `GSK-KAM ${kegiatanConfig[jenis].abbr}.`;
   if (batch) return batch.code(prefix, 3);
-  const { rows } = await client.query("select code from security_activities where code like $1", [`${prefix}%`]);
+  const { rows } = await client.query(usedCodesSql("security_activities"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
@@ -172,7 +176,7 @@ export function updateKeamanan(id: string, v: KeamananValues, actor: Actor, subm
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Kegiatan keamanan tidak ditemukan.");
     assertStillEditable(actor, from);
-    const to: SubmissionStatus = submit ? "submitted" : from;
+    const to: SubmissionStatus = submitTarget(from, submit);
     await client.query(
       `${UPDATE}, status = $9::text::submission_status, submitted_by = case when $9::text = 'submitted' then $10::uuid else submitted_by end where id = $1`,
       [id, ...columns(v), ref.opd_id, ref.period_id, to, actor.id],
@@ -182,8 +186,9 @@ export function updateKeamanan(id: string, v: KeamananValues, actor: Actor, subm
   });
 }
 
-export async function deleteKeamanan(id: string) {
-  await db().query("delete from security_activities where id = $1", [id]);
+/** Hapus beserta log penghapusan; riwayatnya tetap tersimpan. */
+export function deleteKeamanan(id: string, actor: Actor) {
+  return tx((client) => deleteWithAudit(client, "keamanan", id, actor));
 }
 
 /** Ubah status alur verifikasi dan catat riwayatnya (kunci optimis pada status asal). */

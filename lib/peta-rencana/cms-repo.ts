@@ -1,6 +1,7 @@
 import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
+import { usedCodesSql } from "@/lib/cms/codes";
 import type { RencanaIndicator, RencanaRecord } from "@/lib/types";
 import { muatanConfig, type Muatan, type RencanaStatus } from "./muatan";
 import type { IndicatorValues, RencanaValues } from "./schema";
@@ -114,7 +115,7 @@ async function ids(client: PoolClient, v: Pick<RencanaValues, "opd" | "period">,
 async function nextCode(client: PoolClient, muatan: Muatan, batch?: ImportBatch) {
   const prefix = `GSK-PRN ${muatanConfig[muatan].abbr}.`;
   if (batch) return batch.code(prefix, 3);
-  const { rows } = await client.query("select code from roadmap_items where code like $1", [`${prefix}%`]);
+  const { rows } = await client.query(usedCodesSql("roadmap_items"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }

@@ -23,7 +23,7 @@ export function makeLayananInput(ral: RabIndex, rab: RabIndex) {
       ral3: z
         .string()
         .refine((v) => ral.byCode.get(v)?.level === 3, "Pilih RAL Level 3")
-        .refine((v) => ral.active(ral.byCode.get(v)), "RAL Level 3 ini sudah tidak berlaku, pilih penggantinya"),
+        .refine((v) => { const node = ral.byCode.get(v); return !node || ral.active(node); }, "RAL Level 3 ini sudah tidak berlaku, pilih penggantinya"),
       ralL4: optionalText,
       ralL5: optionalText,
       /** Urusan pemerintahan (RAB Level 2) — opsional. */

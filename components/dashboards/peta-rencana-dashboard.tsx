@@ -27,7 +27,7 @@ import { muatanConfig, muatanKeys, muatanOptions, statusConfig, statusKeys, stat
 import { activeFilterCount, emptyFilter, filterFromParams, filterRencana, filterToParams, sanitizeFilter, withRencanaStatus, yearsOf, type RencanaFilter } from "@/lib/peta-rencana/query";
 import { pdByCode, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatPercent, percent } from "@/lib/format";
 
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
@@ -85,6 +85,9 @@ export function PetaRencanaDashboard({
   };
 
   const rows = useMemo(() => filterRencana(all, filter).sort((a, b) => a.year - b.year || a.name.localeCompare(b.name)), [all, filter]);
+  /** S5: kegiatan Keamanan/Audit tetap dihitung, tetapi tidak tampil di katalog publik. */
+  const listed = useMemo(() => rows.filter((r) => !r.restricted), [rows]);
+  const hiddenRows = rows.length - listed.length;
   const withoutTahun = useMemo(() => filterRencana(all, filter, { except: "tahun" }), [all, filter]);
   const withoutMuatan = useMemo(() => filterRencana(all, filter, { except: "muatan" }), [all, filter]);
   const withoutSasaran = useMemo(() => filterRencana(all, filter, { except: "sasaran" }), [all, filter]);
@@ -93,7 +96,16 @@ export function PetaRencanaDashboard({
   const indicators = useMemo(() => source.indicators.filter((i) => i.period === filter.period), [source, filter.period]);
 
   const count = (status: Rencana["status"]) => withoutStatus.filter((r) => r.status === status).length;
-  const terlaksana = rows.filter((r) => r.status === "terlaksana").length;
+  /**
+   * Capaian (F4): pembagi tanpa kegiatan batal. "s.d. tahun berjalan" hanya menghitung kegiatan yang tahunnya sudah tiba;
+   * "5 tahun" seluruh periode. Kegiatan tahun mendatang tidak menurunkan capaian tahun berjalan.
+   */
+  const planned = (list: Rencana[], uptoNow: boolean) => list.filter((r) => r.status !== "batal" && (!uptoNow || r.year <= currentYear));
+  const done = (list: Rencana[]) => list.filter((r) => r.status === "terlaksana").length;
+  const capaianNow = formatPercent(done(planned(withoutStatus, true)), planned(withoutStatus, true).length);
+  const capaianAll = formatPercent(done(planned(withoutStatus, false)), planned(withoutStatus, false).length);
+  const rowsNow = planned(rows, true);
+  const terlaksana = done(rowsNow);
   const dialihkan = withoutStatus.filter((r) => r.source === "usulan_tertunda").length;
   const yearStats: YearStat[] = years.map((year) => {
     const list = withoutTahun.filter((r) => String(r.year) === year);
@@ -146,9 +158,11 @@ export function PetaRencanaDashboard({
 
       <StatRow>
         <StatCard tone="teal" label="Total kegiatan" active={!filter.status.length} onClick={() => selectStatus(null)} value={withoutStatus.length} hint={`${new Set(withoutStatus.map((r) => r.program)).size} program · Semua status`} />
-        <StatCard tone="amber" label="Terlaksana" active={filter.status.length === 1 && filter.status[0] === "terlaksana"} onClick={() => selectStatus("terlaksana")} value={count("terlaksana")} hint={`${Math.round(count("terlaksana") / (withoutStatus.length || 1) * 100)}% dari rencana`} />
+        <StatCard tone="amber" label="Terlaksana" active={filter.status.length === 1 && filter.status[0] === "terlaksana"} onClick={() => selectStatus("terlaksana")} value={count("terlaksana")} hint={`${capaianNow} s.d. ${currentYear} · ${capaianAll} dari rencana 5 tahun`} />
         <StatCard tone="yellow" label="Berjalan" active={filter.status.length === 1 && filter.status[0] === "berjalan"} onClick={() => selectStatus("berjalan")} value={count("berjalan")} />
+        <StatCard tone="sky" label="Direncanakan" active={filter.status.length === 1 && filter.status[0] === "direncanakan"} onClick={() => selectStatus("direncanakan")} value={count("direncanakan")} />
         <StatCard tone="orange" label="Ditunda" active={filter.status.length === 1 && filter.status[0] === "ditunda"} onClick={() => selectStatus("ditunda")} value={count("ditunda")} hint={`${formatNumber(dialihkan)} dialihkan ke tahun berikutnya`} />
+        <StatCard tone="plain" label="Batal" active={filter.status.length === 1 && filter.status[0] === "batal"} onClick={() => selectStatus("batal")} value={count("batal")} />
         <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} PD`} />
       </StatRow>
 
@@ -167,7 +181,7 @@ export function PetaRencanaDashboard({
                 <CardTitle as="h2" className="section-title">Progres terlaksana</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 items-center">
-                <Gauge value={Math.round((terlaksana / rows.length) * 100)} label="Kegiatan terlaksana" caption={`${formatNumber(terlaksana)} dari ${formatNumber(rows.length)} kegiatan`} className="w-full" />
+                <Gauge value={percent(terlaksana, rowsNow.length)} label={`Kegiatan terlaksana s.d. ${currentYear}`} caption={`${formatNumber(terlaksana)} dari ${formatNumber(rowsNow.length)} kegiatan yang tahunnya sudah tiba (tanpa batal)`} className="w-full" />
               </CardContent>
             </Card>
           </section>
@@ -196,9 +210,10 @@ export function PetaRencanaDashboard({
             <SasaranPanel rows={withoutSasaran} indicators={indicators} years={years} selected={filter.sasaran} onFilter={(s) => clickFilter(s, "sasaran", s)} />
           </div>
 
-          <DataTable
+          <DataTable resetPageKey={JSON.stringify(filter)}
             title="Katalog peta rencana"
-            rows={rows}
+            description={hiddenRows ? `${formatNumber(hiddenRows)} kegiatan Keamanan/Audit hanya dihitung di ringkasan; rinciannya untuk pengguna terdaftar.` : undefined}
+            rows={listed}
             rowId={(r) => `${r.period}:${r.id}`}
             searchText={(r) => `${r.id} ${r.name} ${r.program ?? ""} ${r.inisiatif ?? ""} ${pdName(r.opd)}`}
             searchPlaceholder="Cari kegiatan, program, atau PD"

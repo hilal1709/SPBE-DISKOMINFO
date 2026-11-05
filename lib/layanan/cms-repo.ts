@@ -1,7 +1,9 @@
 import type { PoolClient } from "pg";
-import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus, submitTarget } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
+import { usedCodesSql } from "@/lib/cms/codes";
+import { deleteWithAudit } from "@/lib/cms/audit";
 import type { LayananRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import type { LayananValues } from "./schema";
 import { cached, TAGS } from "@/lib/cache";
@@ -110,8 +112,9 @@ async function loadLayananSummary(opdId: string | null) {
     db().query(`select s.status::text as status, count(*)::int as n from services s ${scope} group by 1`, params),
     db().query(`select count(*) filter (where s.is_sample)::int as samples, count(*) filter (where s.ral_review)::int as review from services s ${scope}`, params),
     db().query(
-      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, s.name
-       from validation_history vh join services s on s.id = vh.service_id ${scope}
+      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, coalesce(s.name, vh.record_name, '(record terhapus)') as name, vh.event
+       from validation_history vh left join services s on s.id = vh.service_id
+       where (vh.service_id is not null or vh.domain = 'layanan') ${opdId ? "and coalesce(s.opd_id, vh.record_opd_id) = $1" : ""}
        order by vh.created_at desc limit 8`,
       params,
     ),
@@ -127,6 +130,7 @@ async function loadLayananSummary(opdId: string | null) {
       toStatus: r.to_status as SubmissionStatus,
       note: r.note as string | null,
       createdAt: (r.created_at as Date).toISOString(),
+      deleted: r.event === "deleted",
     })),
   };
 }
@@ -170,7 +174,7 @@ async function ids(client: PoolClient, v: Pick<LayananValues, "opd" | "period" |
 async function nextCode(client: PoolClient, ral3: string, batch?: ImportBatch) {
   const prefix = `GSK-LYN ${ral3.slice(4)}.`;
   if (batch) return batch.code(prefix, 2);
-  const { rows } = await client.query("select code from services where code like $1", [`${prefix}%`]);
+  const { rows } = await client.query(usedCodesSql("services"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(2, "0")}`;
 }
@@ -231,7 +235,7 @@ export function updateLayanan(id: string, v: LayananValues, actor: Actor, submit
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Layanan tidak ditemukan.");
     assertStillEditable(actor, from);
-    const to: SubmissionStatus = submit ? "submitted" : from;
+    const to: SubmissionStatus = submitTarget(from, submit);
     await client.query(
       `${UPDATE}, status = $19::text::submission_status, submitted_by = case when $19::text = 'submitted' then $20::uuid else submitted_by end where id = $1`,
       [id, ...columns(v), ref.opd_id, ref.period_id, ref.ral_id, ref.rab_id, to, actor.id],
@@ -243,8 +247,9 @@ export function updateLayanan(id: string, v: LayananValues, actor: Actor, submit
   });
 }
 
-export async function deleteLayanan(id: string) {
-  await db().query("delete from services where id = $1", [id]);
+/** Hapus beserta log penghapusan; riwayatnya tetap tersimpan. */
+export function deleteLayanan(id: string, actor: Actor) {
+  return tx((client) => deleteWithAudit(client, "layanan", id, actor));
 }
 
 /** Ubah status alur verifikasi dan catat riwayatnya (kunci optimis pada status asal). */

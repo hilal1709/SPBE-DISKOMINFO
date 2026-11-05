@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db";
 import type { Infrastruktur } from "@/lib/types";
 import { RAI_JOIN, RAI_SQL } from "./cms-repo";
 import { cached, TAGS } from "@/lib/cache";
+import { toPublicInfra } from "./public";
 
 /** Akses data Domain Infrastruktur untuk dashboard publik (server saja). */
 
@@ -30,7 +31,7 @@ async function loadListApprovedInfrastruktur(): Promise<{ rows: Infrastruktur[];
   const pool = getDb();
   if (!pool) throw new Error("Database belum dikonfigurasi (DATABASE_URL).");
   const { rows } = await pool.query(
-    `select i.code, i.kind, i.name, i.description, i.owner_name, i.ownership, i.manager, i.attributes, i.security,
+    `select i.code, i.kind, i.name, i.ownership, i.attributes,
             o.code as opd, ap.name as period, i.is_sample,
             ${RAI_SQL},
             ${PUBLIC_LINKS}
@@ -40,14 +41,15 @@ async function loadListApprovedInfrastruktur(): Promise<{ rows: Infrastruktur[];
      ${RAI_JOIN}
      where i.status = 'approved' and i.rai_id is not null`,
   );
-  const mapped: Infrastruktur[] = rows.map((r) => ({
+  // Hanya kolom yang aman tampil publik (S6/S1): tanpa deskripsi, pemilik, pengelola, spesifikasi, atau dependensi keamanan.
+  const mapped: Infrastruktur[] = rows.map((r) => toPublicInfra({
     id: r.code,
     name: r.name,
     jenis: r.kind,
-    deskripsi: r.description,
-    pemilik: r.owner_name,
+    deskripsi: null,
+    pemilik: null,
     kepemilikan: r.ownership,
-    pengelola: r.manager,
+    pengelola: null,
     opd: r.opd,
     period: r.period,
     rai1: r.rai1,
@@ -58,10 +60,10 @@ async function loadListApprovedInfrastruktur(): Promise<{ rows: Infrastruktur[];
     aplikasi: r.aplikasi,
     data: r.data,
     probis: r.probis,
-    security: r.security ?? {},
+    security: {},
   }));
   return { rows: mapped, sample: rows.some((r) => r.is_sample) };
 }
 
 /** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
-export const listApprovedInfrastruktur = cached(loadListApprovedInfrastruktur, "infrastruktur/repo:listApprovedInfrastruktur", [TAGS.content]);
+export const listApprovedInfrastruktur = cached(loadListApprovedInfrastruktur, "infrastruktur/repo:listApprovedInfrastruktur-public-v2", [TAGS.content]);

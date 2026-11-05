@@ -211,7 +211,7 @@ export function validateRows(
       issues.push({ level: "warning", message: `Kepemilikan “${row.kepemilikanRaw}” dibaca sebagai ${kepemilikanLabel[row.kepemilikan]}` });
 
     if (lockedOpd) {
-      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: "Instansi berbeda dengan OPD akun Anda" });
+      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: `Instansi berbeda dengan OPD akun Anda (di berkas: “${row.opdRaw ?? row.opd}”)` });
       else if (!row.opd) issues.push({ level: "warning", message: "Instansi diisi OPD akun Anda" });
       next.opd = lockedOpd;
     } else if (!row.opd) {

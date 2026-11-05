@@ -1,7 +1,9 @@
 import type { PoolClient } from "pg";
-import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus, submitTarget } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
+import { usedCodesSql } from "@/lib/cms/codes";
+import { deleteWithAudit } from "@/lib/cms/audit";
 import type { InfrastrukturRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import { infraTargets, jenisConfig, jenisLabel, type InfraJenis } from "./jenis";
 import type { InfrastrukturValues } from "./schema";
@@ -145,8 +147,9 @@ async function loadInfrastrukturSummary(opdId: string | null) {
     db().query(`select i.status::text as status, count(*)::int as n from infrastructures i ${scope} group by 1`, params),
     db().query(`select count(*) filter (where i.is_sample)::int as samples, count(*) filter (where i.rai_review)::int as review from infrastructures i ${scope}`, params),
     db().query(
-      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, i.name
-       from validation_history vh join infrastructures i on i.id = vh.infrastructure_id ${scope}
+      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, coalesce(i.name, vh.record_name, '(record terhapus)') as name, vh.event
+       from validation_history vh left join infrastructures i on i.id = vh.infrastructure_id
+       where (vh.infrastructure_id is not null or vh.domain = 'infrastruktur') ${opdId ? "and coalesce(i.opd_id, vh.record_opd_id) = $1" : ""}
        order by vh.created_at desc limit 8`,
       params,
     ),
@@ -162,6 +165,7 @@ async function loadInfrastrukturSummary(opdId: string | null) {
       toStatus: r.to_status as SubmissionStatus,
       note: r.note as string | null,
       createdAt: (r.created_at as Date).toISOString(),
+      deleted: r.event === "deleted",
     })),
   };
 }
@@ -235,7 +239,7 @@ async function ids(client: PoolClient, v: Pick<InfrastrukturValues, "opd" | "per
 async function nextCode(client: PoolClient, rai: string, batch?: ImportBatch) {
   const prefix = `GSK-INF ${rai.slice(4)}.`;
   if (batch) return batch.code(prefix, 3);
-  const { rows } = await client.query("select code from infrastructures where code like $1", [`${prefix}%`]);
+  const { rows } = await client.query(usedCodesSql("infrastructures"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
@@ -298,7 +302,7 @@ export function updateInfrastruktur(id: string, v: InfrastrukturValues, actor: A
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Komponen infrastruktur tidak ditemukan.");
     assertStillEditable(actor, from);
-    const to: SubmissionStatus = submit ? "submitted" : from;
+    const to: SubmissionStatus = submitTarget(from, submit);
     await client.query(
       `${UPDATE}, status = $13::text::submission_status, submitted_by = case when $13::text = 'submitted' then $14::uuid else submitted_by end where id = $1`,
       [id, ...columns(v), ref.opd_id, ref.period_id, ref.rai_id, to, actor.id],
@@ -309,8 +313,9 @@ export function updateInfrastruktur(id: string, v: InfrastrukturValues, actor: A
   });
 }
 
-export async function deleteInfrastruktur(id: string) {
-  await db().query("delete from infrastructures where id = $1", [id]);
+/** Hapus beserta log penghapusan; riwayatnya tetap tersimpan. */
+export function deleteInfrastruktur(id: string, actor: Actor) {
+  return tx((client) => deleteWithAudit(client, "infrastruktur", id, actor));
 }
 
 /** Ubah status alur verifikasi dan catat riwayatnya (kunci optimis pada status asal). */

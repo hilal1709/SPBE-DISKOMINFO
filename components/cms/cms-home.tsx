@@ -7,6 +7,7 @@ import { Segmented } from "@/components/blocks/segmented";
 import { StatCard } from "@/components/blocks/stat-card";
 import { StatRow } from "@/components/blocks/stat-row";
 import { ReviewBadge } from "@/components/cms/review-badge";
+import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/icon";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Reveal } from "@/components/motion/reveal";
@@ -16,7 +17,7 @@ import { can, reviewTeam, type Actor } from "@/lib/permissions";
 import type { RencanaStatus } from "@/lib/peta-rencana/muatan";
 import type { SubmissionStatus } from "@/lib/types";
 
-type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; kind?: "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan" };
+type Activity = { id: string; name: string; actorName: string | null; toStatus: SubmissionStatus; note: string | null; createdAt: string; /** Log penghapusan record. */ deleted?: boolean; kind?: "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan" };
 type Summary = { counts: Partial<Record<SubmissionStatus, number>>; /** Perlu pemetaan ulang referensi (RAB/RAL). */ review: number };
 type Domain = "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan";
 
@@ -186,7 +187,7 @@ export function CmsHome({
                   <li key={a.id} className="relative text-sm">
                     <span aria-hidden className={`absolute top-1.5 -left-[1.3rem] size-2.5 rounded-full border-2 border-card ${dotTone[a.toStatus]}`} />
                     <p className="flex flex-wrap items-center gap-2">
-                      <ReviewBadge status={a.toStatus} />
+                      {a.deleted ? <Badge variant="destructive">Dihapus</Badge> : <ReviewBadge status={a.toStatus} />}
                       <span className="truncate font-medium">{a.name}</span>
                       {a.kind && a.kind !== "probis" && <span className="text-[11px] text-muted-foreground">{a.kind}</span>}
                     </p>

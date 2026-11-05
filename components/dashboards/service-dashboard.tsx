@@ -30,7 +30,7 @@ import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import { useRabSet } from "@/components/probis/rab-context";
 import type { Layanan } from "@/lib/types";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, percent } from "@/lib/format";
 
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
@@ -133,6 +133,8 @@ export function ServiceDashboard({
     ),
   ];
   const total = rows.length || 1;
+  /** Layanan tanpa metode (F8) dihitung terpisah agar komposisi tetap berjumlah 100%. */
+  const unknownMetode = rows.filter((r) => !metodeLabel[r.metode]).length;
 
   return (
     <Reveal className="grid gap-5">
@@ -186,7 +188,7 @@ export function ServiceDashboard({
                 <CardTitle as="h2" className="section-title">Digitalisasi layanan</CardTitle>
               </CardHeader>
               <CardContent className="grid flex-1 content-center gap-5">
-                <Gauge value={(digital / total) * 100} label="Persentase layanan terdigitalisasi" caption={`${formatNumber(digital)} dari ${formatNumber(rows.length)} layanan`} />
+                <Gauge value={percent(digital, rows.length)} label="Persentase layanan terdigitalisasi" caption={`${formatNumber(digital)} dari ${formatNumber(rows.length)} layanan`} />
                 <div className="grid gap-2">
                   <div className="flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
                     {metodeOptions.map((m) => (
@@ -200,6 +202,12 @@ export function ServiceDashboard({
                         {m.label} <b className="text-foreground tabular-nums">{formatNumber(metode.get(m.value) ?? 0)}</b>
                       </span>
                     ))}
+                    {unknownMetode > 0 && (
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <span className="size-2 rounded-full bg-muted-foreground/40" />
+                        Tidak diketahui <b className="text-foreground tabular-nums">{formatNumber(unknownMetode)}</b>
+                      </span>
+                    )}
                   </p>
                 </div>
               </CardContent>

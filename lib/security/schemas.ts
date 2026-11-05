@@ -16,7 +16,7 @@ export const noteSchema = z.string(INVALID).trim().max(1000, "Catatan maksimal 1
 
 export const reviewArgs = z.object({
   id: idSchema,
-  decision: z.enum(["submit", "verify", "validate", "reject"], INVALID),
+  decision: z.enum(["submit", "verify", "validate", "reject", "withdraw"], INVALID),
   note: noteSchema.optional(),
 });
 

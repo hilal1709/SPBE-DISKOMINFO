@@ -35,7 +35,7 @@ export function makeInfrastrukturInput(rai: RabIndex) {
       rai: z
         .string()
         .refine((v) => isRaiLeaf(rai, v), "Pilih RAI")
-        .refine((v) => rai.active(rai.byCode.get(v)), "RAI ini sudah tidak berlaku, pilih penggantinya"),
+        .refine((v) => { const node = rai.byCode.get(v); return !node || rai.active(node); }, "RAI ini sudah tidak berlaku, pilih penggantinya"),
       atribut: z.record(z.string(), z.string().trim().max(500)).default({}),
       /** Kode komponen infrastruktur lain, aplikasi, data, dan proses bisnis terkait (periode sama). */
       relasi: codes("komponen"),

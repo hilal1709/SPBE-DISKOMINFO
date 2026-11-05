@@ -14,13 +14,13 @@ const MAX_WORKBOOKS = 50;
 export type UploadBudget = { entries: number; bytes: number; workbooks: number };
 export const uploadBudget = (): UploadBudget => ({ entries: 0, bytes: 0, workbooks: 0 });
 
-/** Sama dengan serverActions.bodySizeLimit (next.config.ts); dicek ulang sebelum berkas dibaca ke memori. */
-export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "./upload-limit";
+export { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB };
 
-/** Berkas unggahan wajib ada dan tidak melebihi 12 MB. Jenis berkas dicek lewat ekstensi (readUpload) dan magic bytes (isZip). */
+/** Berkas unggahan wajib ada dan tidak melebihi MAX_UPLOAD_MB. Jenis berkas dicek lewat ekstensi (readUpload) dan magic bytes (isZip). */
 export function assertUploadFile(file: FormDataEntryValue | null, empty: string): asserts file is File {
   if (!(file instanceof File) || !file.size) throw new Error(empty);
-  if (file.size > MAX_UPLOAD_BYTES) throw new Error("Berkas terlalu besar (maks. 12 MB).");
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error(`Berkas terlalu besar (maks. ${MAX_UPLOAD_MB} MB). Pecah zip per domain atau hapus lampiran yang tidak perlu.`);
   if (file.name.length > 255) throw new Error("Nama berkas terlalu panjang.");
 }
 

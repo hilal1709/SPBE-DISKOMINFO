@@ -1,7 +1,9 @@
 import type { PoolClient } from "pg";
-import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus, submitTarget } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
+import { usedCodesSql } from "@/lib/cms/codes";
+import { deleteWithAudit } from "@/lib/cms/audit";
 import { pdByCode } from "@/lib/probis/reference";
 import type { DataRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import type { DataValues } from "./schema";
@@ -126,8 +128,9 @@ async function loadDataSummary(opdId: string | null) {
     db().query(`select d.status::text as status, count(*)::int as n from datasets d ${scope} group by 1`, params),
     db().query(`select count(*) filter (where d.is_sample)::int as samples, count(*) filter (where d.rad_review)::int as review from datasets d ${scope}`, params),
     db().query(
-      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, d.name
-       from validation_history vh join datasets d on d.id = vh.dataset_id ${scope}
+      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, coalesce(d.name, vh.record_name, '(record terhapus)') as name, vh.event
+       from validation_history vh left join datasets d on d.id = vh.dataset_id
+       where (vh.dataset_id is not null or vh.domain = 'data') ${opdId ? "and coalesce(d.opd_id, vh.record_opd_id) = $1" : ""}
        order by vh.created_at desc limit 8`,
       params,
     ),
@@ -143,6 +146,7 @@ async function loadDataSummary(opdId: string | null) {
       toStatus: r.to_status as SubmissionStatus,
       note: r.note as string | null,
       createdAt: (r.created_at as Date).toISOString(),
+      deleted: r.event === "deleted",
     })),
   };
 }
@@ -205,7 +209,7 @@ async function ids(client: PoolClient, v: Pick<DataValues, "opd" | "period" | "r
 async function nextCode(client: PoolClient, rad: string, batch?: ImportBatch) {
   const prefix = `GSK-DAT ${rad.slice(4)}.`;
   if (batch) return batch.code(prefix, 2);
-  const { rows } = await client.query("select code from datasets where code like $1", [`${prefix}%`]);
+  const { rows } = await client.query(usedCodesSql("datasets"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(2, "0")}`;
 }
@@ -283,7 +287,7 @@ export function updateData(id: string, v: DataValues, actor: Actor, submit: bool
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Data tidak ditemukan.");
     assertStillEditable(actor, from);
-    const to: SubmissionStatus = submit ? "submitted" : from;
+    const to: SubmissionStatus = submitTarget(from, submit);
     await client.query(
       `${UPDATE}, status = $19::text::submission_status, submitted_by = case when $19::text = 'submitted' then $20::uuid else submitted_by end where id = $1`,
       [id, ...columns(v, ref), ref.opd_id, ref.producer_opd_id, ref.period_id, ref.rad_id, to, actor.id],
@@ -295,8 +299,9 @@ export function updateData(id: string, v: DataValues, actor: Actor, submit: bool
   });
 }
 
-export async function deleteData(id: string) {
-  await db().query("delete from datasets where id = $1", [id]);
+/** Hapus beserta log penghapusan; riwayatnya tetap tersimpan. */
+export function deleteData(id: string, actor: Actor) {
+  return tx((client) => deleteWithAudit(client, "data", id, actor));
 }
 
 /** Ubah status alur verifikasi dan catat riwayatnya (kunci optimis pada status asal). */

@@ -96,6 +96,10 @@ export const can = {
   create: (a: Actor) => has(a, "create"),
   edit: (a: Actor, r: Pick<ProbisRecord, "status"> & { opdId?: string | null }) =>
     has(a, "editAny") || (editable.has(r.status) && has(a, "edit") && (has(a, "readAll") || (!!a.opdId && a.opdId === r.opdId))),
+  /** Ajukan hanya dari Draf/Dikembalikan, termasuk untuk Superadmin (B9/B16): record tayang ditarik lewat `withdraw`. */
+  submit: (a: Actor, r: Pick<ProbisRecord, "status"> & { opdId?: string | null }) => editable.has(r.status) && can.edit(a, r),
+  /** Tarik record tayang dari portal (kembali ke Draf, alasan wajib): tim validasi atau Superadmin. */
+  withdraw: (a: Actor, r: Pick<ProbisRecord, "status">) => r.status === "approved" && (has(a, "validate") || has(a, "editAny")),
   /** Tim verifikasi: diajukan → terverifikasi / dikembalikan. */
   verify: (a: Actor, domain: ReviewDomain = "probis") => has(a, `verify.${domain}`),
   /** Tim validasi: terverifikasi → tervalidasi (tayang di portal) / dikembalikan. */

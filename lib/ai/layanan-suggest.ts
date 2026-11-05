@@ -4,7 +4,7 @@ import { ekonomiByTarget, kementerianByRal2, manfaatByTarget, RAL_PUBLIK, ralFor
 import type { RabIndex } from "@/lib/probis/rab-index";
 import { pdByCode } from "@/lib/probis/reference";
 import { geminiJson } from "./gemini";
-import { tokens } from "./text";
+import { MIN_TEXT_SCORE, matchScore, tokens, words } from "./text";
 
 export type LayananSuggestInput = { name: string; opd: string; note?: string };
 export type LayananSuggestion = {
@@ -50,18 +50,16 @@ function homeRal2(opd: string, ral: RabIndex, rab: RabIndex) {
 function local({ name, opd, note }: LayananSuggestInput, ral: RabIndex, rab: RabIndex): LayananSuggestion {
   const { level3, entries, weight } = indexOf(ral);
   const pd = pdByCode.get(opd);
-  const query = tokens(`${name} ${note ?? ""}`);
+  const query = words(`${name} ${note ?? ""}`);
   const home = homeRal2(opd, ral, rab);
 
   const ranked = entries
     .map(({ node, own, parent }) => {
-      const hits = query.filter((t) => own.has(t));
-      const parentHits = query.filter((t) => parent.has(t) && !own.has(t));
-      const text = hits.reduce((sum, t) => sum + weight(t), 0) + parentHits.reduce((sum, t) => sum + weight(t) * 0.5, 0);
+      const { text, hits } = matchScore(query, own, parent, weight);
       const inHome = home.has(node.parent!);
-      return { node, text, score: text * (inHome ? 1.3 : 0.7) + (inHome ? 2.5 : 0), hits: [...new Set([...hits, ...parentHits])] };
+      return { node, text, score: text * (inHome ? 1.3 : 0.7) + (inHome ? 2.5 : 0), hits };
     })
-    .filter((r) => r.text > 1.2 || r.score >= 2.5)
+    .filter((r) => r.text >= MIN_TEXT_SCORE || r.score >= 2.5)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
   const picks = ranked.length

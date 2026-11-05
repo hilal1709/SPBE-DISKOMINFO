@@ -1,3 +1,4 @@
+import { CLOSED_INTEROP_MESSAGE, classificationWarnings, closedInterop } from "./classification";
 import * as XLSX from "xlsx";
 import { readWorkbook } from "@/lib/security/upload";
 import { findInZip, matchPd, normalize, text } from "@/lib/probis/import";
@@ -258,9 +259,12 @@ export function validateRows(
     if (!validitas.value) issues.push({ level: "error", message: "Validitas data kosong" });
     else if (validitas.guessed) issues.push({ level: "warning", message: `Validitas “${row.validitasRaw}” dibaca sebagai ${validitas.value}` });
     if (row.interoperabel === null) issues.push({ level: "error", message: row.interopRaw ? `Interoperabilitas “${row.interopRaw}” harus Ya atau Tidak` : "Interoperabilitas kosong" });
+    // S3: aturan klasifikasi.
+    if (sifat.value && closedInterop({ sifat: sifat.value, interoperabel: row.interoperabel ?? false })) issues.push({ level: "error", message: CLOSED_INTEROP_MESSAGE });
+    if (sifat.value) for (const message of classificationWarnings({ name: row.name, sifat: sifat.value })) issues.push({ level: "warning", message });
 
     if (lockedOpd) {
-      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: "Wali data berbeda dengan OPD akun Anda" });
+      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: `Wali data berbeda dengan OPD akun Anda (di berkas: “${row.opdRaw ?? row.opd}”)` });
       else if (!row.opd) issues.push({ level: "warning", message: "Wali data diisi OPD akun Anda" });
       next.opd = lockedOpd;
     } else if (!row.opd) {

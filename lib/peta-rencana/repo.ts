@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
 import { cached, TAGS } from "@/lib/cache";
+import { toPublicRencana } from "./public";
 
 /** Akses data Peta Rencana untuk dashboard publik (server saja). */
 
@@ -24,7 +25,7 @@ async function loadListPublicRencana(): Promise<{ rows: Rencana[]; indicators: R
     db().query("select i.id, ap.name as period, i.sasaran, i.inisiatif, i.indikator, i.targets from roadmap_indicators i join architecture_periods ap on ap.id = i.period_id"),
   ]);
   return {
-    rows: items.rows.map((r) => ({
+    rows: items.rows.map((r) => toPublicRencana({
       id: r.code, name: r.name, opd: r.opd, period: r.period, year: r.year, sasaran: r.sasaran, inisiatif: r.inisiatif, muatan: r.muatan, program: r.program,
       target: r.target, jumlah: r.jumlah, satuan: r.satuan, status: r.status, realisasi: r.realisasi, evaluasi: r.evaluation_note, source: r.source,
       sourceRef: r.source_ref, deferredFrom: r.deferred_from,
@@ -35,4 +36,4 @@ async function loadListPublicRencana(): Promise<{ rows: Rencana[]; indicators: R
 }
 
 /** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
-export const listPublicRencana = cached(loadListPublicRencana, "peta-rencana/repo:listPublicRencana", [TAGS.content]);
+export const listPublicRencana = cached(loadListPublicRencana, "peta-rencana/repo:listPublicRencana-public-v2", [TAGS.content]);

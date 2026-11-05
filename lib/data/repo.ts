@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { DataInfo } from "@/lib/types";
 import { cached, TAGS } from "@/lib/cache";
+import { toPublicData } from "./public";
 
 /** Akses data Domain Data untuk dashboard publik (server saja). */
 
@@ -27,7 +28,7 @@ async function loadListApprovedData(): Promise<{ rows: DataInfo[]; sample: boole
      left join rad_references p2 on p2.id = p1.parent_id
      where d.status = 'approved'`,
   );
-  const mapped: DataInfo[] = rows.map((r) => ({
+  const mapped: DataInfo[] = rows.map((r) => toPublicData({
     id: r.code,
     name: r.name,
     uraian: r.description ?? "",
@@ -51,4 +52,4 @@ async function loadListApprovedData(): Promise<{ rows: DataInfo[]; sample: boole
 }
 
 /** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
-export const listApprovedData = cached(loadListApprovedData, "data/repo:listApprovedData", [TAGS.content]);
+export const listApprovedData = cached(loadListApprovedData, "data/repo:listApprovedData-public-v2", [TAGS.content]);

@@ -90,6 +90,8 @@ export type DataInfo = {
   probis: { id: string; name: string }[];
   /** → Layanan pengguna data. */
   layanan: { id: string; name: string }[];
+  /** Portal publik: data tertutup, hanya untuk agregat (tidak tampil di katalog). */
+  restricted?: boolean;
 };
 
 /** Aplikasi di dashboard publik (kolom mengikuti template "Domain Arsitektur Aplikasi.xlsx"). */
@@ -331,6 +333,8 @@ export type Rencana = {
   sourceRef: string | null;
   /** ID kegiatan asal bila dialihkan dari tahun/periode sebelumnya. */
   deferredFrom: string | null;
+  /** Portal publik: kegiatan Keamanan/Audit, hanya untuk agregat (tidak tampil di katalog). */
+  restricted?: boolean;
 };
 
 /** Kegiatan Peta Rencana di CMS (satu baris tabel roadmap_items). */

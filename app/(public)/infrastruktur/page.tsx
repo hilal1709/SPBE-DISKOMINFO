@@ -5,6 +5,7 @@ import { DashboardPage } from "@/components/portal/dashboard-page";
 import { raiSetSafe } from "@/lib/infrastruktur/rai";
 import { sampleRaiSet } from "@/lib/infrastruktur/reference";
 import { listApprovedInfrastruktur } from "@/lib/infrastruktur/repo";
+import { toPublicInfra } from "@/lib/infrastruktur/public";
 import { periodOptions } from "@/lib/probis/periods";
 import { readApproved, samplePeriodOptions } from "@/lib/portal/load";
 import { pageMetadata } from "@/lib/seo";
@@ -22,7 +23,7 @@ export default async function Page() {
   return (
     <DashboardPage path={PATH}>
       <RaiProvider set={raiSet}>
-        <InfrastrukturDashboard data={fromDb ? approved!.rows : allInfrastruktur()} sample={!fromDb || approved!.sample} periods={periods} />
+        <InfrastrukturDashboard data={fromDb ? approved!.rows : allInfrastruktur().map(toPublicInfra)} sample={!fromDb || approved!.sample} periods={periods} />
       </RaiProvider>
     </DashboardPage>
   );

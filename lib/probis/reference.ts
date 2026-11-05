@@ -35,7 +35,10 @@ export type PeriodOptions = { periods: string[]; active: string };
 
 export type PerangkatDaerah = { code: string; name: string; total: number; /** Urusan (RAB L2) utama. */ rab2: string[] };
 
-/** 30 Perangkat Daerah dan jumlah probis-nya (total 1.845). */
+/**
+ * 29 Perangkat Daerah dan jumlah probis-nya (total 1.845). "Pelaporan dan Tindak Lanjut Penyimpanan Alih Media Arsip Vital Desa"
+ * adalah nama kegiatan (bukan OPD) yang terbawa dari sheet sumber; probis-nya milik Dinas Perpustakaan dan Kearsipan.
+ */
 export const perangkatDaerah: PerangkatDaerah[] = [
   { code: "SETDA", name: "Sekretariat Daerah", total: 153, rab2: ["09.01", "09.02", "09.06", "09.05", "09.07", "05.01"] },
   { code: "DISKOMINFO", name: "Dinas Komunikasi dan Informatika", total: 139, rab2: ["09.03", "09.04", "06.03"] },
@@ -46,7 +49,7 @@ export const perangkatDaerah: PerangkatDaerah[] = [
   { code: "BAKESBANGPOL", name: "Badan Kesatuan Bangsa dan Politik", total: 72, rab2: ["05.02", "09.01"] },
   { code: "DAMKAR", name: "Dinas Pemadam Kebakaran dan Penyelamatan", total: 70, rab2: ["05.02"] },
   { code: "DISPARBUD", name: "Dinas Pariwisata dan Ekonomi Kreatif, Kebudayaan, Kepemudaan, dan Olahraga", total: 65, rab2: ["02.11", "08.02", "06.04", "06.05"] },
-  { code: "DISPERPUSIP", name: "Dinas Perpustakaan dan Kearsipan", total: 64, rab2: ["09.03", "08.02"] },
+  { code: "DISPERPUSIP", name: "Dinas Perpustakaan dan Kearsipan", total: 65, rab2: ["09.03", "08.02"] },
   { code: "DISPERKIM", name: "Dinas Cipta Karya, Perumahan dan Kawasan Permukiman", total: 55, rab2: ["03.04", "03.01"] },
   { code: "DP3AKB", name: "Dinas Keluarga Berencana, Pemberdayaan Perempuan, dan Perlindungan Anak", total: 54, rab2: ["04.03", "03.07"] },
   { code: "KECAMATAN", name: "Kecamatan", total: 53, rab2: ["09.01", "05.02"] },
@@ -62,7 +65,6 @@ export const perangkatDaerah: PerangkatDaerah[] = [
   { code: "INSPEKTORAT", name: "Inspektorat", total: 33, rab2: ["09.06", "09.02"] },
   { code: "SATPOLPP", name: "Dinas Satpol PP", total: 30, rab2: ["05.01", "05.02"] },
   { code: "DPMPTSP", name: "Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu", total: 19, rab2: ["02.08"] },
-  { code: "ARSIPDESA", name: "Pelaporan dan Tindak Lanjut Penyimpanan Alih Media Arsip Vital Desa", total: 1, rab2: ["09.03"] },
   { code: "BPBD", name: "Badan Penanggulangan Bencana Daerah", total: 63, rab2: ["05.02"] },
   { code: "DISHUB", name: "Dinas Perhubungan", total: 62, rab2: ["03.03"] },
   { code: "SETWAN", name: "Sekretariat Dewan", total: 59, rab2: ["09.01", "09.02"] },

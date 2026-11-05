@@ -5,6 +5,7 @@ import { DashboardPage } from "@/components/portal/dashboard-page";
 import { radSetSafe } from "@/lib/data/rad";
 import { sampleRadSet } from "@/lib/data/sample-reference";
 import { listApprovedData } from "@/lib/data/repo";
+import { toPublicData } from "@/lib/data/public";
 import { periodOptions } from "@/lib/probis/periods";
 import { readApproved, samplePeriodOptions } from "@/lib/portal/load";
 import { pageMetadata } from "@/lib/seo";
@@ -22,7 +23,7 @@ export default async function Page() {
   return (
     <DashboardPage path={PATH}>
       <RadProvider set={radSet}>
-        <DataDashboard data={fromDb ? approved!.rows : allData()} sample={!fromDb || approved!.sample} periods={periods} />
+        <DataDashboard data={fromDb ? approved!.rows : allData().map(toPublicData)} sample={!fromDb || approved!.sample} periods={periods} />
       </RadProvider>
     </DashboardPage>
   );

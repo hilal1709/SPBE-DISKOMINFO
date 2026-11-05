@@ -173,7 +173,7 @@ export function validateRows(
     deepIssue(next.rabL5, rab.byCode.get(next.rabL4 ?? "")?.level === 4 ? next.rabL4 : null, 5);
 
     if (lockedOpd) {
-      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: "Unit kerja berbeda dengan OPD akun Anda" });
+      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: `Unit kerja berbeda dengan OPD akun Anda (di berkas: “${row.opdRaw ?? row.opd}”)` });
       else if (!row.opd) issues.push({ level: "warning", message: "Unit kerja diisi OPD akun Anda" });
       next.opd = lockedOpd;
     } else if (!row.opd) {

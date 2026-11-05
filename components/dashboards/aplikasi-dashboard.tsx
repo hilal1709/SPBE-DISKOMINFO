@@ -26,13 +26,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { activeFilterCount, countBy, emptyFilter, filterAplikasi, filterFromParams, filterToParams, raaOptions, sanitizeFilter, type AplikasiFilter } from "@/lib/aplikasi/query";
 import {
   basisLabel, basisOptions, infraFields, kepemilikanColor, kepemilikanLabel, kepemilikanOptions, lisensiLabel, lisensiOptions, sampleRaa,
-  type Basis, type Kepemilikan, type Lisensi,
+  type Basis, type Kepemilikan, type Lisensi, UNKNOWN, isSpecialValue,
 } from "@/lib/aplikasi/reference";
 import { colorByCount } from "@/lib/palette";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { Aplikasi } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { formatNumber, percent } from "@/lib/format";
+import { formatNumber, percent, formatPercent } from "@/lib/format";
 
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
@@ -107,11 +107,19 @@ export function AplikasiDashboard({
   const pdCount = countBy(rows, "operasional").size;
   const splp = rows.filter((a) => a.splp).length;
   const basis = countBy(withoutBasis, "basis");
-  const bahasa = [...countBy(rows, "bahasa")].filter(([code]) => code !== "Tidak diketahui").map(([code, value]) => ({ code, label: code, value }));
+  // F8: "Tidak diketahui" (kosong) dan "Tidak berlaku" tampil sebagai kategori sendiri di urutan terakhir,
+  // sehingga jumlah per bahasa/mesin sama dengan total aplikasi.
+  const bySpecialLast = (x: [string, number], y: [string, number]) => Number(isSpecialValue(x[0])) - Number(isSpecialValue(y[0])) || y[1] - x[1];
+  const bahasa = [...countBy(rows.map((a) => ({ ...a, bahasa: a.bahasa?.trim() || UNKNOWN })), "bahasa")]
+    .sort(bySpecialLast)
+    .map(([code, value]) => ({ code, label: code, value }));
   const mesin = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const a of rows) if (a.mesin) counts.set(a.mesin, (counts.get(a.mesin) ?? 0) + 1);
-    return [...counts].sort((x, y) => y[1] - x[1]);
+    for (const a of rows) {
+      const key = a.mesin?.trim() || UNKNOWN;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts].sort(bySpecialLast);
   }, [rows]);
   const pdRows = useMemo<PdRow[]>(() => {
     const groups = new Map<string, Aplikasi[]>();
@@ -175,7 +183,7 @@ export function AplikasiDashboard({
         <>
           <StatRow>
             <StatCard tone="teal" label="Jumlah aplikasi" value={total} hint={`${formatNumber(umum)} umum · ${formatNumber(total - umum)} khusus`} />
-            <StatCard tone="orange" label="Aplikasi Pemda" active={filter.kepemilikan.includes("pemda")} onClick={() => clickFilter("Aplikasi Pemda", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "pemda") }), !filter.kepemilikan.includes("pemda"))} value={owner.get("pemda") ?? 0} hint={`${percent(owner.get("pemda") ?? 0, total)}% dibangun Perangkat Daerah`} />
+            <StatCard tone="orange" label="Aplikasi Pemda" active={filter.kepemilikan.includes("pemda")} onClick={() => clickFilter("Aplikasi Pemda", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "pemda") }), !filter.kepemilikan.includes("pemda"))} value={owner.get("pemda") ?? 0} hint={`${formatPercent(owner.get("pemda") ?? 0, total)} dibangun Perangkat Daerah`} />
             <StatCard tone="yellow" label="Aplikasi Instansi Pusat" active={filter.kepemilikan.includes("pusat")} onClick={() => clickFilter("Aplikasi Instansi Pusat", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "pusat") }), !filter.kepemilikan.includes("pusat"))} value={pusat.length} hint={`dioperasikan ${new Set(pusat.map((a) => a.operasional)).size} Perangkat Daerah`} />
             <StatCard tone="amber" label="Unit operasional" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
           </StatRow>
@@ -274,7 +282,7 @@ export function AplikasiDashboard({
                       <div className="flex items-baseline justify-between gap-3 text-sm">
                         <span className="font-medium">{item.label}</span>
                         <span className="text-muted-foreground tabular-nums">
-                          {formatNumber(item.value)} <span className="text-xs">({percent(item.value, total)}%)</span>
+                          {formatNumber(item.value)} <span className="text-xs">({formatPercent(item.value, total)})</span>
                         </span>
                       </div>
                       <Meter value={percent(item.value, total)} label={item.label} indicatorClassName={item.key === "open" ? "bg-brand-teal" : undefined} />
@@ -286,7 +294,7 @@ export function AplikasiDashboard({
                       <ul className="flex flex-wrap gap-1.5">
                         {mesin.map(([name, n]) => (
                           <li key={name}>
-                            <Badge variant="muted" className="tabular-nums">
+                            <Badge variant={isSpecialValue(name) ? "outline" : "muted"} className="tabular-nums">
                               {name} · {formatNumber(n)}
                             </Badge>
                           </li>

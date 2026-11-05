@@ -25,7 +25,7 @@ type Tab = "all" | Status;
 const tabs: { value: Tab; label: string }[] = [{ value: "all", label: "Semua" }, ...statusKeys.map((k) => ({ value: k, label: statusConfig[k].label }))];
 
 /** Daftar kegiatan Peta Rencana CMS: tab status pelaksanaan, filter periode/tahun/PD/muatan, detail via pop-up. */
-export function RencanaList({ rows, periods, canManage, canExport, openHighGaps = 0 }: { rows: RencanaRecord[]; periods: PeriodOptions; canManage: boolean; canExport: boolean; /** Gap prioritas tinggi yang masih terbuka di periode aktif. */ openHighGaps?: number }) {
+export function RencanaList({ rows, periods, canManage, canExport, exportOwnOnly = false, openHighGaps = 0 }: { rows: RencanaRecord[]; periods: PeriodOptions; canManage: boolean; canExport: boolean; /** Ekspor dibatasi OPD akun (B17). */ exportOwnOnly?: boolean; /** Gap prioritas tinggi yang masih terbuka di periode aktif. */ openHighGaps?: number }) {
   const [tab, setTab] = useState<Tab>("all");
   const [period, setPeriod] = useState(periods.active);
   const [tahun, setTahun] = useState<string[]>([]);
@@ -106,10 +106,10 @@ export function RencanaList({ rows, periods, canManage, canExport, openHighGaps 
         actions={
           <>
             {canExport && (
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" title={exportOwnOnly ? "Ekspor berisi kegiatan OPD Anda" : undefined}>
                 <a href="/api/export/peta-rencana">
                   <Icon icon={Download04Icon} size={16} />
-                  Ekspor
+                  {exportOwnOnly ? "Ekspor OPD saya" : "Ekspor"}
                 </a>
               </Button>
             )}

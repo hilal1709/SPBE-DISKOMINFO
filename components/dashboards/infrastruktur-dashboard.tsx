@@ -4,7 +4,7 @@ import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DataTable } from "@/components/blocks/data-table";
-import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
+import { DetailDialog, DetailField } from "@/components/blocks/detail-dialog";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { FilterBar } from "@/components/blocks/filter-bar";
 import { FilterChips, type Chip } from "@/components/blocks/filter-chips";
@@ -17,7 +17,7 @@ import { LinkMapCard } from "@/components/dashboards/infrastruktur/link-map";
 import { ExploreHint } from "@/components/dashboards/probis/explore-hint";
 import { PdRankingCard, type PdRow } from "@/components/dashboards/probis/pd-ranking";
 import { Icon } from "@/components/icon";
-import { RelasiSection, attrEntries } from "@/components/infrastruktur/relasi";
+import { Banner } from "@/components/blocks/banner";
 import { useRai } from "@/components/infrastruktur/rai-context";
 import { Meter } from "@/components/motion/meter";
 import { Reveal } from "@/components/motion/reveal";
@@ -141,7 +141,7 @@ export function InfrastrukturDashboard({
         tips={[
           "Klik kartu komponen di peta lapisan atau simpul di peta keterhubungan untuk memfilter seluruh dashboard.",
           "Peta keterhubungan menunjukkan aplikasi dan data yang berjalan di atas SPLP, cloud, server, hingga data center.",
-          "Klik baris katalog untuk melihat spesifikasi, relasi, dan dependensi keamanan tiap komponen.",
+          "Rincian teknis komponen (spesifikasi, lokasi, relasi) tersedia di CMS setelah login.",
         ]}
       />
       <FilterBar
@@ -175,7 +175,7 @@ export function InfrastrukturDashboard({
             <StatCard tone="teal" label="Komponen infrastruktur" value={total} hint={`${countBy(rows, "jenis").size} dari 10 jenis komponen`} />
             <StatCard tone="orange" label="Kapasitas penyimpanan" active={filter.jenis.length === 2 && filter.jenis.includes("server") && filter.jenis.includes("penyimpanan")} onClick={() => clickFilter("Server dan penyimpanan", (c) => ({ ...c, jenis: c.jenis.length === 2 && c.jenis.includes("server") && c.jenis.includes("penyimpanan") ? [] : ["server", "penyimpanan"] }), true)} value={Math.round(storage / 1024)} suffix=" TB" hint="server dan media penyimpan" />
             <StatCard tone="yellow" label="Bandwidth internet" active={filter.jenis.includes("fasilitas")} onClick={() => toggleJenis("fasilitas")} value={internet / 1000} decimals={1} suffix=" Gbps" hint="seluruh fasilitas komputasi" />
-            <StatCard tone="amber" label="Milik sendiri" active={filter.kepemilikan.includes("milik_sendiri")} onClick={() => clickFilter("Milik sendiri", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "milik_sendiri") }), !filter.kepemilikan.includes("milik_sendiri"))} value={percent(rows.filter((r) => r.kepemilikan === "milik_sendiri").length, owned)} suffix="%" hint={`${formatNumber(owned)} komponen berstatus kepemilikan`} />
+            <StatCard tone="amber" label="Milik sendiri" active={filter.kepemilikan.includes("milik_sendiri")} onClick={() => clickFilter("Milik sendiri", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "milik_sendiri") }), !filter.kepemilikan.includes("milik_sendiri"))} value={percent(rows.filter((r) => r.kepemilikan === "milik_sendiri").length, owned)} decimals={1} suffix="%" hint={`${formatNumber(owned)} komponen berstatus kepemilikan`} />
             <StatCard tone="sky" label="Aplikasi terlayani" value={apps} hint={`oleh ${countBy(rows, "opd").size} instansi pemilik komponen`} />
           </StatRow>
 
@@ -318,18 +318,17 @@ export function InfrastrukturDashboard({
             title="Katalog infrastruktur"
             rows={rows}
             rowId={(r) => r.id}
-            searchText={(r) => `${r.id} ${r.name} ${r.deskripsi ?? ""} ${jenisConfig[r.jenis].label} ${Object.values(r.atribut).join(" ")}`}
-            searchPlaceholder="Cari nama, ID, atau spesifikasi"
+            searchText={(r) => `${r.id} ${r.name} ${jenisConfig[r.jenis].label} ${pdName(r.opd)}`}
+            searchPlaceholder="Cari nama, ID, atau instansi"
             onRowClick={setSelected}
             pageSize={20}
-            minWidth={900}
+            minWidth={720}
             columns={[
               { header: "ID", className: "whitespace-nowrap", sortValue: (r) => r.id, cell: (r) => <span className="font-medium text-muted-foreground tabular-nums">{r.id}</span> },
               { header: "Nama komponen", sortValue: (r) => r.name, cell: (r) => <span className="font-semibold">{r.name}</span> },
               { header: "Komponen", sortValue: (r) => r.jenis, cell: (r) => <ToneBadge tone={jenisConfig[r.jenis].tone}>{jenisConfig[r.jenis].short}</ToneBadge> },
               { header: "Instansi", hideable: true, sortValue: (r) => pdName(r.opd), cell: (r) => pdName(r.opd) },
               { header: "Kepemilikan", hideable: true, sortValue: (r) => r.kepemilikan ?? "", cell: (r) => (r.kepemilikan ? <StatusBadge status={kepemilikanLabel[r.kepemilikan]} /> : "—") },
-              { header: "Lokasi", hideable: true, defaultHidden: true, sortValue: (r) => r.atribut.lokasi ?? "", cell: (r) => r.atribut.lokasi ?? "—" },
               { header: "Relasi", hideable: true, defaultHidden: true, sortValue: (r) => r.relasi.length + r.terhubung.length, cell: (r) => `${r.relasi.length + r.terhubung.length} komponen` },
               { header: "Aplikasi", hideable: true, defaultHidden: true, sortValue: (r) => r.aplikasi.length, cell: (r) => (r.aplikasi.length ? `${r.aplikasi.length} aplikasi` : "—") },
             ]}
@@ -350,28 +349,13 @@ export function InfrastrukturDashboard({
             </>
           }
         >
-          {selected.deskripsi && (
-            <DetailSection title="Deskripsi" tone="accent">
-              <p className="text-sm leading-relaxed">{selected.deskripsi}</p>
-            </DetailSection>
-          )}
           <div className="grid gap-2 sm:grid-cols-2">
             <DetailField label={`RAI Level 1 · ${selected.rai1}`} value={rai.byCode.get(selected.rai1)?.name} />
             <DetailField label={`RAI Level 2 · ${selected.rai2}`} value={rai.byCode.get(selected.rai2)?.name} />
             <DetailField label="Instansi" value={pdName(selected.opd)} />
-            {selected.pemilik && <DetailField label="Nama pemilik" value={selected.pemilik} />}
-            {selected.pengelola && <DetailField label="Unit pengelola" value={selected.pengelola} />}
+            <DetailField label="Relasi" value={`${formatNumber(selected.relasi.length + selected.terhubung.length)} komponen · ${formatNumber(selected.aplikasi.length)} aplikasi · ${formatNumber(selected.data.length)} data`} />
           </div>
-          {attrEntries(selected).length > 0 && (
-            <DetailSection title="Spesifikasi">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {attrEntries(selected).map((a) => (
-                  <DetailField key={a.label} label={a.label} value={a.value} />
-                ))}
-              </div>
-            </DetailSection>
-          )}
-          <RelasiSection r={selected} />
+          <Banner dismissible={false}>Spesifikasi, lokasi, pengelola, dan relasi lengkap hanya tersedia di CMS setelah login.</Banner>
         </DetailDialog>
       )}
     </Reveal>

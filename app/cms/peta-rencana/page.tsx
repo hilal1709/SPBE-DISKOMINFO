@@ -6,5 +6,5 @@ import { periodOptions } from "@/lib/probis/periods";
 
 export default async function RencanaListPage() {
   const [actor, rows, periods, gaps] = await Promise.all([currentActor(), listRencana(), periodOptions(), gapSummary().catch(() => null)]);
-  return <RencanaList rows={rows} periods={periods} canManage={can.manageRencana(actor)} canExport={can.export(actor)} openHighGaps={gaps?.openHigh ?? 0} />;
+  return <RencanaList rows={rows} periods={periods} canManage={can.manageRencana(actor)} canExport={can.export(actor)} exportOwnOnly={!can.readAll(actor)} openHighGaps={gaps?.openHigh ?? 0} />;
 }
