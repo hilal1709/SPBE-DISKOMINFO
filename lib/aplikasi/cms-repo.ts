@@ -1,7 +1,9 @@
 import type { PoolClient } from "pg";
-import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus, submitTarget } from "@/lib/cms/guards";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
+import { usedCodesSql } from "@/lib/cms/codes";
+import { deleteWithAudit } from "@/lib/cms/audit";
 import { pdByCode } from "@/lib/probis/reference";
 import type { AplikasiRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import { kepemilikanOf } from "./reference";
@@ -158,8 +160,9 @@ async function loadAplikasiSummary(opdId: string | null) {
     db().query(`select a.status::text as status, count(*)::int as n from applications a ${scope} group by 1`, params),
     db().query(`select count(*) filter (where a.is_sample)::int as samples, count(*) filter (where a.raa_review)::int as review from applications a ${scope}`, params),
     db().query(
-      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, a.name
-       from validation_history vh join applications a on a.id = vh.application_id ${scope}
+      `select vh.id, vh.actor_name, vh.to_status::text, vh.note, vh.created_at, coalesce(a.name, vh.record_name, '(record terhapus)') as name, vh.event
+       from validation_history vh left join applications a on a.id = vh.application_id
+       where (vh.application_id is not null or vh.domain = 'aplikasi') ${opdId ? "and coalesce(a.opd_id, vh.record_opd_id) = $1" : ""}
        order by vh.created_at desc limit 8`,
       params,
     ),
@@ -175,6 +178,7 @@ async function loadAplikasiSummary(opdId: string | null) {
       toStatus: r.to_status as SubmissionStatus,
       note: r.note as string | null,
       createdAt: (r.created_at as Date).toISOString(),
+      deleted: r.event === "deleted",
     })),
   };
 }
@@ -251,7 +255,7 @@ async function ids(client: PoolClient, v: Pick<AplikasiValues, "opd" | "period" 
 async function nextCode(client: PoolClient, raa: string, batch?: ImportBatch) {
   const prefix = `GSK-APL ${raa.slice(4)}.`;
   if (batch) return batch.code(prefix, 3);
-  const { rows } = await client.query("select code from applications where code like $1", [`${prefix}%`]);
+  const { rows } = await client.query(usedCodesSql("applications"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
@@ -343,7 +347,7 @@ export function updateAplikasi(id: string, v: AplikasiValues, actor: Actor, subm
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Aplikasi tidak ditemukan.");
     assertStillEditable(actor, from);
-    const to: SubmissionStatus = submit ? "submitted" : from;
+    const to: SubmissionStatus = submitTarget(from, submit);
     await client.query(
       `${UPDATE}, status = $27::text::submission_status, submitted_by = case when $27::text = 'submitted' then $28::uuid else submitted_by end where id = $1`,
       [id, ...columns(v, ref), ref.opd_id, ref.developer_opd_id, ref.period_id, ref.raa_id, to, actor.id],
@@ -355,8 +359,9 @@ export function updateAplikasi(id: string, v: AplikasiValues, actor: Actor, subm
   });
 }
 
-export async function deleteAplikasi(id: string) {
-  await db().query("delete from applications where id = $1", [id]);
+/** Hapus beserta log penghapusan; riwayatnya tetap tersimpan. */
+export function deleteAplikasi(id: string, actor: Actor) {
+  return tx((client) => deleteWithAudit(client, "aplikasi", id, actor));
 }
 
 /**

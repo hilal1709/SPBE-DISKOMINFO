@@ -55,8 +55,8 @@ tanpa itu aplikasi production menolak terhubung ke database (R-8).
 | R-9 | Rendah | CSP memakai `script-src 'unsafe-inline'` | `next.config.ts` | Diterima: keputusan cache halaman publik; CSP tetap menutup skrip domain lain, `eval`, plugin, framing |
 | I-1 | Info | Email percobaan login dicetak ke log server | `auth.ts` | Diperbaiki (sudah ada di `auth_events`) |
 | I-2 | Info | `/akun` tidak ada di `robots.txt` | `app/robots.ts` | Diperbaiki |
-| I-3 | Info | `bodySizeLimit` server action 12 MB berlaku global (dibutuhkan impor) | `next.config.ts` | Diterima; kandidat pindah impor ke route handler |
-| I-4 | Info | Tidak ada pemisahan tugas: akun dengan verify + validate bisa memproses ajuannya sendiri | `review*` | Diterima: sesuai desain Superadmin |
+| I-3 | Info | `bodySizeLimit` server action 12 MB berlaku global (dibutuhkan impor) | `next.config.ts` | Diperbaiki (Nov 2026, B10): batas 4 MB di server, `next.config.ts`, dan browser; Vercel menolak body > 4,5 MB |
+| I-4 | Info | Tidak ada pemisahan tugas: akun dengan verify + validate bisa memproses ajuannya sendiri | `review*` | Diperbaiki (Nov 2026, B4): validasi ditolak bila akun sama dengan verifikator, termasuk Superadmin (`lib/cms/workflow.ts`) |
 | I-5 | Info | `next-auth` versi beta | `package.json` | Pantau advisori |
 | I-6 | Info | Paket `cn` tidak dipakai | `package.json` | Kandidat dihapus |
 | I-8 | Info | POST server action dengan payload rusak (fuzzing ZAP) → 500 dari decoder Next (`JSON.parse`); payload SSRF/traversal/shellshock tidak mencapai kode aplikasi | Next.js | Diterima: perilaku framework |
@@ -123,3 +123,24 @@ Diisi dari artefak run `security-scan` (tab Actions → run terbaru → `securit
 | authz-probe | Run 1: 6 FAIL IDOR → S-9 diperbaiki; run 3: **FAIL 0 · PASS 177**. REVIEW: halaman Pengaturan terbuka baca untuk operator/pimpinan sesuai matriks hak akses. |
 | SQL injection / XSS (audit kode) | Semua query berparameter; nama tabel/kolom hanya konstanta, urutan lewat whitelist. Output React ter-escape, `dangerouslySetInnerHTML` hanya skrip konstanta & JSON-LD ter-escape, tidak ada `href` dari data pengguna. |
 | Produksi pasif | Header lengkap (6/6 jalur). Mozilla Observatory **B+** (80, 11/12 tes); yang gagal: CSP `unsafe-inline` (R-9). |
+
+
+## Tindak lanjut rekap masukan tim developer (5 Nov 2026)
+
+| ID | Perbaikan | Lokasi |
+|---|---|---|
+| S6 | Data keamanan (`security`) tidak lagi ikut di respons publik `/infrastruktur` | `lib/infrastruktur/public.ts`, `repo.ts` |
+| S1 | Publik hanya melihat agregat + identitas komponen (ID, nama, jenis, instansi, kepemilikan); spesifikasi, lokasi, versi OS/DB, VPN, pemilik/pengelola, dan nama relasi hanya di CMS | `toPublicInfra` |
+| B9/B16 | "Ajukan" hanya dari Draf/Dikembalikan dan memakai konfirmasi; record tayang diturunkan lewat aksi **Tarik dari portal** (alasan wajib, kembali ke Draf) | `lib/cms/workflow.ts`, `review-panel.tsx` |
+| B5 | Klik ganda dikunci di klien; server menolak transisi ke status yang sama | `workflow.ts` |
+| B11 | Riwayat tetap ada setelah record dihapus (FK `ON DELETE SET NULL` + snapshot) dan penghapusan dicatat | migrasi 026, `lib/cms/audit.ts` |
+| B19 | Kode record yang dihapus tidak dipakai ulang | migrasi 027, `lib/cms/codes.ts` |
+| S4 | Selain domain resmi (`SITE_INDEXABLE=true`), situs `noindex`: robots.txt, meta robots, dan `X-Robots-Tag` | `lib/site.ts`, `next.config.ts` |
+
+### CSP `unsafe-inline` (ditinjau ulang)
+
+Tetap **diterima** (R-9). Agar `'unsafe-inline'` bisa diganti nonce, setiap halaman harus dirender dinamis: nonce dibuat per permintaan di `proxy.ts` dan disisipkan ke skrip RSC. Akibatnya halaman publik kehilangan ISR/cache CDN (`revalidate = 60`), sehingga setiap kunjungan membayar query database (±126 ms per query ke Supabase). Fitur `experimental.sri` tetap statis, tetapi hanya menandai berkas skrip, bukan payload RSC inline, jadi `'unsafe-inline'` tetap diperlukan. CSP yang berlaku tetap menolak skrip dari domain lain, `eval`, plugin, dan framing. Opsi ini ditinjau kembali bila halaman publik memang dipindah ke render dinamis.
+
+### Definisi angka relasi (F1)
+
+Relasi adalah pasangan record unik antardomain, dari tautan tersimpan maupun rujukan kode/nama (mis. kolom cloud/server aplikasi), dengan kedua record tervalidasi pada periode yang sama. Tautan ganda dihitung sekali, dan pasangan dalam satu domain tidak dihitung. Ringkasan dan Integrasi memakai definisi yang sama (`RELATION_DEFINITION`, `relationPairs` di `lib/integrasi/model.ts`).

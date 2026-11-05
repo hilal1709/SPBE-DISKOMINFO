@@ -5,6 +5,9 @@ import { cached, TAGS } from "@/lib/cache";
 import type { DomainKey } from "@/lib/domains";
 import type { Architecture, DomainEdge, DomainNode, DomainSummary, RelationSummary } from "./model";
 
+import { jenisConfig, type InfraJenis } from "@/lib/infrastruktur/jenis";
+import { MASKED_INFRA } from "@/lib/infrastruktur/public";
+
 const NODE_LIMIT = 6000;
 const EDGE_LIMIT = 24000;
 const tables: [DomainKey, string, string][] = [
@@ -46,8 +49,12 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
     const stats = await client.query<DomainSummary & { opd_name: string }>(
       `select domain, opd, opd_name, period, category, count(*)::int as count, bool_or(sample) as sample
        from (${base}) n where ($1::text='' or period=$1) group by domain, opd, opd_name, period, category`, [period]);
-    const nodes: DomainNode[] = records.rows.slice(0, NODE_LIMIT).map((n) => ({ id: `${n.domain}:${n.id}`, domain: n.domain, code: n.code, name: n.name, opd: n.opd, opdName: n.opd_name, period: n.period, category: n.category }));
+    // S1: pengunjung umum tidak melihat nama komponen infrastruktur yang memuat rincian teknis (versi OS/DB, VPN, dsb.).
+    const publicName = (n: DomainNode) => (!securityVisible && n.domain === "infrastruktur" && MASKED_INFRA.has(n.category) ? `${jenisConfig[n.category as InfraJenis].label} ${n.code}` : n.name);
+    const nodes: DomainNode[] = records.rows.slice(0, NODE_LIMIT).map((n) => ({ id: `${n.domain}:${n.id}`, domain: n.domain, code: n.code, name: publicName(n), opd: n.opd, opdName: n.opd_name, period: n.period, category: n.category }));
     const byId = new Map(nodes.map((n) => [n.id, n]));
+    /** Nama asli untuk pencocokan rujukan teks (nama tampilan bisa disamarkan). */
+    const rawName = new Map(records.rows.map((n) => [`${n.domain}:${n.id}`, n.name]));
     const edges: DomainEdge[] = [];
     let edgeOverflow = false;
     const add = (source: string, target: string, label: string, storage: DomainEdge["storage"], origin: string) => {
@@ -64,7 +71,7 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
     let partial = records.rows.length > NODE_LIMIT || links.rows.length > EDGE_LIMIT;
     const textIndex = new Map<string, DomainNode[]>();
     for (const n of nodes) {
-      const key = JSON.stringify([n.domain, n.period, n.domain === "infrastruktur" ? n.name.toLowerCase() : n.code]);
+      const key = JSON.stringify([n.domain, n.period, n.domain === "infrastruktur" ? (rawName.get(n.id) ?? n.name).toLowerCase() : n.code]);
       const list = textIndex.get(key) ?? []; list.push(n); textIndex.set(key, list);
     }
     const targets = (domain: DomainKey, period: string, value: string) => textIndex.get(JSON.stringify([domain, period, value])) ?? [];
@@ -132,19 +139,34 @@ const summaryPage = cached(async (domain: DomainKey, offset: number) => {
   return rows;
 }, "portal:summary-page-v2", [TAGS.content, TAGS.reference]);
 
+/** Rujukan teks aplikasi (kolom infrastruktur & kode data) yang juga dihitung sebagai relasi di peta Integrasi. */
+const textPairs: Partial<Record<(typeof junctions)[number][0], string>> = {
+  infrastructure_applications: `select i.id as infrastructure_id, a.id as application_id from applications a
+    join infrastructures i on i.period_id = a.period_id
+     and lower(i.name) in (lower(trim(a.cloud)), lower(trim(a.server)), lower(trim(a.splp)), lower(trim(a.jip)))`,
+  application_datasets: `select a.id as application_id, d.id as dataset_id from applications a
+    cross join lateral regexp_split_to_table(coalesce(a.input_data, '') || E'\n' || coalesce(a.output_data, ''), E'\n') c(code)
+    join datasets d on d.period_id = a.period_id and d.code = trim(c.code)`,
+};
+
+/** Relasi dalam satu domain tidak termasuk definisi relasi antardomain (lihat RELATION_DEFINITION). */
+const crossJunctions = junctions.map((j, index) => ({ j, index })).filter(({ j }) => j[2] !== j[4]);
+
 const relationPage = cached(async (index: number, offset: number) => {
   const db = getDb(); if (!db) throw new Error("Database belum tersedia.");
   const [table, from, source, to, target] = junctions[index];
   const sourceTable = tables.find(([key]) => key === source)![1];
   const targetTable = tables.find(([key]) => key === target)![1];
+  // Pasangan unik: tautan tersimpan digabung (union = tanpa duplikat) dengan rujukan teks yang sama dengan peta Integrasi.
+  const pairs = textPairs[table] ? `(select ${from}, ${to} from ${table} union ${textPairs[table]})` : table;
   const { rows } = await db.query<RelationSummary>(`select '${source}'::text as source,'${target}'::text as target,
     so.code as "sourceOpd",to_.code as "targetOpd",p.name as period,count(*)::int as count
-    from ${table} j join ${sourceTable} s on s.id=j.${from} join ${targetTable} t on t.id=j.${to}
+    from ${pairs} j join ${sourceTable} s on s.id=j.${from} join ${targetTable} t on t.id=j.${to}
     join opd so on so.id=s.opd_id join opd to_ on to_.id=t.opd_id join architecture_periods p on p.id=s.period_id
     where s.status='approved' and t.status='approved' and s.period_id=t.period_id
     group by so.code,to_.code,p.name order by so.code,to_.code,p.name limit $1 offset $2`, [PAGE_SIZE, offset]);
   return rows;
-}, "portal:relation-summary-page-v2", [TAGS.content, TAGS.reference]);
+}, "portal:relation-summary-page-v3", [TAGS.content, TAGS.reference]);
 
 type SecuritySource = "data" | "aplikasi" | "infrastruktur";
 const securitySources: SecuritySource[] = ["data", "aplikasi", "infrastruktur"];
@@ -193,7 +215,7 @@ export async function readOverviewFromPages(securityVisible: boolean, readers: O
   try {
     const [summary, relations, security] = await Promise.all([
       Promise.all(tables.filter(([key]) => securityVisible || key !== "keamanan").map(([key]) => collect((offset) => readers.summary(key, offset)))),
-      Promise.all(junctions.map((_, index) => collect((offset) => readers.relations(index, offset)))),
+      Promise.all(crossJunctions.map(({ index }) => collect((offset) => readers.relations(index, offset)))),
       securityVisible ? Promise.all(securitySources.map((source) => collect((offset) => readers.securityRelations(source, offset)))) : [],
     ]);
     return { summary: summary.flat(), relations: [...relations.flat(), ...security.flat()], available: true };

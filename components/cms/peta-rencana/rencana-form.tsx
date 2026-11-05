@@ -1,4 +1,5 @@
 "use client";
+import { UnsavedGuard } from "@/components/cms/unsaved-guard";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
@@ -291,6 +292,8 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
           <p className="text-sm text-muted-foreground">Kegiatan langsung tampil di portal setelah disimpan. Usulan yang belum ter-cover bisa dialihkan ke tahun berikutnya dari pop-up detail.</p>
         </CardContent>
       </Card>
+
+      <UnsavedGuard values={values} saved={done} />
 
       <Dialog open={done} onOpenChange={(open) => !open && router.push("/cms/peta-rencana")}>
         <DialogContent className="text-center sm:max-w-sm">

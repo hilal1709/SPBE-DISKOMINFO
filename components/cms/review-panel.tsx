@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ArrowTurnBackwardIcon, CheckmarkCircle02Icon, Delete02Icon, PencilEdit02Icon, SentIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { DetailSection } from "@/components/blocks/detail-dialog";
 import { ReviewBadge } from "@/components/cms/review-badge";
 import { Icon } from "@/components/icon";
 import { MOTION_OK, gsap } from "@/components/motion/gsap";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +18,7 @@ import type { ProbisReview, SubmissionStatus } from "@/lib/types";
 
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
-export type Decision = "submit" | "verify" | "validate" | "reject";
+export type Decision = "submit" | "verify" | "validate" | "reject" | "withdraw";
 
 /** Riwayat verifikasi (dimuat saat detail dibuka). */
 export function ReviewHistory({ id, load }: { id: string; load: (id: string) => Promise<ProbisReview[]> }) {
@@ -60,8 +61,8 @@ export function ReviewHistory({ id, load }: { id: string; load: (id: string) => 
 }
 
 /**
- * Aksi sesuai peran pada pop-up detail: operator (hapus, ubah, ajukan) dan tim pemeriksa
- * (kembalikan dengan catatan wajib, verifikasi, validasi & tayangkan).
+ * Aksi sesuai peran pada pop-up detail: operator (hapus, ubah, ajukan dengan konfirmasi), tim pemeriksa
+ * (kembalikan dengan catatan wajib, verifikasi, validasi & tayangkan), dan Tarik dari portal (alasan wajib).
  */
 export function ReviewActions({
   record,
@@ -87,49 +88,79 @@ export function ReviewActions({
   const [note, setNote] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [dialog, setDialog] = useState<"submit" | "withdraw" | null>(null);
+  const [reason, setReason] = useState("");
   const [pending, start] = useTransition();
+  /** Kunci sinkron: klik ganda dalam satu frame tidak mengirim dua permintaan (B5). */
+  const busy = useRef(false);
   const editable = can.edit(actor, record);
+  const submittable = can.submit(actor, record);
+  const withdrawable = can.withdraw(actor, record);
+  /** Record tayang harus ditarik dulu sebelum dihapus. */
+  const deletable = editable && record.status !== "approved";
   const stage = stageOf(record.status);
   const awaiting = !!stage && can.review(actor, stage, domain);
 
-  const act = (decision: Decision) =>
+  const run = (task: () => Promise<void>) => {
+    if (busy.current) return;
+    busy.current = true;
     start(async () => {
-      const result = await onReview(record.id, decision, note);
+      try {
+        await task();
+      } finally {
+        busy.current = false;
+      }
+    });
+  };
+
+  const act = (decision: Decision, text = note) =>
+    run(async () => {
+      const result = await onReview(record.id, decision, text);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(decision === "reject" ? `${noun} dikembalikan ke OPD` : `Status: ${reviewLabel[result.data.status]}`, { description: record.name });
+      setDialog(null);
+      const message = decision === "reject" ? `${noun} dikembalikan ke OPD` : decision === "withdraw" ? `${noun} ditarik dari portal` : `Status: ${reviewLabel[result.data.status]}`;
+      toast.success(message, { description: record.name });
       onDone();
     });
 
   const remove = () =>
-    start(async () => {
+    run(async () => {
       const result = await onDelete(record.id);
       if (!result.ok) return void toast.error(result.error);
       toast.success(`${noun} dihapus`, { description: record.name });
       onDone();
     });
 
-  if (!awaiting && !editable) return null;
+  if (!awaiting && !editable && !withdrawable) return null;
   return (
     <div className="grid gap-3 rounded-xl border border-dashed p-3">
       {awaiting && rejecting && <Textarea autoFocus rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan untuk OPD: apa yang perlu diperbaiki?" aria-label="Catatan pengembalian" />}
       <div className="flex flex-wrap justify-end gap-2">
+        {deletable && (
+          <Button variant={confirmDelete ? "destructive" : "ghost"} className="mr-auto" disabled={pending} onClick={() => (confirmDelete ? remove() : setConfirmDelete(true))} onBlur={() => setConfirmDelete(false)}>
+            <Icon icon={Delete02Icon} size={16} />
+            {confirmDelete ? "Klik lagi untuk menghapus" : "Hapus"}
+          </Button>
+        )}
+        {withdrawable && (
+          <Button variant="outline" className={deletable ? undefined : "mr-auto"} disabled={pending} onClick={() => (setReason(""), setDialog("withdraw"))}>
+            <Icon icon={ArrowTurnBackwardIcon} size={16} />
+            Tarik dari portal
+          </Button>
+        )}
         {editable && (
-          <>
-            <Button variant={confirmDelete ? "destructive" : "ghost"} className="mr-auto" disabled={pending} onClick={() => (confirmDelete ? remove() : setConfirmDelete(true))} onBlur={() => setConfirmDelete(false)}>
-              <Icon icon={Delete02Icon} size={16} />
-              {confirmDelete ? "Klik lagi untuk menghapus" : "Hapus"}
-            </Button>
-            <Button asChild variant="outline">
-              <Link href={editHref}>
-                <Icon icon={PencilEdit02Icon} size={16} />
-                Ubah
-              </Link>
-            </Button>
-            <Button loading={pending} onClick={() => act("submit")}>
-              {!pending && <Icon icon={SentIcon} size={16} />}
-              Ajukan
-            </Button>
-          </>
+          <Button asChild variant="outline">
+            <Link href={editHref}>
+              <Icon icon={PencilEdit02Icon} size={16} />
+              Ubah
+            </Link>
+          </Button>
+        )}
+        {submittable && (
+          <Button disabled={pending} onClick={() => setDialog("submit")}>
+            <Icon icon={SentIcon} size={16} />
+            Ajukan
+          </Button>
         )}
         {awaiting && (
           <>
@@ -153,6 +184,33 @@ export function ReviewActions({
           </>
         )}
       </div>
+
+      <AlertDialog open={dialog !== null} onOpenChange={(open) => !open && !pending && setDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dialog === "withdraw" ? "Tarik dari portal?" : `Ajukan ${noun.toLowerCase()} ini?`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {dialog === "withdraw"
+                ? "Record kembali ke Draf dan tidak tampil di portal sampai diajukan dan divalidasi ulang."
+                : "Record dikirim ke tim verifikasi dan tidak dapat diubah selama ditinjau."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {dialog === "withdraw" && (
+            <Textarea autoFocus rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Alasan penarikan (wajib)" aria-label="Alasan penarikan" />
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Batal</AlertDialogCancel>
+            <Button
+              variant={dialog === "withdraw" ? "destructive" : "default"}
+              loading={pending}
+              disabled={dialog === "withdraw" && !reason.trim()}
+              onClick={() => (dialog === "withdraw" ? act("withdraw", reason) : act("submit"))}
+            >
+              {dialog === "withdraw" ? "Tarik dari portal" : "Ajukan"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

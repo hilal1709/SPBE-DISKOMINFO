@@ -21,3 +21,9 @@ export const siteConfig = {
 } as const;
 
 export const absoluteUrl = (path = "/") => `${siteConfig.url}${path}`;
+
+/**
+ * Boleh diindeks mesin pencari? Hanya bila SITE_INDEXABLE=true (diset di domain resmi saat serah terima, S4).
+ * Versi pengembangan/staging (termasuk *.vercel.app) otomatis noindex: robots.txt, meta robots, dan X-Robots-Tag.
+ */
+export const indexable = process.env.SITE_INDEXABLE === "true";

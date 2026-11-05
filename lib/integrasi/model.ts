@@ -7,12 +7,29 @@ export type Architecture = { nodes: DomainNode[]; edges: DomainEdge[]; summary: 
 export type Impact = { node: DomainNode; depth: number; certain: boolean; reason: string };
 export type RelationSummary = { source: DomainKey; target: DomainKey; sourceOpd: string; targetOpd: string; period: string; count: number };
 
-export function summarizeRelations(nodes: DomainNode[], edges: DomainEdge[]): RelationSummary[] {
+/**
+ * Definisi relasi (sama di Ringkasan dan Integrasi): pasangan record unik antardomain yang keduanya tervalidasi pada
+ * periode yang sama, dari tautan tersimpan maupun rujukan kode/nama. Tautan ganda (tersimpan + rujukan) dihitung sekali;
+ * pasangan dalam satu domain (mis. infrastruktur ↔ infrastruktur) tidak dihitung.
+ */
+export const RELATION_DEFINITION = "Relasi = pasangan record unik antardomain (tautan tersimpan atau rujukan kode/nama), keduanya tervalidasi pada periode yang sama.";
+
+/** Pasangan relasi unik antardomain sesuai RELATION_DEFINITION. */
+export function relationPairs(nodes: DomainNode[], edges: DomainEdge[]) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  const groups = new Map<string, RelationSummary>();
+  const pairs = new Map<string, [DomainNode, DomainNode]>();
   for (const e of edges) {
-    const source = byId.get(e.source), target = byId.get(e.target);
-    if (!source || !target) continue;
+    const a = byId.get(e.source), b = byId.get(e.target);
+    if (!a || !b || a.domain === b.domain) continue;
+    const key = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
+    if (!pairs.has(key)) pairs.set(key, [a, b]);
+  }
+  return [...pairs.values()];
+}
+
+export function summarizeRelations(nodes: DomainNode[], edges: DomainEdge[]): RelationSummary[] {
+  const groups = new Map<string, RelationSummary>();
+  for (const [source, target] of relationPairs(nodes, edges)) {
     const key = JSON.stringify([source.domain, target.domain, source.opd, target.opd, source.period]);
     const row = groups.get(key) ?? { source: source.domain, target: target.domain, sourceOpd: source.opd, targetOpd: target.opd, period: source.period, count: 0 };
     row.count++; groups.set(key, row);
@@ -67,4 +84,54 @@ export function filterSummary(summary: DomainSummary[], period: string, opds: st
 }
 export function domainTotals(summary: DomainSummary[]) {
   return Object.fromEntries(domainKeys.map((domain) => [domain, summary.filter((r) => r.domain === domain).reduce((n, r) => n + r.count, 0)])) as Record<DomainKey, number>;
+}
+
+/**
+ * Bentuk ringkas Architecture untuk dikirim ke browser (B7): string berulang (OPD, periode, label, domain) dijadikan
+ * indeks tabel, ID UUID diganti `${domain}:${kode}` (unik per periode), dan ID/origin edge diturunkan ulang di klien.
+ */
+export type PackedArchitecture = {
+  /** [domain, kode, nama, indeks OPD, indeks periode, kategori] */
+  nodes: [number, string, string, number, number, string][];
+  /** [indeks node sumber, indeks node tujuan, indeks label, indeks bentuk referensi] */
+  edges: [number, number, number, number][];
+  domains: DomainKey[];
+  opds: [string, string][];
+  periods: string[];
+  labels: string[];
+  summary: DomainSummary[];
+  securityVisible: boolean;
+  partial: boolean;
+  available: boolean;
+};
+
+const storages: DomainEdge["storage"][] = ["junction", "jsonb", "text"];
+
+export function packArchitecture(a: Architecture): PackedArchitecture {
+  const table = <T,>(key: (v: T) => string) => {
+    const index = new Map<string, number>();
+    const list: T[] = [];
+    return { list, of: (v: T) => { const k = key(v); let i = index.get(k); if (i === undefined) { i = list.length; index.set(k, i); list.push(v); } return i; } };
+  };
+  const domainT = table<DomainKey>((d) => d), opdT = table<[string, string]>(([c]) => c), periodT = table<string>((p) => p), labelT = table<string>((l) => l);
+  const position = new Map(a.nodes.map((n, i) => [n.id, i]));
+  return {
+    nodes: a.nodes.map((n) => [domainT.of(n.domain), n.code, n.name, opdT.of([n.opd, n.opdName]), periodT.of(n.period), n.category]),
+    edges: a.edges.flatMap((e) => {
+      const s = position.get(e.source), t = position.get(e.target);
+      return s === undefined || t === undefined ? [] : [[s, t, labelT.of(e.label), storages.indexOf(e.storage)] as [number, number, number, number]];
+    }),
+    domains: domainT.list, opds: opdT.list, periods: periodT.list, labels: labelT.list,
+    summary: a.summary, securityVisible: a.securityVisible, partial: a.partial, available: a.available,
+  };
+}
+
+export function unpackArchitecture(p: PackedArchitecture): Architecture {
+  const nodes: DomainNode[] = p.nodes.map(([d, code, name, o, period, category]) => {
+    const domain = p.domains[d]!;
+    const [opd, opdName] = p.opds[o]!;
+    return { id: `${domain}:${code}`, domain, code, name, opd, opdName, period: p.periods[period]!, category };
+  });
+  const edges: DomainEdge[] = p.edges.map(([s, t, l, k], i) => ({ id: String(i), source: nodes[s]!.id, target: nodes[t]!.id, label: p.labels[l]!, storage: storages[k]!, origin: "" }));
+  return { nodes, edges, summary: p.summary, securityVisible: p.securityVisible, partial: p.partial, available: p.available };
 }

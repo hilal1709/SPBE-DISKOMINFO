@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { RabIndex } from "@/lib/probis/rab-index";
 import { geminiJson } from "./gemini";
-import { tokens } from "./text";
+import { MIN_TEXT_SCORE, matchScore, tokens, words } from "./text";
 import { ikuBySasaran, pdByCode, sasaranBySektor, sasaranStrategis } from "@/lib/probis/reference";
 
 export type SuggestInput = { name: string; opd: string; note?: string };
@@ -35,22 +35,20 @@ const indexOf = (rab: RabIndex) => {
 function local({ name, opd, note }: SuggestInput, rab: RabIndex): ProbisSuggestion {
   const { level3, entries: index, weight } = indexOf(rab);
   const pd = pdByCode.get(opd);
-  const query = tokens(`${name} ${note ?? ""}`);
+  const query = words(`${name} ${note ?? ""}`);
   const home = new Set(pd?.rab2.map((c) => `RAB.${c}`));
   const sektors = new Set([...home].map((c) => c.slice(0, 6)));
 
   const ranked = index
     .map(({ node, own, parent }) => {
-      const hits = query.filter((t) => own.has(t));
-      const parentHits = query.filter((t) => parent.has(t) && !own.has(t));
-      const text = hits.reduce((sum, t) => sum + weight(t), 0) + parentHits.reduce((sum, t) => sum + weight(t) * 0.5, 0);
+      const { text, hits } = matchScore(query, own, parent, weight);
       // Utamakan urusan milik PD; kecocokan kata di sektor lain dianggap lebih lemah.
       const inHome = home.has(node.parent!);
       const inSektor = sektors.has(node.parent!.slice(0, 6));
       const score = text * (inHome ? 1.3 : inSektor ? 1 : 0.6) + (inHome ? 2.5 : 0);
-      return { node, score, text, hits: [...new Set([...hits, ...parentHits])] };
+      return { node, score, text, hits };
     })
-    .filter((r) => r.text > 1.2 || r.score >= 2.5)
+    .filter((r) => r.text >= MIN_TEXT_SCORE || r.score >= 2.5)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 

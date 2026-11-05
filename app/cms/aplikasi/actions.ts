@@ -1,8 +1,9 @@
 "use server";
+import { decide, type Decision } from "@/lib/cms/workflow";
 import { assertUploadFile } from "@/lib/security/upload";
 import { arg, idSchema, importOptions, importRows, isValid, opdCode, periodName, reviewArgs, saveOptions } from "@/lib/security/schemas";
 import { suggestAplikasi as suggest, type AplikasiSuggestion } from "@/lib/ai/aplikasi-suggest";
-import { can, currentActor, reviewTeam, stageOf, reviewTarget } from "@/lib/access";
+import { can, currentActor } from "@/lib/access";
 import * as repo from "@/lib/aplikasi/cms-repo";
 import { resolveFlow } from "@/lib/aplikasi/data-flow";
 import { readUpload, validateRows, type AplikasiImportResult, type AplikasiImportRow } from "@/lib/aplikasi/import";
@@ -37,7 +38,7 @@ export async function saveAplikasi(input: AplikasiInput, options: { id?: string;
   if (!isValid(saveOptions, options)) return { ok: false, error: "Data tidak valid." };
   const parsed = makeAplikasiInput((await raaFor())(input.period)).safeParse(input);
   if (!parsed.success) {
-    const fields = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
+    const fields = Object.fromEntries(parsed.error.issues.toReversed().map((issue) => [String(issue.path[0]), issue.message]));
     return { ok: false, error: "Periksa kembali isian yang ditandai.", fields };
   }
   try {
@@ -66,7 +67,8 @@ export async function deleteAplikasi(id: string): Promise<ActionResult> {
     const current = await repo.getAplikasi(id);
     if (!current) throw new Error("Aplikasi tidak ditemukan.");
     if (!can.edit(actor, current)) throw new Error("Hanya draf atau aplikasi yang dikembalikan yang dapat dihapus.");
-    await repo.deleteAplikasi(id);
+    if (current.status === "approved") throw new Error("Record yang tayang harus ditarik dari portal dulu sebelum dihapus.");
+    await repo.deleteAplikasi(id, actor);
     refresh();
     return { ok: true, data: undefined };
   } catch (error) {
@@ -78,33 +80,14 @@ export async function deleteAplikasi(id: string): Promise<ActionResult> {
  * Ajukan (operator), verifikasi (Verifikator Aplikasi Diskominfo), validasi (Validator Diskominfo), atau kembalikan.
  * Tahap dicek terhadap status saat ini: verifikasi hanya dari "Diajukan", validasi hanya dari "Terverifikasi".
  */
-export async function reviewAplikasi(id: string, decision: "submit" | "verify" | "validate" | "reject", note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
+export async function reviewAplikasi(id: string, decision: Decision, note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
   try {
     ({ id, decision, note } = arg(reviewArgs, { id, decision, note }));
     const actor = await currentActor();
     const current = await repo.getAplikasi(id);
     if (!current) throw new Error("Aplikasi tidak ditemukan.");
     const from = current.status;
-    let to: SubmissionStatus;
-    let text = note?.trim() || null;
-
-    if (decision === "submit") {
-      if (!can.edit(actor, current)) throw new Error("Aplikasi ini tidak dapat diajukan.");
-      to = "submitted";
-    } else {
-      const stage = stageOf(from);
-      if (!stage) throw new Error("Aplikasi ini tidak sedang dalam antrean pemeriksaan.");
-      const team = reviewTeam(stage, "aplikasi");
-      if (!can.review(actor, stage, "aplikasi")) throw new Error(`Hanya tim ${team} yang dapat memproses tahap ini.`);
-      if (decision === "verify" && stage !== "verifikasi") throw new Error("Aplikasi ini sudah melewati tahap verifikasi.");
-      if (decision === "validate" && stage !== "validasi") throw new Error("Aplikasi ini belum diverifikasi Verifikator Aplikasi.");
-      if (decision === "reject") {
-        if (!text) throw new Error("Tuliskan catatan alasan pengembalian.");
-        text = `Dikembalikan tim ${team}: ${text}`;
-      }
-      to = reviewTarget(decision, stage);
-    }
-
+    const { to, note: text } = await decide({ actor, domain: "aplikasi", noun: "Aplikasi", record: current, decision, note });
     await repo.transition(id, from, to, actor, text);
     refresh();
     return { ok: true, data: { status: to } };

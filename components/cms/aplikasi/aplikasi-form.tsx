@@ -1,4 +1,6 @@
 "use client";
+import { UnsavedGuard } from "@/components/cms/unsaved-guard";
+import { ApplyAllButton, SUGGEST_LOADING, SuggestLabel } from "@/components/cms/ai-mode";
 import Link from "next/link";
 import { savedListHref } from "@/lib/cms/list-navigation";
 import { useRouter } from "next/navigation";
@@ -143,8 +145,8 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
     startThinking(async () => {
       const request = suggestAplikasi({ name: values.name, opd: values.opd, pengembang: values.pengembang || undefined, note, period: values.period });
       toast.promise(request.then((r) => (r.ok ? r : Promise.reject(new Error(r.error)))), {
-        loading: "AI sedang menyusun saran…",
-        success: (r) => (r.data.source === "gemini" ? "Saran dari Gemini siap" : "Saran lokal siap"),
+        loading: SUGGEST_LOADING,
+        success: (r) => (r.data.source === "gemini" ? "Saran dari Gemini siap" : "Saran kata kunci siap, tinjau sebelum dipakai"),
         error: (e: Error) => e.message,
       });
       const result = await request;
@@ -476,10 +478,12 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
           <Button type="button" variant="outline" loading={saving && savingMode === "draft"} disabled={saving} onClick={() => submit("draft")}>
             Simpan draf
           </Button>
-          <Button type="button" loading={saving && savingMode === "submit"} disabled={saving} onClick={() => submit("submit")}>
-            {!(saving && savingMode === "submit") && <Icon icon={SentIcon} size={16} />}
-            Ajukan verifikasi
-          </Button>
+          {(!record || record.status === "draft" || record.status === "rejected") && (
+            <Button type="button" loading={saving && savingMode === "submit"} disabled={saving} onClick={() => submit("submit")}>
+              {!(saving && savingMode === "submit") && <Icon icon={SentIcon} size={16} />}
+              Ajukan verifikasi
+            </Button>
+          )}
         </div>
       </form>
 
@@ -492,14 +496,14 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
           <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan tambahan (opsional), mis. dipakai masyarakat untuk mengajukan izin" aria-label="Catatan untuk AI" />
           <Button type="button" onClick={askAi} loading={thinking} className="group/ai">
             {!thinking && <Icon icon={AiMagicIcon} size={16} className="transition-transform duration-300 group-hover/ai:scale-125 group-hover/ai:rotate-12" />}
-            Isi dengan AI
+            <SuggestLabel />
           </Button>
 
           {suggestion ? (
             <div className="grid gap-2.5">
               <div data-suggest className="flex items-center justify-between gap-2">
-                <Badge variant={suggestion.source === "gemini" ? "info" : "muted"}>{suggestion.source === "gemini" ? "Gemini" : "Saran lokal"}</Badge>
-                <Button type="button" size="sm" variant="outline" onClick={applyAll}>Pakai semua</Button>
+                <Badge variant={suggestion.source === "gemini" ? "info" : "muted"}>{suggestion.source === "gemini" ? "Gemini" : "Saran kata kunci"}</Badge>
+                <ApplyAllButton onConfirm={applyAll} />
               </div>
               <SuggestItem label="Uraian" text={suggestion.uraian} onApply={() => apply("uraian", suggestion.uraian)} />
               <SuggestItem label="Fungsi" text={suggestion.fungsi} onApply={() => apply("fungsi", suggestion.fungsi)} />
@@ -527,6 +531,8 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
           )}
         </CardContent>
       </Card>
+
+      <UnsavedGuard values={values} saved={!!done} />
 
       <Dialog open={!!done} onOpenChange={(open) => !open && router.push(savedListHref("/cms/aplikasi", !!done?.submitted, values.period, record?.status))}>
         <DialogContent className="text-center sm:max-w-sm">

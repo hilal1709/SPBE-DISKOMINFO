@@ -15,7 +15,7 @@ test("Sankey aggregates only supplied direct links and retains accessible naviga
   const before = JSON.stringify(relations);
   const html = renderToStaticMarkup(createElement(DomainSankey, { relations, href: (source) => `/integrasi?domain=${source}&periode=P` }));
   assert.equal((html.match(/<a /g) ?? []).length, 2);
-  assert(html.includes("15 tautan langsung"));
+  assert(html.includes("15 relasi antardomain"));
   assert(html.includes("10 relasi langsung"));
   assert(html.includes("/integrasi?domain=aplikasi&amp;periode=P"));
   assert(!html.includes("NaN") && !html.includes("Infinity"));

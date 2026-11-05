@@ -70,9 +70,11 @@ export function DataTable<T>({ title, description, rows, columns, rowId, searchT
   const [localSort, setSort] = useState<{ header: string; dir: 1 | -1 } | null>(null);
   const serverSortHeader = server?.sort && columns.find((c) => c.sortKey === server.sort!.key)?.header;
   const sort = server ? (serverSortHeader ? { header: serverSortHeader, dir: server.sort!.dir } : null) : localSort;
-  const [paging, setPaging] = useState({ page: 0, key: resetPageKey });
-  const page = paging.key === resetPageKey ? paging.page : 0;
-  const setPage = (next: number) => setPaging({ page: next, key: resetPageKey });
+  // Tanpa resetPageKey, perubahan isi baris (filter/tab/Reset) juga mengembalikan tabel ke halaman 1 (B3).
+  const pageKey = resetPageKey ?? (server ? undefined : `${rows.length}:${rows[0] ? rowId(rows[0]) : ""}`);
+  const [paging, setPaging] = useState({ page: 0, key: pageKey });
+  const page = paging.key === pageKey ? paging.page : 0;
+  const setPage = (next: number) => setPaging({ page: next, key: pageKey });
   const body = useRef<HTMLTableSectionElement>(null);
   const phone = useIsPhone();
   /** Pilihan kolom pengguna; sebelum memilih, ponsel menyembunyikan semua kolom sekunder (hideable). */

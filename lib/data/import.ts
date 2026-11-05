@@ -260,7 +260,7 @@ export function validateRows(
     if (row.interoperabel === null) issues.push({ level: "error", message: row.interopRaw ? `Interoperabilitas “${row.interopRaw}” harus Ya atau Tidak` : "Interoperabilitas kosong" });
 
     if (lockedOpd) {
-      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: "Wali data berbeda dengan OPD akun Anda" });
+      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: `Wali data berbeda dengan OPD akun Anda (di berkas: “${row.opdRaw ?? row.opd}”)` });
       else if (!row.opd) issues.push({ level: "warning", message: "Wali data diisi OPD akun Anda" });
       next.opd = lockedOpd;
     } else if (!row.opd) {

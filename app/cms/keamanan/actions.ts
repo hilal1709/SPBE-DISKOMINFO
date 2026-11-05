@@ -1,8 +1,9 @@
 "use server";
+import { decide, type Decision } from "@/lib/cms/workflow";
 import { assertUploadFile } from "@/lib/security/upload";
 import { arg, idSchema, importOptions, importRows, isValid, reviewArgs, saveOptions } from "@/lib/security/schemas";
 import { suggestKeamanan as suggest, type KeamananSuggestion } from "@/lib/ai/keamanan-suggest";
-import { can, currentActor, reviewTeam, stageOf, reviewTarget } from "@/lib/access";
+import { can, currentActor } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
 import { assertAiInput, assertAiQuota, assertImportQuota } from "@/lib/security/rate-limit";
 import * as repo from "@/lib/keamanan/cms-repo";
@@ -25,7 +26,7 @@ export async function saveKeamanan(input: KeamananInput, options: { id?: string;
   if (!isValid(saveOptions, options)) return { ok: false, error: "Data tidak valid." };
   const parsed = keamananInput.safeParse(input);
   if (!parsed.success) {
-    const fields = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
+    const fields = Object.fromEntries(parsed.error.issues.toReversed().map((issue) => [String(issue.path[0]), issue.message]));
     return { ok: false, error: "Periksa kembali isian yang ditandai.", fields };
   }
   try {
@@ -54,7 +55,8 @@ export async function deleteKeamanan(id: string): Promise<ActionResult> {
     const current = await repo.getKeamanan(id);
     if (!current) throw new Error("Kegiatan keamanan tidak ditemukan.");
     if (!can.edit(actor, current)) throw new Error("Hanya draf atau kegiatan yang dikembalikan yang dapat dihapus.");
-    await repo.deleteKeamanan(id);
+    if (current.status === "approved") throw new Error("Record yang tayang harus ditarik dari portal dulu sebelum dihapus.");
+    await repo.deleteKeamanan(id, actor);
     refresh();
     return { ok: true, data: undefined };
   } catch (error) {
@@ -66,33 +68,14 @@ export async function deleteKeamanan(id: string): Promise<ActionResult> {
  * Ajukan (operator), verifikasi (Verifikator Keamanan Diskominfo), validasi (Validator Diskominfo), atau kembalikan.
  * Tahap dicek terhadap status saat ini: verifikasi hanya dari "Diajukan", validasi hanya dari "Terverifikasi".
  */
-export async function reviewKeamanan(id: string, decision: "submit" | "verify" | "validate" | "reject", note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
+export async function reviewKeamanan(id: string, decision: Decision, note?: string): Promise<ActionResult<{ status: SubmissionStatus }>> {
   try {
     ({ id, decision, note } = arg(reviewArgs, { id, decision, note }));
     const actor = await currentActor();
     const current = await repo.getKeamanan(id);
     if (!current) throw new Error("Kegiatan keamanan tidak ditemukan.");
     const from = current.status;
-    let to: SubmissionStatus;
-    let text = note?.trim() || null;
-
-    if (decision === "submit") {
-      if (!can.edit(actor, current)) throw new Error("Kegiatan ini tidak dapat diajukan.");
-      to = "submitted";
-    } else {
-      const stage = stageOf(from);
-      if (!stage) throw new Error("Kegiatan ini tidak sedang dalam antrean pemeriksaan.");
-      const team = reviewTeam(stage, "keamanan");
-      if (!can.review(actor, stage, "keamanan")) throw new Error(`Hanya tim ${team} yang dapat memproses tahap ini.`);
-      if (decision === "verify" && stage !== "verifikasi") throw new Error("Kegiatan ini sudah melewati tahap verifikasi.");
-      if (decision === "validate" && stage !== "validasi") throw new Error("Kegiatan ini belum diverifikasi Verifikator Keamanan.");
-      if (decision === "reject") {
-        if (!text) throw new Error("Tuliskan catatan alasan pengembalian.");
-        text = `Dikembalikan tim ${team}: ${text}`;
-      }
-      to = reviewTarget(decision, stage);
-    }
-
+    const { to, note: text } = await decide({ actor, domain: "keamanan", noun: "Kegiatan", record: current, decision, note });
     await repo.transition(id, from, to, actor, text);
     refresh();
     return { ok: true, data: { status: to } };

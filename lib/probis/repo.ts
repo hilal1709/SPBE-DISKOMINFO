@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus } from "@/lib/cms/guards";
+import { assertImportUpdate, assertStillEditable, importStatus, importUpdateStatus, submitTarget } from "@/lib/cms/guards";
 import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { cached, TAGS } from "@/lib/cache";
 import { codeSequence, insertMany } from "@/lib/cms/batch";
 import { getDb } from "@/lib/db";
+import { usedCodesSql } from "@/lib/cms/codes";
+import { deleteWithAudit } from "@/lib/cms/audit";
 import { pack, type Packed } from "@/lib/pack";
 import type { Probis, ProbisRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import type { ProbisValues } from "./schema";
@@ -201,8 +203,10 @@ async function loadCmsSummary(opdId: string | null) {
   const params = opdId ? [opdId] : [];
   const counts = await db().query(`select pb.status::text as status, count(*)::int as n from process_businesses pb ${scope} group by 1`, params);
   const recent = await db().query(
-    `select pr.id, pr.actor_name, pr.from_status::text, pr.to_status::text, pr.note, pr.created_at, pb.id as probis_id, pb.name
-     from probis_reviews pr join process_businesses pb on pb.id = pr.process_business_id ${scope}
+    `select pr.id, pr.actor_name, pr.from_status::text, pr.to_status::text, pr.note, pr.created_at, pb.id as probis_id,
+            coalesce(pb.name, pr.record_name, '(record terhapus)') as name, pr.event
+     from probis_reviews pr left join process_businesses pb on pb.id = pr.process_business_id
+     ${opdId ? "where coalesce(pb.opd_id, pr.record_opd_id) = $1" : ""}
      order by pr.created_at desc limit 8`,
     params,
   );
@@ -222,6 +226,7 @@ async function loadCmsSummary(opdId: string | null) {
       toStatus: r.to_status as SubmissionStatus,
       note: r.note as string | null,
       createdAt: (r.created_at as Date).toISOString(),
+      deleted: r.event === "deleted",
     })),
   };
 }
@@ -244,7 +249,7 @@ async function ids(client: PoolClient, values: Pick<ProbisValues, "opd" | "perio
 /** ID probis otomatis: GSK-DAB {kode RAB L3 tanpa "RAB."}.{urutan}. */
 async function nextCode(client: PoolClient, rab3: string) {
   const prefix = `GSK-DAB ${rab3.slice(4)}.`;
-  const { rows } = await client.query("select code from process_businesses where code like $1", [`${prefix}%`]);
+  const { rows } = await client.query(usedCodesSql("process_businesses"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
   return `${prefix}${String(max + 1).padStart(2, "0")}`;
 }
@@ -307,7 +312,7 @@ export function updateProbis(id: string, v: ProbisValues, actor: Actor, submit: 
     const from = rows[0]?.status as SubmissionStatus | undefined;
     if (!from) throw new Error("Probis tidak ditemukan.");
     assertStillEditable(actor, from);
-    const to: SubmissionStatus = submit ? "submitted" : from;
+    const to: SubmissionStatus = submitTarget(from, submit);
     await client.query(
       `update process_businesses set name=$2, description=$3, rab_l4=$4, rab_l5=$5, strategic_goal=$6, iku=$7, iku_target=$8, iku_realization=$9,
          probis_status=$10, opd_id=$11, period_id=$12, rab_id=$13, status=$14::text::submission_status, rab_review = false,
@@ -355,8 +360,9 @@ export const approvedDiagram = cached(
   [TAGS.content],
 );
 
-export async function deleteProbis(id: string) {
-  await db().query("delete from process_businesses where id = $1", [id]);
+/** Hapus beserta log penghapusan; riwayatnya tetap tersimpan. */
+export function deleteProbis(id: string, actor: Actor) {
+  return tx((client) => deleteWithAudit(client, "probis", id, actor));
 }
 
 /** Ubah status alur verifikasi dan catat riwayatnya. */

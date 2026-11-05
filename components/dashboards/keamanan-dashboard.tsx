@@ -30,7 +30,7 @@ import { toneBgClass } from "@/lib/palette";
 import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
 import type { KegiatanKeamanan } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { formatNumber, percent } from "@/lib/format";
+import { formatNumber, percent, formatPercent } from "@/lib/format";
 
 const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
 const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
@@ -223,7 +223,7 @@ export function KeamananDashboard({
                           <div key={k} className="grid gap-1.5">
                             <div className="flex items-baseline justify-between gap-3 text-sm">
                               <span className="font-medium">{kegiatanConfig[k].short}</span>
-                              <span className="text-xs text-muted-foreground tabular-nums">{domains.map((d) => `${domainLabel[d]} ${percent(hit?.[d] ?? 0, coverage.totals[d])}%`).join(" · ")}</span>
+                              <span className="text-xs text-muted-foreground tabular-nums">{domains.map((d) => `${domainLabel[d]} ${formatPercent(hit?.[d] ?? 0, coverage.totals[d])}`).join(" · ")}</span>
                             </div>
                             <Meter value={percent(sum, total)} label={`Cakupan ${kegiatanConfig[k].short}`} indicatorClassName={toneBgClass[kegiatanConfig[k].tone]} />
                           </div>

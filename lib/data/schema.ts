@@ -32,7 +32,7 @@ export function makeDataInput(rad: RabIndex) {
       rad: z
         .string()
         .refine((v) => isRadLeaf(rad, v), "Pilih RAD Level 3")
-        .refine((v) => rad.active(rad.byCode.get(v)), "RAD ini sudah tidak berlaku, pilih penggantinya"),
+        .refine((v) => { const node = rad.byCode.get(v); return !node || rad.active(node); }, "RAD ini sudah tidak berlaku, pilih penggantinya"),
       radL4: optionalText,
       radL5: optionalText,
       /** Kode proses bisnis penghasil data (periode yang sama) — probis adalah master. */

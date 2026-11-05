@@ -137,7 +137,7 @@ export function validateRows(rows: Raw[], { existing, lockedOpd, periods }: { ex
       }
     }
     if (lockedOpd) {
-      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: "Instansi berbeda dengan OPD akun Anda" });
+      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: `Instansi berbeda dengan OPD akun Anda (di berkas: “${row.opdRaw ?? row.opd}”)` });
       else if (!row.opd) issues.push({ level: "warning", message: "Instansi diisi OPD akun Anda" });
       next.opd = lockedOpd;
     } else if (!row.opd) {

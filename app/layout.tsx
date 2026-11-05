@@ -3,7 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { RealtimeSync } from "@/components/realtime/realtime-sync";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { siteConfig } from "@/lib/site";
+import { siteConfig, indexable } from "@/lib/site";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
@@ -23,7 +23,9 @@ export const metadata: Metadata = {
   category: "government",
   openGraph: { type: "website", locale: siteConfig.locale, siteName: siteConfig.name, title: siteConfig.name, description: siteConfig.description },
   twitter: { card: "summary_large_image", title: siteConfig.name, description: siteConfig.description },
-  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
+  robots: indexable
+    ? { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } }
+    : { index: false, follow: false, googleBot: { index: false, follow: false } },
   formatDetection: { telephone: false },
 };
 

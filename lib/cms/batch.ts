@@ -1,3 +1,4 @@
+import { usedCodesSql } from "./codes";
 import type { PoolClient } from "pg";
 
 /**
@@ -79,7 +80,7 @@ export function codeSequence(client: PoolClient, table: string, explicit: readon
     [...codes, ...explicit].filter((c) => c.startsWith(prefix)).reduce((m, code) => Math.max(m, Number(code.slice(prefix.length)) || 0), 0);
   const load = memo(async (prefix: string) => {
     if (max.has(prefix)) return;
-    const { rows } = await client.query(`select code from ${table} where code like $1`, [`${prefix}%`]);
+    const { rows } = await client.query(usedCodesSql(table), [`${prefix}%`]);
     max.set(prefix, top(prefix, rows.map((r) => String(r.code))));
   });
   const next = async (prefix: string, pad = 2) => {
@@ -92,7 +93,7 @@ export function codeSequence(client: PoolClient, table: string, explicit: readon
   next.preload = async (prefixes: string[]) => {
     const fresh = [...new Set(prefixes)].filter((p) => !max.has(p));
     if (!fresh.length) return;
-    const { rows } = await client.query(`select code from ${table} where code like any($1)`, [fresh.map((p) => `${p}%`)]);
+    const { rows } = await client.query(usedCodesSql(table, true), [fresh.map((p) => `${p}%`)]);
     const codes = rows.map((r) => String(r.code));
     for (const prefix of fresh) max.set(prefix, top(prefix, codes));
   };

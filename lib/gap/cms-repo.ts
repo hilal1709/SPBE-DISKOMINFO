@@ -1,3 +1,4 @@
+import { usedCodesSql } from "@/lib/cms/codes";
 import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
@@ -99,7 +100,7 @@ async function periodId(client: PoolClient, period: string) {
 
 /** Penomoran GSK-GAP {singkatan domain}.{urutan} untuk satu transaksi (banyak temuan sekaligus). */
 async function codeMaker(client: PoolClient) {
-  const { rows } = await client.query("select code from gap_analyses");
+  const { rows } = await client.query(usedCodesSql("gap_analyses"), ["GSK-GAP %"]);
   const max = new Map<string, number>();
   for (const { code } of rows) {
     const m = String(code).match(/^GSK-GAP ([A-Z]+)\.(\d+)$/);

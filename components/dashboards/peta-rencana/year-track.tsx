@@ -76,7 +76,7 @@ export function YearTrack({ stats, current, selected, onToggle, className }: { s
                     <span className="grid w-full min-w-0 gap-1">
                       <span className="flex items-center gap-2 md:justify-center">
                         <span className="font-heading text-lg font-bold tabular-nums">{s.year}</span>
-                        {now && <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-semibold text-on-brand">berjalan</span>}
+                        {now && <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-semibold text-on-brand">Tahun berjalan</span>}
                       </span>
                       <span className="text-xs text-muted-foreground tabular-nums">{formatNumber(s.total)} kegiatan</span>
                       <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>

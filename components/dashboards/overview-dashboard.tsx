@@ -37,7 +37,7 @@ export function OverviewDashboard({ summary, relations, securityVisible, availab
   const filtered = filterSummary(summary, period, opds);
   const totals = domainTotals(filtered);
   const visible = domainKeys.filter((d) => d !== "keamanan" || securityVisible);
-  const links = relations.filter((r) => r.period === period && (!opds.length || opds.includes(r.sourceOpd) || opds.includes(r.targetOpd)));
+  const links = relations.filter((r) => r.period === period && (!opds.length || (opds.includes(r.sourceOpd) && opds.includes(r.targetOpd))) && r.source !== r.target);
   const topOpds = opdOptions.map((o) => ({ ...o, count: filtered.filter((r) => r.opd === o.value).reduce((n, r) => n + r.count, 0) })).filter((o) => o.count).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
   const chips: Chip[] = opds.map((opd) => ({ id: opd, group: "OPD", label: opdOptions.find((o) => o.value === opd)?.label ?? opd, onRemove: () => update(period, opds.filter((o) => o !== opd)) }));
   if (period !== periods.active) chips.push({ id: "periode", group: "Periode", label: period, onRemove: () => update(periods.active, opds) });
@@ -76,7 +76,7 @@ export function OverviewDashboard({ summary, relations, securityVisible, availab
             const categories = new Map<string, number>();
             for (const r of filtered.filter((r) => r.domain === chart.domain)) categories.set(r.category, (categories.get(r.category) ?? 0) + r.count);
             const entries = [...categories];
-            return <Card key={chart.domain}><CardHeader><CardTitle as="h2">{chart.title}</CardTitle></CardHeader><CardContent>{entries.length ? <MiniComposition labels={entries.map(([key]) => (chart.labels as Record<string, string>)[key] ?? key)} values={entries.map(([, count]) => count)} onSelect={(i) => router.push(`${domainHref(domains[chart.domain].href)}&${new URLSearchParams({ [chart.filter]: entries[i][0] })}`)} /> : <p className="text-sm text-muted-foreground">Belum ada data pada filter ini.</p>}</CardContent></Card>;
+            return <Card key={chart.domain}><CardHeader><CardTitle as="h2">{chart.title}</CardTitle></CardHeader><CardContent>{entries.length ? <MiniComposition labels={entries.map(([key]) => (key ? ((chart.labels as Record<string, string>)[key] ?? key) : "Tidak diketahui"))} values={entries.map(([, count]) => count)} onSelect={(i) => router.push(`${domainHref(domains[chart.domain].href)}&${new URLSearchParams({ [chart.filter]: entries[i][0] })}`)} /> : <p className="text-sm text-muted-foreground">Belum ada data pada filter ini.</p>}</CardContent></Card>;
           })}
         </section>
         <Card><CardHeader className="flex flex-wrap items-center justify-between gap-3"><CardTitle as="h2">Hubungan domain</CardTitle><Button asChild variant="outline"><Link href={domainHref("/integrasi")}>Buka Integrasi Domain</Link></Button></CardHeader><CardContent className="grid gap-3">

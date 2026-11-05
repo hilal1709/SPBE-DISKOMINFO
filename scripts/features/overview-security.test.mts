@@ -43,7 +43,7 @@ test("bagan ringkasan berizin memuat aliran ketiga domain ke Keamanan dan seluru
   const html = renderToStaticMarkup(createElement(DomainSankey, { relations: data.relations, href: (source) => `/integrasi?domain=${source}` }));
   assert.equal((html.match(/<a /g) ?? []).length, 3);
   assert(html.includes("Data ke Keamanan") && html.includes("Aplikasi ke Keamanan") && html.includes("Infrastruktur ke Keamanan"));
-  assert(html.includes("303 tautan langsung"));
+  assert(html.includes("303 relasi antardomain"));
 });
 
 test("query keamanan hanya menghitung pasangan tervalidasi dengan kode, jenis, dan periode yang cocok", async () => {

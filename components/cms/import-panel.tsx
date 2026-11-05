@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ActionResult } from "@/lib/cms/result";
 import { pdByCode } from "@/lib/probis/reference";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/security/upload-limit";
 import { cn } from "@/lib/utils";
 
 /** Baris impor minimal yang dibutuhkan panel. */
@@ -26,6 +27,20 @@ import { cn } from "@/lib/utils";
 export type PanelRow = { line: number; key?: string; name: string; opd: string | null; opdRaw: string | null; issues: { level: "error" | "warning"; message: string }[] };
 type Preview<R> = { file: string | null; unsupported: string[]; rows: R[] };
 type Saved = { created: number; updated: number; skipped: number };
+
+/** Unit kerja hasil pencocokan, dengan nilai asli berkas bila berbeda atau barisnya galat (B20). */
+function OpdCell({ row }: { row: PanelRow }) {
+  const name = row.opd ? pdByCode.get(row.opd)?.name ?? row.opd : null;
+  const raw = row.opdRaw?.trim() || null;
+  const differs = !!raw && raw.toLowerCase() !== name?.toLowerCase() && raw.toLowerCase() !== row.opd?.toLowerCase();
+  if (!name) return <span className="text-destructive">{raw ?? "—"}</span>;
+  return (
+    <span className="grid gap-0.5">
+      <span>{name}</span>
+      {raw && (differs || severity(row) === "error") && <span className="text-xs text-muted-foreground">Di berkas: “{raw}”</span>}
+    </span>
+  );
+}
 
 const severity = (r: PanelRow) => (r.issues.some((i) => i.level === "error") ? "error" : r.issues.length ? "warning" : "ok");
 
@@ -85,10 +100,19 @@ export function ImportPanel<R extends PanelRow>({
   const read = (file: File | undefined) => {
     if (!file) return;
     setResult(null);
+    // Cek ukuran di browser: permintaan > 4,5 MB ditolak server hosting (HTTP 413) sebelum aksi berjalan.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return void toast.error(`Berkas terlalu besar (maks. ${MAX_UPLOAD_MB} MB)`, { description: `${file.name} berukuran ${(file.size / 1024 / 1024).toLocaleString("id-ID", { maximumFractionDigits: 1 })} MB. Pecah zip per domain lalu unggah satu per satu.` });
+    }
     startReading(async () => {
       const form = new FormData();
       form.set("file", file);
-      const response = await previewImport(form);
+      let response: Awaited<ReturnType<typeof previewImport>>;
+      try {
+        response = await previewImport(form);
+      } catch {
+        return void toast.error("Gagal mengunggah berkas", { description: `Periksa koneksi, atau pastikan ukuran berkas di bawah ${MAX_UPLOAD_MB} MB.` });
+      }
       if (!response.ok) return void toast.error(response.error);
       setPreview(response.data);
       if (!response.data.file) toast.warning(`Workbook ${copy.sheet} tidak ditemukan di dalam berkas.`);
@@ -102,7 +126,12 @@ export function ImportPanel<R extends PanelRow>({
 
   const save = () =>
     startSaving(async () => {
-      const response = await commitImport(rows, { status, update });
+      let response: Awaited<ReturnType<typeof commitImport>>;
+      try {
+        response = await commitImport(rows, { status, update });
+      } catch {
+        return void toast.error("Gagal menyimpan impor", { description: "Koneksi terputus atau data terlalu besar. Coba impor per bagian." });
+      }
       if (!response.ok) return void toast.error(response.error);
       setResult(response.data);
       setPreview(null);
@@ -138,7 +167,7 @@ export function ImportPanel<R extends PanelRow>({
                   <Icon icon={FileImportIcon} size={18} />
                 </span>
                 <span className="font-semibold">{reading ? "Membaca berkas…" : "Tarik berkas ke sini atau klik untuk memilih"}</span>
-                <span className="text-xs text-muted-foreground">.xlsx atau .zip · maks. 12 MB</span>
+                <span className="text-xs text-muted-foreground">.xlsx atau .zip · maks. {MAX_UPLOAD_MB} MB</span>
                 <input ref={input} type="file" accept=".xlsx,.zip" className="sr-only" onChange={(e) => (read(e.target.files?.[0]), (e.target.value = ""))} />
               </label>
             </CardContent>
@@ -191,7 +220,7 @@ export function ImportPanel<R extends PanelRow>({
                     { header: "Baris", className: "w-16", sortValue: (r) => r.line, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.line}</span> },
                     { header: "Cek", sortValue: (r) => severity(r), cell: (r) => <Severity row={r} /> },
                     { header: "Nama", sortValue: (r) => r.name, cell: (r) => <span className="font-semibold">{r.name || "—"}</span> },
-                    { header: "Unit kerja", cell: (r) => (r.opd ? pdByCode.get(r.opd)?.name : <span className="text-destructive">{r.opdRaw ?? "—"}</span>) },
+                    { header: "Unit kerja", cell: (r) => <OpdCell row={r} /> },
                     { header: refColumn.header, cell: refColumn.cell },
                     {
                       header: "Catatan",

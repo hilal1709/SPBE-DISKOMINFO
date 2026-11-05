@@ -47,6 +47,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // S4: versi pengembangan/staging tidak diindeks (juga untuk respons API, ekspor, dan berkas).
+      ...(process.env.SITE_INDEXABLE === "true" ? [] : [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }]),
       // Data CMS & ekspor tidak boleh disimpan cache bersama/peramban.
       { source: "/(cms|keamanan|api|akun)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
       { source: "/(cms|keamanan|login)", headers: [{ key: "Cache-Control", value: "no-store" }] },
@@ -55,7 +57,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Impor template arsitektur (.xlsx / .zip) lewat server action. allowedOrigins sengaja tidak diisi: hanya origin
     // situs sendiri yang boleh memanggil server action (proxy.ts juga menolak POST tanpa Origin).
-    serverActions: { bodySizeLimit: "12mb" },
+    serverActions: { bodySizeLimit: "4mb" },
     // Hanya ikon/komponen yang dipakai ikut terbundel (paket barrel besar).
     optimizePackageImports: ["@hugeicons/core-free-icons", "radix-ui"],
   },

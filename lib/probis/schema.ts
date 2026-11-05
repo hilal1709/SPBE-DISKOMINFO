@@ -20,7 +20,7 @@ export function makeProbisInput(rab: RabIndex) {
       rab3: z
         .string()
         .refine((v) => rab.byCode.get(v)?.level === 3, "Pilih RAB Level 3")
-        .refine((v) => rab.active(rab.byCode.get(v)), "RAB Level 3 ini sudah tidak berlaku, pilih penggantinya"),
+        .refine((v) => { const node = rab.byCode.get(v); return !node || rab.active(node); }, "RAB Level 3 ini sudah tidak berlaku, pilih penggantinya"),
       rabL4: optionalText,
       rabL5: optionalText,
       strategicGoal: optionalText,

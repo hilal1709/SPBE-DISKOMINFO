@@ -250,7 +250,7 @@ export function validateRows(
     }
 
     if (lockedOpd) {
-      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: "Unit operasional berbeda dengan OPD akun Anda" });
+      if (row.opd && row.opd !== lockedOpd) issues.push({ level: "error", message: `Unit operasional berbeda dengan OPD akun Anda (di berkas: “${row.opdRaw ?? row.opd}”)` });
       else if (!row.opd) issues.push({ level: "warning", message: "Unit operasional diisi OPD akun Anda" });
       next.opd = lockedOpd;
     } else if (!row.opd) {
