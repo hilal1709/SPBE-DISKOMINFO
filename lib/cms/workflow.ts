@@ -2,16 +2,6 @@ import { getDb } from "@/lib/db";
 import { can, reviewTarget, reviewTeam, stageOf, type Actor, type ReviewDomain } from "@/lib/permissions";
 import type { SubmissionStatus } from "@/lib/types";
 
-/** Tabel tiap domain beralur verifikasi (kolom `verified_by` dipakai aturan pemisahan tugas). */
-const tables: Record<ReviewDomain, string> = {
-  probis: "process_businesses",
-  layanan: "services",
-  data: "datasets",
-  aplikasi: "applications",
-  infrastruktur: "infrastructures",
-  keamanan: "security_activities",
-};
-
 export type Decision = "submit" | "verify" | "validate" | "reject" | "withdraw";
 
 /**
@@ -52,7 +42,7 @@ export async function decide(input: {
     if (!can.review(actor, stage, domain)) throw new Error(`Hanya tim ${team} yang dapat memproses tahap ini.`);
     if (decision === "verify" && stage !== "verifikasi") throw new Error(`${noun} ini sudah melewati tahap verifikasi.`);
     if (decision === "validate" && stage !== "validasi") throw new Error(`${noun} ini belum diverifikasi ${reviewTeam("verifikasi", domain)}.`);
-    if (decision === "validate" && (await verifiedBy(domain, record.id)) === actor.id) {
+    if (decision === "validate" && (await isVerifier(domain, record.id, actor))) {
       throw new Error("Validasi harus oleh akun yang berbeda dari verifikator.");
     }
     if (decision === "reject") {
@@ -65,10 +55,28 @@ export async function decide(input: {
   return { to, note };
 }
 
-/** Akun yang memverifikasi record ini (null bila belum/akun dihapus). */
-export async function verifiedBy(domain: ReviewDomain, id: string): Promise<string | null> {
+const history: Record<ReviewDomain, { table: string; fk: string }> = {
+  probis: { table: "probis_reviews", fk: "process_business_id" },
+  layanan: { table: "validation_history", fk: "service_id" },
+  data: { table: "validation_history", fk: "dataset_id" },
+  aplikasi: { table: "validation_history", fk: "application_id" },
+  infrastruktur: { table: "validation_history", fk: "infrastructure_id" },
+  keamanan: { table: "validation_history", fk: "security_activity_id" },
+};
+
+/**
+ * Apakah `actor` yang memverifikasi record ini pada putaran terakhir (B4)? Dicek dari riwayat verifikasi terbaru:
+ * akun terdaftar dibandingkan lewat ID, akun demo tanpa ID (mode tanpa login) lewat nama.
+ */
+export async function isVerifier(domain: ReviewDomain, id: string, actor: Pick<Actor, "id" | "name">): Promise<boolean> {
   const pool = getDb();
-  if (!pool) return null;
-  const { rows } = await pool.query(`select verified_by from ${tables[domain]} where id = $1`, [id]);
-  return rows[0]?.verified_by ?? null;
+  if (!pool) return false;
+  const h = history[domain];
+  const { rows } = await pool.query(
+    `select actor_id, actor_name from ${h.table} where ${h.fk} = $1 and to_status = 'verified' order by created_at desc limit 1`,
+    [id],
+  );
+  const v = rows[0];
+  if (!v) return false;
+  return actor.id ? v.actor_id === actor.id : !v.actor_id && v.actor_name === actor.name;
 }

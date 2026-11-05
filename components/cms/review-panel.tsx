@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { isOwnVerification } from "@/app/cms/workflow-actions";
 import type { ActionResult } from "@/lib/cms/result";
 import { can, stageOf, type Actor, type ReviewDomain } from "@/lib/permissions";
 import { reviewLabel } from "@/lib/probis/reference";
@@ -100,6 +101,16 @@ export function ReviewActions({
   const deletable = editable && record.status !== "approved";
   const stage = stageOf(record.status);
   const awaiting = !!stage && can.review(actor, stage, domain);
+  /** B4: akun yang memverifikasi tidak boleh memvalidasi record yang sama (server juga menolak). */
+  const [ownVerification, setOwnVerification] = useState(false);
+  useEffect(() => {
+    if (!awaiting || stage !== "validasi") return;
+    let active = true;
+    isOwnVerification(domain, record.id).then((own) => active && setOwnVerification(own));
+    return () => {
+      active = false;
+    };
+  }, [awaiting, stage, domain, record.id]);
 
   const run = (task: () => Promise<void>) => {
     if (busy.current) return;
@@ -134,6 +145,9 @@ export function ReviewActions({
   if (!awaiting && !editable && !withdrawable) return null;
   return (
     <div className="grid gap-3 rounded-xl border border-dashed p-3">
+      {ownVerification && !rejecting && (
+        <p className="text-xs text-muted-foreground">Anda yang memverifikasi record ini. Validasi harus dilakukan akun lain; Anda masih bisa mengembalikannya.</p>
+      )}
       {awaiting && rejecting && <Textarea autoFocus rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan untuk OPD: apa yang perlu diperbaiki?" aria-label="Catatan pengembalian" />}
       <div className="flex flex-wrap justify-end gap-2">
         {deletable && (
@@ -176,7 +190,12 @@ export function ReviewActions({
               {rejecting ? "Kirim pengembalian" : "Kembalikan"}
             </Button>
             {!rejecting && (
-              <Button loading={pending} onClick={(e) => (pulse(e.currentTarget), act(stage === "verifikasi" ? "verify" : "validate"))}>
+              <Button
+                loading={pending}
+                disabled={ownVerification}
+                title={ownVerification ? "Validasi harus oleh akun yang berbeda dari verifikator" : undefined}
+                onClick={(e) => (pulse(e.currentTarget), act(stage === "verifikasi" ? "verify" : "validate"))}
+              >
                 {!pending && <Icon icon={CheckmarkCircle02Icon} size={16} />}
                 {stage === "verifikasi" ? "Verifikasi" : "Validasi & tayangkan"}
               </Button>
