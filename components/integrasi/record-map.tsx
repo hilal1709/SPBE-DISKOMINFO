@@ -25,7 +25,7 @@ export function RecordMap({ selected, nodes, edges, onSelect }: {
       if (!active) return;
       const cards = el.querySelectorAll("[data-record]"), lines = el.querySelectorAll("[data-edge]");
       const timeline = createTimeline();
-      if (cards.length) timeline.add(cards, { opacity: [0, 1], y: [8, 0], duration: 350, delay: stagger(35), ease: "out(3)" }, 0);
+      if (cards.length) timeline.add(cards, { opacity: [0, 1], duration: 350, delay: stagger(35), ease: "out(3)" }, 0);
       if (lines.length) timeline.add(lines, { opacity: [0, 1], duration: 400, delay: stagger(40) }, 150);
       undo = () => void timeline.revert();
     });

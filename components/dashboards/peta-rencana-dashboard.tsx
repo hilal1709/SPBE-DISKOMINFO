@@ -95,7 +95,7 @@ export function PetaRencanaDashboard({
   const years = yearsOf(filter.period);
   const indicators = useMemo(() => source.indicators.filter((i) => i.period === filter.period), [source, filter.period]);
 
-  const count = (status: Rencana["status"]) => withoutStatus.filter((r) => r.status === status).length;
+  const count = (status: Rencana["status"]) => rows.filter((r) => r.status === status).length;
   /**
    * Capaian (F4): pembagi tanpa kegiatan batal. "s.d. tahun berjalan" hanya menghitung kegiatan yang tahunnya sudah tiba;
    * "5 tahun" seluruh periode. Kegiatan tahun mendatang tidak menurunkan capaian tahun berjalan.
@@ -106,7 +106,7 @@ export function PetaRencanaDashboard({
   const capaianAll = formatPercent(done(planned(withoutStatus, false)), planned(withoutStatus, false).length);
   const rowsNow = planned(rows, true);
   const terlaksana = done(rowsNow);
-  const dialihkan = withoutStatus.filter((r) => r.source === "usulan_tertunda").length;
+  const dialihkan = rows.filter((r) => r.source === "usulan_tertunda").length;
   const yearStats: YearStat[] = years.map((year) => {
     const list = withoutTahun.filter((r) => String(r.year) === year);
     const muatan: Partial<Record<Muatan, number>> = {};
@@ -157,7 +157,7 @@ export function PetaRencanaDashboard({
       </FilterBar>
 
       <StatRow>
-        <StatCard tone="teal" label="Total kegiatan" active={!filter.status.length} onClick={() => selectStatus(null)} value={withoutStatus.length} hint={`${new Set(withoutStatus.map((r) => r.program)).size} program · Semua status`} />
+        <StatCard tone="teal" label="Total kegiatan" active={!filter.status.length} onClick={() => selectStatus(null)} value={rows.length} hint={`${new Set(rows.map((r) => r.program)).size} program · Semua status`} />
         <StatCard tone="amber" label="Terlaksana" active={filter.status.length === 1 && filter.status[0] === "terlaksana"} onClick={() => selectStatus("terlaksana")} value={count("terlaksana")} hint={`${capaianNow} s.d. ${currentYear} · ${capaianAll} dari rencana 5 tahun`} />
         <StatCard tone="yellow" label="Berjalan" active={filter.status.length === 1 && filter.status[0] === "berjalan"} onClick={() => selectStatus("berjalan")} value={count("berjalan")} />
         <StatCard tone="sky" label="Direncanakan" active={filter.status.length === 1 && filter.status[0] === "direncanakan"} onClick={() => selectStatus("direncanakan")} value={count("direncanakan")} />
