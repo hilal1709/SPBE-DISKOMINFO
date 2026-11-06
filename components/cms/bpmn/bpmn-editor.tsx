@@ -184,6 +184,8 @@ export default function BpmnEditor({ id, code, name, initialXml, onDirty }: Prop
         if (!saved) setSuccess(true);
         setSaved(true);
       }
+    } catch (error) {
+      toast.error((error as Error).message || "Diagram gagal disimpan.");
     } finally {
       setSaving(false);
     }

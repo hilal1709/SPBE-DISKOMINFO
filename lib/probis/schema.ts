@@ -51,6 +51,7 @@ const DIAGRAM_MAX = 2_000_000;
 function cleanSvg(svg: string) {
   return svg
     .replace(/<\?xml[^>]*\?>/g, "")
+    .replace(/<!DOCTYPE svg\b[^>[]*>/i, "")
     .replace(/<(script|foreignObject|iframe|object|embed)\b[\s\S]*?<\/\1\s*>/gi, "")
     .replace(/<(script|foreignObject|iframe|object|embed)\b[^>]*\/?>/gi, "")
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
@@ -67,6 +68,6 @@ export const diagramInput = z.object({
   svg: z
     .string("Diagram tidak valid.")
     .max(DIAGRAM_MAX, "Gambar diagram terlalu besar.")
-    .refine((v) => /^\s*(<\?xml[^>]*\?>\s*)?(<!--[\s\S]*?-->\s*)*<svg\b/.test(v), "Gambar diagram tidak valid.")
+    .refine((v) => /^\s*(<\?xml[^>]*\?>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE svg\b[^>[]*>\s*)?<svg\b/.test(v), "Gambar diagram tidak valid.")
     .transform(cleanSvg),
 });
