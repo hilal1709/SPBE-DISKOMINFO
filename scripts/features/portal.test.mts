@@ -76,24 +76,27 @@ function fakePool(security: boolean, fail = false) {
       ...(security ? [{ domain: "keamanan", id: "k", code: "K", name: "Audit", opd: "O", opd_name: "OPD", period: "2025–2029", category: "audit", sample: false }] : []),
     ] };
     if (sql.startsWith("select domain")) return { rows: [{ domain: "aplikasi", opd: "O", opd_name: "OPD", period: "2025–2029", category: "web", count: 1, sample: false }] };
-    if (sql.startsWith("select id, security")) return { rows: sql.includes("from applications") ? [{ id: "a", security: { audit: ["K"], standar: ["LEGACY PRIVATE TEXT"] } }] : [] };
+    if (sql === "select code, name from opd") return { rows: [{ code: "O", name: "OPD" }] };
+    if (sql.includes("security from")) return { rows: [{ domain: "aplikasi", tbl: "applications", id: "a", security: { audit: ["K"], standar: ["LEGACY PRIVATE TEXT"] } }] };
     return { rows: [] };
   };
   const db = { connect: async () => ({ query, release: () => { released = true; } }) } as unknown as Pool;
   return { db, calls, parameters, released: () => released };
 }
 
-test("integration snapshot constrains both records and aggregate SQL to the requested period", async () => {
+test("integration snapshot binds the requested period in every read and derives the summary from records", async () => {
   const mock = fakePool(false);
   const period = "2025–2029' OR true --";
-  await readArchitectureFromPool(mock.db, false, period);
+  const data = await readArchitectureFromPool(mock.db, false, period);
   const recordIndex = mock.calls.findIndex((sql) => sql.startsWith("select * from"));
-  const summaryIndex = mock.calls.findIndex((sql) => sql.startsWith("select domain"));
   assert.match(mock.calls[recordIndex], /period=\$2/);
   assert.equal(mock.parameters[recordIndex][1], period);
-  assert.match(mock.calls[summaryIndex], /period=\$1/);
-  assert.equal(mock.parameters[summaryIndex][0], period);
+  const scoped = mock.calls.map((sql, i) => [sql, mock.parameters[i]] as const).filter(([sql]) => sql.includes("from architecture_periods where"));
+  assert(scoped.length >= 2); assert(scoped.every(([, values]) => values[0] === period));
+  assert(!mock.calls.some((sql) => sql.startsWith("select domain")), "summary query only runs on overflow");
   assert(mock.calls.every((sql) => !sql.includes(period)));
+  assert.deepEqual(data.summary, [{ domain: "aplikasi", opd: "O", opdName: "OPD", period: "2025–2029", category: "web", count: 1, sample: false }]);
+  assert.equal(data.nodes[0].opdName, "OPD");
 });
 
 test("anonymous snapshot is read-only and excludes security SQL and private attributes", async () => {
@@ -101,7 +104,7 @@ test("anonymous snapshot is read-only and excludes security SQL and private attr
   const data = await readArchitectureFromPool(mock.db, false);
   assert.match(mock.calls[0], /repeatable read read only/);
   assert(mock.calls.every((sql) => !/\b(insert|update|delete|alter|drop|truncate)\b/i.test(sql)));
-  assert(mock.calls.every((sql) => !sql.includes("security_activities") && !sql.includes("select id, security")));
+  assert(mock.calls.every((sql) => !sql.includes("security_activities") && !sql.includes("security from")));
   assert(!JSON.stringify(data).includes("HIDDEN")); assert(!data.nodes.some((n) => n.domain === "keamanan"));
   assert.equal(mock.calls.at(-1), "commit"); assert(mock.released());
 });

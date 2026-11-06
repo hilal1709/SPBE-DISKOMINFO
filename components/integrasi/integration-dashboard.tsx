@@ -14,12 +14,15 @@ import { EmptyState } from "@/components/blocks/empty-state";
 import { FilterBar } from "@/components/blocks/filter-bar";
 import { FilterChips, type Chip } from "@/components/blocks/filter-chips";
 import { Segmented } from "@/components/blocks/segmented";
+import { StatCard, statTones } from "@/components/blocks/stat-card";
+import { StatRow } from "@/components/blocks/stat-row";
+import { BarChart } from "@/components/charts";
 import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { domainKeys, domains, isDomain } from "@/lib/domains";
-import { analyzeImpact, unpackArchitecture, type DomainNode, type PackedArchitecture } from "@/lib/integrasi/model";
+import { analyzeImpact, relationPairs, unpackArchitecture, type DomainNode, type PackedArchitecture } from "@/lib/integrasi/model";
 import type { PeriodOptions } from "@/lib/probis/reference";
 
 const storageLabel = { junction: "Relasi tersimpan", jsonb: "Referensi JSONB", text: "Referensi kode/nama" };
@@ -44,11 +47,26 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
   const scoped = useMemo(() => data.nodes.filter((n) => n.period === period && (!opds.length || opds.includes(n.opd))), [data.nodes, period, opds]);
   const scopedIds = useMemo(() => new Set(scoped.map((n) => n.id)), [scoped]);
   const edges = useMemo(() => data.edges.filter((e) => scopedIds.has(e.source) && scopedIds.has(e.target)), [data.edges, scopedIds]);
-  const selected = scoped.find((n) => n.id === selectedId) ?? null;
+  const selected = useMemo(() => scoped.find((n) => n.id === selectedId) ?? null, [scoped, selectedId]);
   const matches = useMemo(() => scoped.filter((n) => domain === "__all" || n.domain === domain), [scoped, domain]);
   const impacts = useMemo(() => analyzeImpact(scoped, edges, selected?.id ?? "", mode, false), [scoped, edges, selected, mode]);
-  const directEdges = edges.filter((e) => e.source === selected?.id || e.target === selected?.id);
-  const byId = new Map(scoped.map((n) => [n.id, n]));
+  const directEdges = useMemo(() => edges.filter((e) => e.source === selected?.id || e.target === selected?.id), [edges, selected]);
+  const byId = useMemo(() => new Map(scoped.map((n) => [n.id, n])), [scoped]);
+  const pairs = useMemo(() => relationPairs(scoped, edges), [scoped, edges]);
+  const stats = useMemo(() => {
+    const linked = new Set<string>();
+    for (const [a, b] of pairs) { linked.add(a.id); linked.add(b.id); }
+    return { linked: scoped.length ? Math.round(linked.size / scoped.length * 100) : 0, domains: new Set(pairs.flatMap(([a, b]) => [a.domain, b.domain])).size };
+  }, [pairs, scoped]);
+  /** Dampak per domain untuk grafik batang (pasti vs potensi). */
+  const impactChart = useMemo(() => {
+    const keys = domainKeys.filter((d) => impacts.some((i) => i.node.domain === d));
+    const count = (d: string, certain: boolean) => impacts.filter((i) => i.node.domain === d && i.certain === certain).length;
+    return { labels: keys.map((d) => domains[d].label), series: [
+      { label: "Pasti pada tautan", data: keys.map((d) => count(d, true)), color: "--brand-orange" },
+      { label: "Potensi", data: keys.map((d) => count(d, false)), color: "--brand-teal" },
+    ] };
+  }, [impacts]);
   const chips: Chip[] = opds.map((opd) => ({ id: opd, group: "OPD", label: opdOptions.find((o) => o.value === opd)?.label ?? opd, onRemove: () => update(period, opds.filter((o) => o !== opd)) }));
   if (domain !== "__all" && isDomain(domain)) chips.push({ id: "domain", group: "Domain", label: domains[domain].label, onRemove: () => update(period, opds, "__all") });
   if (period !== periods.active) chips.push({ id: "periode", group: "Periode", label: period, onRemove: () => update(periods.active, opds, domain, "") });
@@ -84,29 +102,39 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
       { label: "Domain", options: domainKeys.filter((d) => d !== "keamanan" || data.securityVisible).map((d) => ({ value: d, label: domains[d].label })), value: domain, onChange: (v) => update(period, opds, v), wide: true },
       { label: "Perangkat Daerah", multiple: true, searchable: true, options: opdOptions, values: opds, onValuesChange: (v) => update(period, v) },
       { label: "Periode", required: true, options: periods.periods, value: period, onChange: (v) => update(v, opds, domain, "") },
-    ]} actions={<Button variant="ghost" onClick={() => update(periods.active, [], "__all", "")}>Reset filter</Button>}><FilterChips chips={chips} /></FilterBar>
-    {!scoped.length ? <Card><EmptyState title="Belum ada record tervalidasi" description="Pilih OPD atau periode lain." /></Card> : <>
-      <Card><CardHeader><CardTitle as="h2">Peta hubungan</CardTitle></CardHeader><CardContent className="grid gap-4">
-        <p className="text-sm text-muted-foreground">Ringkasan record tervalidasi dan relasi antardomain.</p>
-        <DomainMap nodes={scoped} edges={edges} selected={domain === "__all" ? null : domain} securityVisible={data.securityVisible} onSelect={chooseDomain} />
-      </CardContent></Card>
+    ]} actions={<Button variant="ghost" disabled={!chips.length && !selectedId} onClick={() => {
+      const before = { period, opds, domain, selectedId };
+      update(periods.active, [], "__all", "");
+      toast("Filter direset", { action: { label: "Urungkan", onClick: () => update(before.period, before.opds, before.domain, before.selectedId) } });
+    }}>Reset filter</Button>}><FilterChips chips={chips} /></FilterBar>
+    {!scoped.length ? <Card data-reveal><EmptyState title="Belum ada record tervalidasi" description="Pilih OPD atau periode lain." /></Card> : <>
+      <StatRow>
+        <StatCard tone={statTones[0]} label="Record tervalidasi" value={scoped.length} hint={`Periode ${period}`} />
+        <StatCard tone={statTones[1]} label="Relasi antardomain" value={pairs.length} hint="pasangan record unik" />
+        <StatCard tone={statTones[2]} label="Record terhubung" value={stats.linked} suffix="%" hint="punya relasi ke domain lain" />
+        <StatCard tone={statTones[3]} label="Domain terhubung" value={stats.domains} hint="ikut dalam relasi" />
+      </StatRow>
+      <div data-aos="fade-blur" suppressHydrationWarning><Card><CardHeader><CardTitle as="h2">Peta hubungan</CardTitle></CardHeader><CardContent className="grid gap-4">
+        <DomainMap nodes={scoped} pairs={pairs} selected={domain === "__all" ? null : domain} securityVisible={data.securityVisible} onSelect={chooseDomain} />
+      </CardContent></Card></div>
       <div id="integration-search" className="scroll-mt-24"><DataTable title="Pilih data untuk melihat keterkaitan" rows={matches} rowId={(n) => n.id} searchText={(n) => `${n.code} ${n.name} ${n.opdName}`} searchPlaceholder="Kode atau nama record" onRowClick={choose} pageSize={10} minWidth={620} resetPageKey={JSON.stringify([period, opds, domain])} columns={[
         { header: "Kode", cell: (n) => n.code }, { header: "Nama", cell: (n) => <span className="font-semibold">{n.name}{selected?.id === n.id && <Badge className="ml-2" variant="secondary">Dipilih</Badge>}</span> },
         { header: "Domain", cell: (n) => domains[n.domain].label }, { header: "OPD", cell: (n) => n.opdName }, { header: "Periode", cell: (n) => n.period },
       ]} /></div>
-      <Card id="integration-impact" tabIndex={-1} className="scroll-mt-24"><CardHeader><CardTitle as="h2">Analisis Dampak</CardTitle></CardHeader><CardContent className="grid gap-4">
+      <div data-aos="fade-blur" suppressHydrationWarning><Card id="integration-impact" tabIndex={-1} className="scroll-mt-24"><CardHeader><CardTitle as="h2">Analisis Dampak</CardTitle></CardHeader><CardContent className="grid gap-4">
         <p className="text-sm text-muted-foreground">Simulasi hanya membaca hubungan record tervalidasi dalam filter dan hak akses saat ini. Tidak mengubah atau menghapus data. Hubungan di luar cakupan dapat menambah dampak.</p>
         <Segmented label="Jenis simulasi" value={mode} onChange={setMode} options={[{ value: "change", label: "Perubahan data" }, { value: "delete", label: "Penghapusan data" }]} />
         {!selected ? <EmptyState title="Pilih data untuk melihat dampak" description="Klik baris data di atas. Klik lagi untuk melepas pilihan atau pilih baris lain untuk menggantinya." /> : <>
           <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">{selected.name}</p><p className="text-xs text-muted-foreground">{selected.code} · {domains[selected.domain].label} · {selected.opdName}</p></div><div className="flex flex-wrap gap-2"><Button variant="ghost" onClick={() => choose(selected)}>Lepas pilihan</Button></div></div>
           <div className="flex flex-wrap gap-2" aria-live="polite"><Badge variant="secondary">{new Set(impacts.map((i) => i.node.domain)).size} domain terkait</Badge><Badge variant="secondary">{impacts.length} record terkait</Badge><Badge variant="secondary">{directEdges.length} relasi langsung</Badge><Badge variant="warning">{impacts.filter((i) => i.certain).length} record dengan tautan pasti terlepas</Badge></div>
+          {impactChart.labels.length > 0 && <div className="h-48" aria-label="Record terdampak per domain"><BarChart labels={impactChart.labels} series={impactChart.series} horizontal stacked /></div>}
           <p className="text-xs text-muted-foreground">Dampak pasti berlaku pada tautan yang terlepas saat penghapusan, bukan penghapusan otomatis record lain. Perubahan isi pada record terkait langsung memerlukan penilaian.</p>
         </>}
-      </CardContent></Card>
+      </CardContent></Card></div>
       {selected && <>
-        <Card><CardHeader><CardTitle as="h2">Visualisasi keterkaitan data</CardTitle></CardHeader><CardContent>
+        <div data-aos="fade-blur" suppressHydrationWarning><Card><CardHeader><CardTitle as="h2">Visualisasi keterkaitan data</CardTitle></CardHeader><CardContent>
           <RecordMap selected={selected} nodes={scoped} edges={directEdges} onSelect={choose} />
-        </CardContent></Card>
+        </CardContent></Card></div>
         <DataTable title="Record terdampak dalam simulasi" rows={impacts} rowId={(r) => r.node.id} searchText={(r) => `${r.node.code} ${r.node.name}`} onRowClick={(r) => setDetail(r.node)} pageSize={10} minWidth={750} resetPageKey={`${selected.id}:${mode}`} columns={[
           { header: "Record", cell: (r) => <span><b>{r.node.name}</b><span className="block text-xs text-muted-foreground">{r.node.code}</span></span> }, { header: "Domain", cell: (r) => domains[r.node.domain].label },
           { header: "Jangkauan", cell: () => "Langsung" }, { header: "Dampak", cell: (r) => <span><Badge variant={r.certain ? "warning" : "secondary"}>{r.certain ? "Pasti pada tautan" : "Potensi"}</Badge><span className="mt-1 block text-xs text-muted-foreground">{r.reason}</span></span> },

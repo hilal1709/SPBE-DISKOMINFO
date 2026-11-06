@@ -285,6 +285,18 @@
 @media (min-width: 1280px) {
   .stat-row .swiper-pagination { display: none; }
 }
+/* Sorotan login (components/blocks/login-highlights.tsx). */
+.login-highlights {
+  --swiper-pagination-color: var(--brand-teal);
+  --swiper-pagination-bullet-inactive-color: var(--brand-charcoal);
+  --swiper-pagination-bullet-inactive-opacity: 0.25;
+  --swiper-pagination-bottom: 0px;
+  --swiper-pagination-bullet-horizontal-gap: 3px;
+}
+.login-highlights .swiper-pagination { text-align: left; }
+.login-highlights .swiper-pagination-bullet { transition: width 0.3s var(--ease-out); border-radius: 999px; }
+.login-highlights .swiper-pagination-bullet-active { width: 18px; }
+
 /* Deretan StatRow sebelum Swiper dimuat (dan di desktop): geser tanpa scrollbar, seperti Swiper. */
 .stat-row-static { scrollbar-width: none; }
 .stat-row-static::-webkit-scrollbar { display: none; }
