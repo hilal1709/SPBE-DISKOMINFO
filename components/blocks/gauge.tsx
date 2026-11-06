@@ -48,13 +48,13 @@ export function Gauge({ value, label, caption, className }: { value: number; lab
           <b className="text-4xl leading-none font-bold tracking-tight tabular-nums">
             <CountUp value={pct} decimals={1} suffix="%" />
           </b>
-          {caption && <span className="mt-1 text-xs text-muted-foreground">{caption}</span>}
         </div>
       </div>
       <div className="mt-1 flex justify-between px-1 text-[11px] text-muted-foreground tabular-nums" aria-hidden>
         <span>0%</span>
         <span>100%</span>
       </div>
+      {caption && <p className="mt-2 text-center text-xs text-pretty text-muted-foreground">{caption}</p>}
     </div>
   );
 }

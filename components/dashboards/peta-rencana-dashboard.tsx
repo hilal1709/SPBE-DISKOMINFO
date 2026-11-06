@@ -181,7 +181,7 @@ export function PetaRencanaDashboard({
                 <CardTitle as="h2" className="section-title">Progres terlaksana</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 items-center">
-                <Gauge value={percent(terlaksana, rowsNow.length)} label={`Kegiatan terlaksana s.d. ${currentYear}`} caption={`${formatNumber(terlaksana)} dari ${formatNumber(rowsNow.length)} kegiatan yang tahunnya sudah tiba (tanpa batal)`} className="w-full" />
+                <Gauge value={percent(terlaksana, rowsNow.length)} label={`Kegiatan terlaksana s.d. ${currentYear}`} caption={`${formatNumber(terlaksana)} dari ${formatNumber(rowsNow.length)} kegiatan s.d. tahun ini (tanpa batal)`} className="w-full" />
               </CardContent>
             </Card>
           </section>

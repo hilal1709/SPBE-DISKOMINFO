@@ -1,9 +1,8 @@
 import type { Pool, PoolClient } from "pg";
-import { cache } from "react";
 import { getDb } from "@/lib/db";
 import { cached, TAGS } from "@/lib/cache";
 import type { DomainKey } from "@/lib/domains";
-import type { Architecture, DomainEdge, DomainNode, DomainSummary, RelationSummary } from "./model";
+import { packArchitecture, type Architecture, type DomainEdge, type DomainNode, type DomainSummary, type PackedArchitecture, type RelationSummary } from "./model";
 
 import { jenisConfig, type InfraJenis } from "@/lib/infrastruktur/jenis";
 import { MASKED_INFRA } from "@/lib/infrastruktur/public";
@@ -35,28 +34,36 @@ async function readArchitecture(securityVisible: boolean, period: string): Promi
   return readArchitectureFromPool(db, securityVisible, period);
 }
 
+/**
+ * Periode yang dibaca ($1 = '' berarti semua). Semua bacaan memfilter lewat join/subquery ini, bukan dengan mengirim
+ * ribuan ID ke server: waktu eksekusi di database hanya puluhan ms, yang mahal adalah ukuran data yang lewat jaringan.
+ */
+const PERIOD_IDS = "(select id from architecture_periods where $1::text='' or name=$1)";
+
 /** Injectable reader for regression tests; the production caller supplies only getDb(). */
 export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securityVisible: boolean, period = ""): Promise<Architecture> {
   const client = await db.connect();
   try {
     await client.query("begin transaction isolation level repeatable read read only");
     const visibleTables = tables.filter(([domain]) => securityVisible || domain !== "keamanan");
+    // Nama OPD tidak diulang per baris (dibaca sekali di bawah) agar data yang ditransfer tetap kecil.
     const base = visibleTables.map(([domain, table, category]) =>
-      `select '${domain}'::text as domain, t.id::text, t.code, t.name, o.code as opd, o.name as opd_name,
+      `select '${domain}'::text as domain, t.id::text, t.code, t.name, o.code as opd,
        p.name as period, coalesce(t.${category}, '') as category, t.is_sample as sample
        from ${table} t join opd o on o.id=t.opd_id join architecture_periods p on p.id=t.period_id where t.status='approved'`).join(" union all ");
-    const records = await client.query<DomainNode & { opd_name: string }>(`select * from (${base}) n where ($2::text='' or period=$2) order by domain, code, id limit $1`, [NODE_LIMIT + 1, period]);
-    const stats = await client.query<DomainSummary & { opd_name: string }>(
-      `select domain, opd, opd_name, period, category, count(*)::int as count, bool_or(sample) as sample
-       from (${base}) n where ($1::text='' or period=$1) group by domain, opd, opd_name, period, category`, [period]);
+    const records = await client.query<Omit<DomainNode, "opdName"> & { sample: boolean }>(`select * from (${base}) n where ($2::text='' or period=$2) order by domain, code, id limit $1`, [NODE_LIMIT + 1, period]);
+    const opdRows = await client.query<{ code: string; name: string }>("select code, name from opd");
+    const opdName = new Map(opdRows.rows.map((o) => [o.code, o.name]));
+    const overflow = records.rows.length > NODE_LIMIT;
     // S1: pengunjung umum tidak melihat nama komponen infrastruktur yang memuat rincian teknis (versi OS/DB, VPN, dsb.).
     // S2: nama data tertutup juga tidak tampil bagi pengunjung umum (record tetap dihitung di peta hubungan).
-    const publicName = (n: DomainNode) =>
+    const publicName = (n: Pick<DomainNode, "domain" | "name" | "code" | "category">) =>
       securityVisible ? n.name
       : n.domain === "infrastruktur" && MASKED_INFRA.has(n.category) ? `${jenisConfig[n.category as InfraJenis].label} ${n.code}`
       : n.domain === "data" && n.category === "tertutup" ? "Data tertutup"
       : n.name;
-    const nodes: DomainNode[] = records.rows.slice(0, NODE_LIMIT).map((n) => ({ id: `${n.domain}:${n.id}`, domain: n.domain, code: n.code, name: publicName(n), opd: n.opd, opdName: n.opd_name, period: n.period, category: n.category }));
+    const nodes: DomainNode[] = records.rows.slice(0, NODE_LIMIT).map((n) => ({ id: `${n.domain}:${n.id}`, domain: n.domain, code: n.code, name: publicName(n), opd: n.opd, opdName: opdName.get(n.opd) ?? n.opd, period: n.period, category: n.category }));
+    const summary = overflow ? await readSummary(client, base, period) : summarize(records.rows, opdName);
     const byId = new Map(nodes.map((n) => [n.id, n]));
     /** Nama asli untuk pencocokan rujukan teks (nama tampilan bisa disamarkan). */
     const rawName = new Map(records.rows.map((n) => [`${n.domain}:${n.id}`, n.name]));
@@ -67,13 +74,20 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
       if (edges.length >= EDGE_LIMIT) { edgeOverflow = true; return; }
       edges.push({ id: `${origin}:${source}:${target}`, source, target, label, storage, origin });
     };
-    // Restrict both endpoints in SQL: unpublished or restricted record IDs never become graph edges.
-    const linkSql = junctions.map(([table, from, domain, to, targetDomain]) =>
-      `select '${domain}:' || j.${from}::text as source, '${targetDomain}:' || j.${to}::text as target, '${table}' as origin
-       from ${table} j where ('${domain}:' || j.${from}::text)=any($1::text[]) and ('${targetDomain}:' || j.${to}::text)=any($1::text[])`).join(" union all ");
-    const links = await client.query<{ source: string; target: string; origin: string }>(`${linkSql} limit $2`, [[...byId.keys()], EDGE_LIMIT + 1]);
-    for (const e of links.rows.slice(0, EDGE_LIMIT)) add(e.source, e.target, "Relasi tersimpan", "junction", e.origin);
-    let partial = records.rows.length > NODE_LIMIT || links.rows.length > EDGE_LIMIT;
+    // Restrict both endpoints in SQL: unpublished or restricted record IDs never become graph edges (add() re-checks).
+    const linkSql = junctions.map(([table, from, domain, to, targetDomain], index) => {
+      const sourceTable = tables.find(([key]) => key === domain)![1];
+      const targetTable = tables.find(([key]) => key === targetDomain)![1];
+      return `select ${index}::int as k, j.${from}::text as s, j.${to}::text as t from ${table} j
+       join ${sourceTable} s on s.id=j.${from} join ${targetTable} t on t.id=j.${to}
+       where s.status='approved' and t.status='approved' and s.period_id in ${PERIOD_IDS} and t.period_id in ${PERIOD_IDS}`;
+    }).join(" union all ");
+    const links = await client.query<{ k: number; s: string; t: string }>(`${linkSql} limit $2`, [period, EDGE_LIMIT + 1]);
+    for (const e of links.rows.slice(0, EDGE_LIMIT)) {
+      const [table, , domain, , targetDomain] = junctions[e.k]!;
+      add(`${domain}:${e.s}`, `${targetDomain}:${e.t}`, "Relasi tersimpan", "junction", table);
+    }
+    let partial = overflow || links.rows.length > EDGE_LIMIT;
     const textIndex = new Map<string, DomainNode[]>();
     for (const n of nodes) {
       const key = JSON.stringify([n.domain, n.period, n.domain === "infrastruktur" ? (rawName.get(n.id) ?? n.name).toLowerCase() : n.code]);
@@ -81,9 +95,10 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
     }
     const targets = (domain: DomainKey, period: string, value: string) => textIndex.get(JSON.stringify([domain, period, value])) ?? [];
     const apps = await client.query<{ id: string; cloud: string | null; server: string | null; splp: string | null; jip: string | null; input_data: string | null; output_data: string | null }>(
-      "select id, cloud, server, splp, jip, input_data, output_data from applications where ('aplikasi:' || id::text)=any($1::text[])", [[...byId.keys()]]);
+      `select id::text, cloud, server, splp, jip, input_data, output_data from applications where status='approved' and period_id in ${PERIOD_IDS}`, [period]);
     for (const app of apps.rows) {
-      const source = byId.get(`aplikasi:${app.id}`)!;
+      const source = byId.get(`aplikasi:${app.id}`);
+      if (!source) continue;
       for (const field of ["cloud", "server", "splp", "jip"] as const) {
         const value = app[field]?.trim().toLowerCase();
         if (!value) continue;
@@ -95,40 +110,69 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
       }
     }
     // Authorization is evaluated by the page before this parameter is chosen; anonymous snapshots omit this read entirely.
-    if (securityVisible) await addSecurityEdges(client, nodes, add);
+    if (securityVisible) await addSecurityEdges(client, nodes, period, add);
     if (edgeOverflow) partial = true;
     await client.query("commit");
-    return { nodes, edges: edges.slice(0, EDGE_LIMIT), summary: stats.rows.map((r) => ({ domain: r.domain, opd: r.opd, opdName: r.opd_name, period: r.period, category: r.category, count: r.count, sample: r.sample })), securityVisible, partial, available: true };
+    return { nodes, edges: edges.slice(0, EDGE_LIMIT), summary, securityVisible, partial, available: true };
   } catch (error) { await client.query("rollback"); throw error; }
   finally { client.release(); }
 }
 
-async function addSecurityEdges(client: PoolClient, nodes: DomainNode[], add: (source: string, target: string, label: string, storage: DomainEdge["storage"], origin: string) => void) {
+/** Ringkasan per domain/OPD/periode/kategori dari record yang sudah dibaca (tanpa query tambahan). */
+function summarize(rows: { domain: DomainKey; opd: string; period: string; category: string; sample: boolean }[], opdName: Map<string, string>): DomainSummary[] {
+  const groups = new Map<string, DomainSummary>();
+  for (const r of rows) {
+    const key = JSON.stringify([r.domain, r.opd, r.period, r.category]);
+    const g = groups.get(key);
+    if (g) { g.count++; g.sample ||= r.sample; }
+    else groups.set(key, { domain: r.domain, opd: r.opd, opdName: opdName.get(r.opd) ?? r.opd, period: r.period, category: r.category, count: 1, sample: r.sample });
+  }
+  return [...groups.values()];
+}
+
+/** Hanya saat record melebihi NODE_LIMIT: ringkasan tetap dihitung penuh di database. */
+async function readSummary(client: PoolClient, base: string, period: string): Promise<DomainSummary[]> {
+  const { rows } = await client.query<DomainSummary & { opd_name: string }>(
+    `select domain, n.opd, o.name as opd_name, period, category, count(*)::int as count, bool_or(sample) as sample
+     from (${base}) n join opd o on o.code=n.opd where ($1::text='' or period=$1) group by domain, n.opd, o.name, period, category`, [period]);
+  return rows.map((r) => ({ domain: r.domain, opd: r.opd, opdName: r.opd_name, period: r.period, category: r.category, count: r.count, sample: r.sample }));
+}
+
+async function addSecurityEdges(client: PoolClient, nodes: DomainNode[], period: string, add: (source: string, target: string, label: string, storage: DomainEdge["storage"], origin: string) => void) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const securityIndex = new Map(nodes.filter((n) => n.domain === "keamanan").map((n) => [JSON.stringify([n.period, n.category, n.code]), n]));
-  for (const [domain, table] of tables.filter(([d]) => ["data", "aplikasi", "infrastruktur"].includes(d))) {
-    const { rows } = await client.query<{ id: string; security: Record<string, unknown> }>(`select id, security from ${table} where ('${domain}:' || id::text)=any($1::text[])`, [[...byId.keys()]]);
-    for (const row of rows) {
-      const source = byId.get(`${domain}:${row.id}`)!;
-      for (const [kind, values] of Object.entries(row.security ?? {})) {
-        if (!Array.isArray(values)) continue;
-        for (const value of new Set(values.filter((v): v is string => typeof v === "string"))) {
-          const target = securityIndex.get(JSON.stringify([source.period, kind, value]));
-          if (target) add(source.id, target.id, "Referensi keamanan", "jsonb", `${table}.security.${kind}`);
-        }
+  const sources = tables.filter(([d]) => ["data", "aplikasi", "infrastruktur"].includes(d));
+  // Satu statement untuk ketiga domain; hanya record terpublikasi dalam periode yang dibaca.
+  const sql = sources.map(([domain, table]) =>
+    `select '${domain}'::text as domain, '${table}'::text as tbl, id::text, security from ${table} where status='approved' and period_id in ${PERIOD_IDS} and jsonb_typeof(security)='object' and security <> '{}'::jsonb`).join(" union all ");
+  const { rows } = await client.query<{ domain: DomainKey; tbl: string; id: string; security: Record<string, unknown> }>(sql, [period]);
+  for (const row of rows) {
+    const source = byId.get(`${row.domain}:${row.id}`);
+    if (!source) continue;
+    for (const [kind, values] of Object.entries(row.security ?? {})) {
+      if (!Array.isArray(values)) continue;
+      for (const value of new Set(values.filter((v): v is string => typeof v === "string"))) {
+        const target = securityIndex.get(JSON.stringify([source.period, kind, value]));
+        if (target) add(source.id, target.id, "Referensi keamanan", "jsonb", `${row.tbl}.security.${kind}`);
       }
     }
   }
 }
 
-// Request memoization only: a graph can exceed Next's persistent 2 MB entry limit.
-const cachedArchitecture = cache(readArchitecture);
+const emptyArchitecture = (securityVisible: boolean): Architecture => ({ nodes: [], edges: [], summary: [], securityVisible, partial: false, available: false });
+
+/**
+ * Snapshot ringkas (PackedArchitecture, ±300 KB per periode) disimpan lintas request; graf mentah bisa melewati batas
+ * entri 2 MB Next. `securityVisible` ikut menjadi kunci cache sehingga snapshot publik dan internal terpisah.
+ * Gagal baca tidak di-cache (error dilempar sebelum unstable_cache menyimpan).
+ */
+const cachedPacked = cached(async (securityVisible: boolean, period: string) => packArchitecture(await readArchitecture(securityVisible, period)),
+  "portal:architecture-packed-v1", [TAGS.content, TAGS.reference]);
+
 /** Internal server loader. Never expose securityVisible as a user-controlled action argument. */
-export async function loadArchitecture(securityVisible: boolean, period: string): Promise<Architecture> {
-  try { return await cachedArchitecture(securityVisible, period); }
-  catch {
-    return { nodes: [], edges: [], summary: [], securityVisible, partial: false, available: false };
-  }
+export async function loadPackedArchitecture(securityVisible: boolean, period: string): Promise<PackedArchitecture> {
+  try { return await cachedPacked(securityVisible, period); }
+  catch { return packArchitecture(emptyArchitecture(securityVisible)); }
 }
 
 // Aggregate pages are deliberately small; no record names, attributes or graph payload enter this cache.
