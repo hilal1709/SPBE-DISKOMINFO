@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { domainKeys } from "@/lib/domains";
 import { muatanKeys, sourceKeys, statusKeys } from "./muatan";
 
 const optional = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
@@ -23,6 +24,8 @@ export const rencanaInput = z
     evaluasi: optional(2000),
     source: z.enum(sourceKeys).default("manual"),
     sourceRef: optional(120),
+    /** Entri arsitektur terkait. Tidak dikirim (impor) = tautan yang ada tidak diubah. */
+    tautan: z.array(z.object({ domain: z.enum(domainKeys), code: z.string().trim().min(1).max(60) })).max(80).optional(),
   })
   .superRefine((v, ctx) => {
     const [start, end] = v.period.split(/[–-]/).map(Number);

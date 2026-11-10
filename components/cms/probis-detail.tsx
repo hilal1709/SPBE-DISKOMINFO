@@ -1,4 +1,5 @@
 "use client";
+import { RelatedPlans } from "@/components/peta-rencana/related-plans";
 import { deleteProbis, getProbisReviews, reviewProbis } from "@/app/cms/actions";
 import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
 import { DiagramPreview } from "@/components/cms/bpmn/diagram-preview";
@@ -68,6 +69,7 @@ export function ProbisDetail({ record, actor, onClose }: { record: ProbisRecord;
 
       <DiagramPreview id={record.id} hasDiagram={record.hasDiagram} editable={can.edit(actor, record)} />
       <ProbisHistory id={record.id} />
+      <RelatedPlans domain="probis" code={record.code} period={record.period} />
       <ReviewHistory id={record.id} load={getProbisReviews} />
       <ReviewActions record={record} actor={actor} noun="Probis" editHref={`/cms/proses-bisnis/${record.id}`} onReview={reviewProbis} onDelete={deleteProbis} onDone={onClose} />
     </DetailDialog>

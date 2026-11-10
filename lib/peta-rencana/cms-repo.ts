@@ -2,7 +2,8 @@ import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import { usedCodesSql } from "@/lib/cms/codes";
-import type { RencanaIndicator, RencanaRecord } from "@/lib/types";
+import type { RencanaIndicator, RencanaLink, RencanaRecord } from "@/lib/types";
+import { copyLinks, LINKS_SQL, saveLinks } from "./links";
 import { muatanConfig, type Muatan, type RencanaStatus } from "./muatan";
 import type { IndicatorValues, RencanaValues } from "./schema";
 import { cached, TAGS } from "@/lib/cache";
@@ -37,14 +38,15 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
 const SELECT = `
   select r.id, r.code, r.name, r.year, r.sasaran, r.inisiatif, r.muatan, r.program, r.target, r.jumlah::float as jumlah, r.satuan,
          r.status, r.realisasi, r.evaluation_note, r.source, r.source_ref, src.code as deferred_from,
-         o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id, ap.name as period, r.updated_at, r.is_sample
+         o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id, ap.name as period, r.updated_at, r.is_sample,
+         ${LINKS_SQL}
   from roadmap_items r
   join opd o on o.id = r.opd_id
   left join opd_periods op on op.opd_id = o.id and op.period_id = r.period_id
   join architecture_periods ap on ap.id = r.period_id
   left join roadmap_items src on src.id = r.deferred_from`;
 
-type Row = Record<string, string | null> & { year: number; jumlah: number; updated_at: Date; is_sample: boolean };
+type Row = Record<string, string | null> & { year: number; jumlah: number; updated_at: Date; is_sample: boolean; tautan: RencanaLink[] };
 
 const toRecord = (r: Row): RencanaRecord => ({
   id: r.id!,
@@ -70,6 +72,7 @@ const toRecord = (r: Row): RencanaRecord => ({
   period: r.period ?? "",
   updatedAt: r.updated_at.toISOString(),
   isSample: r.is_sample,
+  tautan: r.tautan ?? [],
 });
 
 async function loadListRencana() {
@@ -135,6 +138,7 @@ export async function insertRencana(client: PoolClient, v: RencanaValues, actor:
      values (${values.map((_, i) => `$${i + 1}`).join(",")}) returning id`,
     values,
   );
+  if (v.tautan?.length) await saveLinks(client, rows[0].id, v.tautan);
   return rows[0].id as string;
 }
 
@@ -151,6 +155,7 @@ export function updateRencana(id: string, v: RencanaValues, actor: Actor) {
     const ref = await ids(client, v);
     const { rowCount } = await client.query(`${UPDATE} where id = $1`, [id, ...columns(v), ref.opd_id, ref.period_id, actor.id]);
     if (!rowCount) throw new Error("Kegiatan rencana tidak ditemukan.");
+    if (v.tautan) await saveLinks(client, id, v.tautan);
     await syncGap(client, id, v.status);
     return id;
   });
@@ -205,6 +210,7 @@ export function deferRencana(id: string, actor: Actor) {
       actor,
       { deferredFrom: id, sample: r.is_sample },
     );
+    await copyLinks(client, id, newId);
     return { newId, previous: r.status as RencanaStatus, year, period };
   });
 }

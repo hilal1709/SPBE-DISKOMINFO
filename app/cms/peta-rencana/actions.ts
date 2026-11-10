@@ -1,7 +1,9 @@
 "use server";
 import { assertImportQuota } from "@/lib/security/rate-limit";
 import { assertUploadFile } from "@/lib/security/upload";
-import { arg, editOptions, idSchema, importRows, isValid, updateOption } from "@/lib/security/schemas";
+import { arg, editOptions, idSchema, importRows, isValid, opdCode, periodName, updateOption } from "@/lib/security/schemas";
+import { domainKeys, type DomainKey } from "@/lib/domains";
+import * as links from "@/lib/peta-rencana/links";
 import { z } from "zod";
 import { can, currentActor } from "@/lib/access";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
@@ -33,6 +35,30 @@ export async function saveRencana(input: RencanaInput, options: { id?: string })
     const id = options.id ? await repo.updateRencana(options.id, parsed.data, actor) : await repo.createRencana(parsed.data, actor);
     refresh();
     return { ok: true, data: { id } };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+const linkArgs = z.object({ period: periodName, domain: z.enum(domainKeys, "Data tidak valid."), opd: opdCode.nullable() });
+
+/** Pilihan entri arsitektur tervalidasi untuk ditautkan ke kegiatan (formulir Peta Rencana). */
+export async function rencanaLinkOptions(period: string, domain: DomainKey, opd: string | null): Promise<ActionResult<{ code: string; name: string; opd: string }[]>> {
+  try {
+    const args = arg(linkArgs, { period, domain, opd });
+    await manager();
+    return { ok: true, data: await links.linkOptions(args.period, args.domain, args.opd || null) };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/** Kegiatan Peta Rencana yang menunjuk satu entri arsitektur (untuk pop-up detail domain di CMS; wajib login). */
+export async function relatedRencana(domain: DomainKey, code: string, period: string): Promise<ActionResult<links.RelatedPlan[]>> {
+  try {
+    const args = arg(z.object({ period: periodName, domain: z.enum(domainKeys, "Data tidak valid."), code: z.string().trim().min(1).max(60) }), { period, domain, code });
+    await currentActor();
+    return { ok: true, data: await links.relatedPlans(args.domain, args.code, args.period) };
   } catch (error) {
     return fail(error);
   }

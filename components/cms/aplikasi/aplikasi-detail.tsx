@@ -1,4 +1,5 @@
 "use client";
+import { RelatedPlans } from "@/components/peta-rencana/related-plans";
 import { deleteAplikasi, getAplikasiReviews, reviewAplikasi } from "@/app/cms/aplikasi/actions";
 import { useRaa, useRaaSet } from "@/components/aplikasi/raa-context";
 import { Banner } from "@/components/blocks/banner";
@@ -130,6 +131,8 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
         </DetailSection>
       )}
       <p className="text-xs text-muted-foreground">Diperbarui {date.format(new Date(record.updatedAt))}</p>
+
+      <RelatedPlans domain="aplikasi" code={record.code} period={record.period} />
 
       <ReviewHistory id={record.id} load={getAplikasiReviews} />
       <ReviewActions record={record} actor={actor} noun="Aplikasi" domain="aplikasi" editHref={`/cms/aplikasi/${record.id}`} onReview={reviewAplikasi} onDelete={deleteAplikasi} onDone={onClose} />

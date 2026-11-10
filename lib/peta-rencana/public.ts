@@ -20,6 +20,7 @@ export function toPublicRencana(r: Rencana): Rencana {
     evaluasi: null,
     sourceRef: null,
     deferredFrom: null,
+    tautan: [],
     restricted: true,
   };
 }

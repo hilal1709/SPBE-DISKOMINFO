@@ -335,6 +335,8 @@ export type Rencana = {
   deferredFrom: string | null;
   /** Portal publik: kegiatan Keamanan/Audit, hanya untuk agregat (tidak tampil di katalog). */
   restricted?: boolean;
+  /** Entri arsitektur yang ditunjuk kegiatan ini. */
+  tautan?: RencanaLink[];
 };
 
 /** Kegiatan Peta Rencana di CMS (satu baris tabel roadmap_items). */
@@ -346,10 +348,14 @@ export type RencanaRecord = Omit<Rencana, "id" | "opd"> & {
   opdName: string;
   updatedAt: string;
   isSample: boolean;
+  tautan: RencanaLink[];
 };
 
 /** Indikator sasaran beserta target per tahun (kunci = tahun). */
 export type RencanaIndicator = { id: string; period: string; sasaran: string; inisiatif: string | null; indikator: string; targets: Record<string, string> };
+
+/** Entri arsitektur yang ditunjuk kegiatan Peta Rencana (kode pada periode kegiatan). */
+export type RencanaLink = { domain: "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan"; code: string; name: string };
 
 /** Temuan Gap Analysis (satu baris tabel gap_analyses). `rule` null = temuan manual. */
 export type GapRecord = {

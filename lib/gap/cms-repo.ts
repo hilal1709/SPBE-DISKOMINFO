@@ -7,7 +7,7 @@ import { muatanConfig, type Muatan } from "@/lib/peta-rencana/muatan";
 import type { RencanaValues } from "@/lib/peta-rencana/schema";
 import type { GapRecord } from "@/lib/types";
 import { detectGaps } from "./detect";
-import { ruleConfig, type GapPriority, type GapStatus } from "./rules";
+import { ruleConfig, type GapPriority, type GapRule, type GapStatus } from "./rules";
 import type { GapValues } from "./schema";
 import { cached, TAGS } from "@/lib/cache";
 
@@ -206,10 +206,12 @@ export async function deleteGap(id: string) {
 /** Jadikan temuan usulan Peta Rencana: kegiatan baru bersumber gap, temuan berstatus diusulkan. */
 export function proposeToRoadmap(id: string, v: RencanaValues, actor: Actor) {
   return tx(async (client) => {
-    const { rows } = await client.query("select code, status from gap_analyses where id = $1 for update", [id]);
+    const { rows } = await client.query("select code, status, rule, subject_code from gap_analyses where id = $1 for update", [id]);
     if (!rows[0]) throw new Error("Temuan tidak ditemukan.");
     if (rows[0].status !== "terbuka") throw new Error("Hanya temuan terbuka yang bisa diusulkan.");
-    const roadmapId = await insertRencana(client, { ...v, source: "gap", sourceRef: rows[0].code }, actor);
+    const subject = ruleConfig[rows[0].rule as GapRule]?.subjectDomain;
+    const tautan = subject && rows[0].subject_code ? [...(v.tautan ?? []), { domain: subject, code: rows[0].subject_code as string }] : v.tautan;
+    const roadmapId = await insertRencana(client, { ...v, tautan, source: "gap", sourceRef: rows[0].code }, actor);
     await client.query("update gap_analyses set status = 'diusulkan', roadmap_item_id = $2, updated_by = $3, updated_at = now() where id = $1", [id, roadmapId, actor.id]);
     return roadmapId;
   });

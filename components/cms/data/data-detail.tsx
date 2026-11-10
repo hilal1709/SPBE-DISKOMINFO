@@ -1,4 +1,5 @@
 "use client";
+import { RelatedPlans } from "@/components/peta-rencana/related-plans";
 import { deleteData, getDataReviews, reviewData } from "@/app/cms/data/actions";
 import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
 import { Banner } from "@/components/blocks/banner";
@@ -108,6 +109,7 @@ export function DataDetail({ record, actor, onClose }: { record: DataRecord; act
       {[...classificationWarnings(record), ...(closedInterop(record) ? [CLOSED_INTEROP_MESSAGE] : [])].map((w) => (
         <Banner key={w} variant="warning" label="Tinjau klasifikasi" dismissible={false}>{w}</Banner>
       ))}
+      <RelatedPlans domain="data" code={record.code} period={record.period} />
       <ReviewHistory id={record.id} load={getDataReviews} />
       <ReviewActions record={record} actor={actor} noun="Data" domain="data" editHref={`/cms/data/${record.id}`} onReview={reviewData} onDelete={deleteData} onDone={onClose} />
     </DetailDialog>

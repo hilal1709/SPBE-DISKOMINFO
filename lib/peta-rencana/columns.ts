@@ -22,6 +22,7 @@ export const rencanaColumns: Column<RencanaRecord>[] = [
   { header: "Catatan Evaluasi", width: 32, value: (r) => r.evaluasi ?? "" },
   { header: "Asal Usulan", width: 18, value: (r) => sourceLabel[r.source] },
   { header: "Referensi Asal", width: 16, value: (r) => r.sourceRef ?? "" },
+  { header: "Arsitektur Terkait", width: 44, value: (r) => r.tautan.map((l) => `${l.code} ${l.name}`).join("\n") },
 ];
 
 /** Kolom sheet indikator: target per tahun periode. */

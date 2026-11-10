@@ -1,6 +1,7 @@
 import { DetailField, DetailSection } from "@/components/blocks/detail-dialog";
 import { StatusBadge, ToneBadge } from "@/components/blocks/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { domains } from "@/lib/domains";
 import { muatanConfig, sourceLabel, statusConfig } from "@/lib/peta-rencana/muatan";
 import type { Rencana } from "@/lib/types";
 
@@ -46,6 +47,19 @@ export function RencanaBody({ r }: { r: Item }) {
         <DetailField label="Periode" value={r.period} />
         <DetailField label="Asal usulan" value={r.sourceRef ? `${sourceLabel[r.source]} · ${r.sourceRef}` : sourceLabel[r.source]} className="sm:col-span-2" />
       </div>
+      {!!r.tautan?.length && (
+        <DetailSection title="Arsitektur terkait">
+          <ul className="grid gap-2">
+            {r.tautan.map((l) => (
+              <li key={`${l.domain}:${l.code}`} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                <Badge variant="muted">{domains[l.domain].label}</Badge>
+                <span className="font-medium">{l.name}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">{l.code}</span>
+              </li>
+            ))}
+          </ul>
+        </DetailSection>
+      )}
       <DetailSection title="Evaluasi & realisasi" tone="accent">
         <div className="grid gap-2 sm:grid-cols-2">
           <DetailField label="Realisasi" value={r.realisasi ?? "Belum ada"} className="bg-card" />

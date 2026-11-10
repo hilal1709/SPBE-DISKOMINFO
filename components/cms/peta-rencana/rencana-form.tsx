@@ -1,4 +1,5 @@
 "use client";
+import { ArchitectureLinks } from "@/components/peta-rencana/architecture-links";
 import { UnsavedGuard } from "@/components/cms/unsaved-guard";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,7 @@ import { yearsOf } from "@/lib/peta-rencana/query";
 import { inisiatifBySasaran } from "@/lib/peta-rencana/sasaran";
 import type { RencanaInput } from "@/lib/peta-rencana/schema";
 import { ikuBySasaran, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
-import type { RencanaRecord } from "@/lib/types";
+import type { RencanaLink, RencanaRecord } from "@/lib/types";
 import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ type Values = {
   evaluasi: string;
   source: RencanaSource;
   sourceRef: string;
+  tautan: RencanaLink[];
 };
 
 const fromRecord = (r: RencanaRecord | null, active: string): Values => ({
@@ -63,6 +65,7 @@ const fromRecord = (r: RencanaRecord | null, active: string): Values => ({
   evaluasi: r?.evaluasi ?? "",
   source: r?.source ?? "manual",
   sourceRef: r?.sourceRef ?? "",
+  tautan: r?.tautan ?? [],
 });
 
 /** Form kegiatan Peta Rencana: muatan → sasaran & inisiatif → kegiatan & target, lalu evaluasi & realisasi terpisah. */
@@ -101,7 +104,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
 
   const submit = () => {
     startSaving(async () => {
-      const result = await saveRencana({ ...values, muatan: values.muatan || undefined } as RencanaInput, { id: record?.id });
+      const result = await saveRencana({ ...values, muatan: values.muatan || undefined, tautan: values.tautan.map(({ domain, code }) => ({ domain, code })) } as RencanaInput, { id: record?.id });
       if (!result.ok) {
         setErrors(result.fields ?? {});
         toast.error(result.error);
@@ -252,6 +255,16 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
                 </Field>
               )}
             </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card data-reveal>
+          <CardHeader>
+            <CardTitle as="h2" className="section-title">Arsitektur terkait</CardTitle>
+            <CardDescription>Entri tervalidasi periode {values.period} yang ditangani kegiatan ini.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ArchitectureLinks period={values.period} opd={values.opd} value={values.tautan} onChange={(v) => set("tautan", v)} />
           </CardContent>
         </Card>
 
