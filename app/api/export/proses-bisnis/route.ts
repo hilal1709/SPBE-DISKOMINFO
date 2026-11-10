@@ -15,7 +15,7 @@ export async function GET() {
   const header = [
     "Nama Bisnis/Urusan", "ID", "Uraian Bisnis/Urusan", "→ Unit Kerja (Dependency)", "→ RAB Level 4 (Dependency)", "→ RAB Level 5 (Dependency)",
     "Sasaran Strategis", "Indikator Kinerja Utama (IKU)", "Nilai IKU Target", "Nilai IKU Terealisasi",
-    "→ RAB Level 1 Nasional (Dependency)", "→ RAB Level 2 (Dependency)", "→ RAB Level 3 (Dependency)", "Status Probis", "Periode", "Status Verifikasi",
+    "→ RAB Level 1 Nasional (Dependency)", "→ RAB Level 2 (Dependency)", "→ RAB Level 3 (Dependency)", "Status Probis", "Periode", "Status Verifikasi", "Diagram",
   ];
   const sheet = XLSX.utils.json_to_sheet(
     rows.map((r) => {
@@ -39,11 +39,12 @@ export async function GET() {
       "Status Probis": statusLabel[r.probisStatus],
       Periode: r.period,
       "Status Verifikasi": reviewLabel[r.status],
+      Diagram: r.hasDiagram ? "Ada" : "Belum",
       };
     }),
     { header },
   );
-  sheet["!cols"] = [40, 22, 50, 32, 18, 18, 40, 30, 14, 14, 30, 30, 40, 12, 12, 16].map((wch) => ({ wch }));
+  sheet["!cols"] = [40, 22, 50, 32, 18, 18, 40, 30, 14, 14, 30, 30, 40, 12, 12, 16, 10].map((wch) => ({ wch }));
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, "Proses Bisnis");
   return xlsxResponse(book, "proses-bisnis");

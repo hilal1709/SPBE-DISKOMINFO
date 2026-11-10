@@ -204,6 +204,7 @@ export function BusinessProcessDashboard({
               { header: "Nama proses bisnis", sortValue: (p) => p.name, cell: (p) => <span className="font-semibold">{p.name}</span> },
               { header: "Status", hideable: true, sortValue: (p) => statusLabel[p.status], cell: (p) => <StatusBadge status={statusLabel[p.status]} /> },
               { header: "Perangkat Daerah", hideable: true, sortValue: (p) => pdName(p.pd), cell: (p) => pdName(p.pd) },
+              { header: "Diagram", hideable: true, sortValue: (p) => Number(!!p.diagram), cell: (p) => <Badge variant={p.diagram ? "success" : "muted"}>{p.diagram ? "Ada" : "Belum"}</Badge> },
               { header: "Sasaran strategis", hideable: true, defaultHidden: true, sortValue: (p) => p.sasaran, cell: (p) => <span className="line-clamp-2 text-muted-foreground">{p.sasaran}</span> },
               { header: "RAB 1", hideable: true, defaultHidden: true, sortValue: (p) => p.rab1, cell: (p) => <span className="text-muted-foreground">{rabLabel(p.rab1)}</span> },
               { header: "RAB 2", hideable: true, defaultHidden: true, sortValue: (p) => p.rab2, cell: (p) => <span className="text-muted-foreground">{rabLabel(p.rab2)}</span> },

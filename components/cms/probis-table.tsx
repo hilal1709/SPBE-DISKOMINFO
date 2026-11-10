@@ -59,7 +59,7 @@ export function ProbisTable({
   const rab = (code: string | null, period: string) => (code ? rabs.forPeriod(period).label(code) : "—");
   const deep = (value: string | null, period: string) => rabs.forPeriod(period).text(value) ?? "—";
   const [selected, setSelected] = useState<ProbisRecord | null>(null);
-  const { tab, pd, rab1, period } = view;
+  const { tab, pd, rab1, period, diagram } = view;
 
   /** Ubah tampilan lewat URL; server menghitung halaman baru tanpa memuat ulang halaman. */
   const update = (patch: Partial<ProbisView>) => {
@@ -110,6 +110,7 @@ export function ProbisTable({
         filters={[
           ...(can.readAll(actor) ? [{ label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "RAB 1", multiple: true, options: rabs.forPeriod(period === "__all" ? undefined : period).level(1).map((n) => ({ value: n.code, label: `${n.code} ${n.name}` })), values: rab1, onValuesChange: setRab1 },
+          { label: "Diagram", options: [{ value: "ada", label: "Sudah ada" }, { value: "belum", label: "Belum ada" }], value: diagram || "__all", onChange: (value: string) => update({ diagram: value === "ada" || value === "belum" ? value : "" }) },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
         ]}
       />
@@ -123,7 +124,7 @@ export function ProbisTable({
         searchPlaceholder="Cari nama, ID, atau OPD"
         onRowClick={setSelected}
         pageSize={PAGE_SIZE}
-        minWidth={860}
+        minWidth={940}
         actions={
           <>
             {can.export(actor) && (
@@ -159,6 +160,7 @@ export function ProbisTable({
             ),
           },
           { header: "Perangkat Daerah", hideable: true, sortKey: "opd", sortValue: (r) => r.opdName, cell: (r) => r.opdName },
+          { header: "Diagram", hideable: true, sortKey: "diagram", sortValue: (r) => Number(r.hasDiagram), cell: (r) => <Badge variant={r.hasDiagram ? "success" : "muted"}>{r.hasDiagram ? "Ada" : "Belum"}</Badge> },
           { header: "RAB 3", hideable: true, sortKey: "rab3", sortValue: (r) => r.rab3 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab3, r.period)}</span> },
           { header: "Status probis", hideable: true, defaultHidden: true, sortKey: "probisStatus", sortValue: (r) => r.probisStatus, cell: (r) => probisLabel[r.probisStatus] },
           { header: "RAB 1", hideable: true, defaultHidden: true, sortKey: "rab1", sortValue: (r) => r.rab1 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab1, r.period)}</span> },

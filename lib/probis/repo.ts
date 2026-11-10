@@ -91,6 +91,7 @@ export type ProbisPageQuery = {
   tab: ProbisTab;
   pd: string[];
   rab1: string[];
+  diagram?: "" | "ada" | "belum";
   /** Nama periode, atau "__all". */
   period: string;
   q: string;
@@ -113,6 +114,7 @@ const PROBIS_SORT: Record<string, string> = {
   rabL4: "pb.rab_l4",
   rabL5: "pb.rab_l5",
   period: "ap.name",
+  diagram: "(pb.bpmn_xml is not null)",
 };
 
 /**
@@ -125,6 +127,7 @@ async function loadProbisPage(query: ProbisPageQuery) {
   if (query.opdId) where.push(`pb.opd_id = $${params.push(query.opdId)}`);
   if (query.pd.length) where.push(`o.code = any($${params.push(query.pd)})`);
   if (query.rab1.length) where.push(`r1.code = any($${params.push(query.rab1)})`);
+  if (query.diagram) where.push(`pb.bpmn_xml is ${query.diagram === "ada" ? "not null" : "null"}`);
   if (query.period !== "__all") where.push(`ap.name = $${params.push(query.period)}`);
   const q = query.q.trim();
   if (q) where.push(`(pb.code ilike $${params.push(`%${q}%`)} or pb.name ilike $${params.length} or o.name ilike $${params.length})`);
