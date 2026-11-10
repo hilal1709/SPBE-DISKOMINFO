@@ -10,6 +10,8 @@ import { FilterBar } from "@/components/blocks/filter-bar";
 import { StatusBadge } from "@/components/blocks/status-badge";
 import { LayananDetail } from "@/components/cms/layanan/layanan-detail";
 import { ReviewBadge } from "@/components/cms/review-badge";
+import { clamp, links } from "@/components/cms/template-cells";
+import { useRabSet } from "@/components/probis/rab-context";
 import { Icon } from "@/components/icon";
 import { useRalSet } from "@/components/layanan/ral-context";
 import { Reveal } from "@/components/motion/reveal";
@@ -39,6 +41,7 @@ const tabs: { value: Tab; label: string }[] = [
 export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; actor: Actor; periods: PeriodOptions }) {
   const opd = useOpd();
   const rals = useRalSet();
+  const rabs = useRabSet();
   /** Nama RAL mengikuti versi RAL periode masing-masing layanan. */
   const ral = (code: string | null, period: string) => (code ? rals.forPeriod(period).label(code) : "—");
   const { tab, setTab, period, setPeriod } = useListFilters();
@@ -131,7 +134,6 @@ export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; 
         }
         columns={[
           { header: "Status", sortValue: (r) => r.status, cell: (r) => <ReviewBadge status={r.status} /> },
-          { header: "ID", className: "whitespace-nowrap", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
           {
             header: "Nama layanan",
             sortValue: (r) => r.name,
@@ -143,14 +145,24 @@ export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; 
               </span>
             ),
           },
-          { header: "Metode", hideable: true, sortValue: (r) => r.metode, cell: (r) => <StatusBadge status={metodeLabel[r.metode]} /> },
-          { header: "Perangkat Daerah", hideable: true, sortValue: (r) => r.opdName, cell: (r) => r.opdName },
-          { header: "RAL 3", hideable: true, sortValue: (r) => r.ral3 ?? "", cell: (r) => <span className="text-muted-foreground">{ral(r.ral3, r.period)}</span> },
-          { header: "Target", hideable: true, defaultHidden: true, sortValue: (r) => r.target, cell: (r) => targetLabel[r.target] },
+          { header: "ID", className: "whitespace-nowrap", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
+          { header: "Tujuan", hideable: true, defaultHidden: true, cell: (r) => clamp(r.tujuan) },
+          { header: "Fungsi", hideable: true, defaultHidden: true, cell: (r) => clamp(r.fungsi) },
+          { header: "Urusan pemerintahan (RAB 2)", hideable: true, defaultHidden: true, sortValue: (r) => r.rab2 ?? "", cell: (r) => <span className="text-muted-foreground">{r.rab2 ? rabs.forPeriod(r.period).label(r.rab2) : "—"}</span> },
+          { header: "Target layanan", hideable: true, defaultHidden: true, sortValue: (r) => r.target, cell: (r) => targetLabel[r.target] },
+          { header: "Potensi manfaat", hideable: true, defaultHidden: true, cell: (r) => clamp(r.manfaat) },
+          { header: "Potensi ekonomi", hideable: true, defaultHidden: true, cell: (r) => clamp(r.ekonomi) },
+          { header: "RAL 4", hideable: true, defaultHidden: true, sortValue: (r) => r.ralL4 ?? "", cell: (r) => <span className="text-muted-foreground">{rals.forPeriod(r.period).text(r.ralL4) ?? "—"}</span> },
+          { header: "RAL 5", hideable: true, defaultHidden: true, sortValue: (r) => r.ralL5 ?? "", cell: (r) => <span className="text-muted-foreground">{rals.forPeriod(r.period).text(r.ralL5) ?? "—"}</span> },
+          { header: "Metode layanan", hideable: true, sortValue: (r) => r.metode, cell: (r) => <StatusBadge status={metodeLabel[r.metode]} /> },
+          { header: "Kementerian/Lembaga terkait", hideable: true, defaultHidden: true, sortValue: (r) => r.kl ?? "", cell: (r) => r.kl ?? "—" },
           { header: "RAL 1", hideable: true, defaultHidden: true, sortValue: (r) => r.ral1 ?? "", cell: (r) => <span className="text-muted-foreground">{ral(r.ral1, r.period)}</span> },
           { header: "RAL 2", hideable: true, defaultHidden: true, sortValue: (r) => r.ral2 ?? "", cell: (r) => <span className="text-muted-foreground">{ral(r.ral2, r.period)}</span> },
-          { header: "Tujuan", hideable: true, defaultHidden: true, cell: (r) => <span className="line-clamp-2 text-muted-foreground">{r.tujuan}</span> },
-          { header: "Proses bisnis", hideable: true, defaultHidden: true, sortValue: (r) => r.probis.length, cell: (r) => (r.probis.length ? `${r.probis.length} probis` : "—") },
+          { header: "RAL 3", hideable: true, sortValue: (r) => r.ral3 ?? "", cell: (r) => <span className="text-muted-foreground">{ral(r.ral3, r.period)}</span> },
+          { header: "Unit pelaksana", hideable: true, sortValue: (r) => r.opdName, cell: (r) => r.opdName },
+          { header: "Potensi risiko", hideable: true, defaultHidden: true, cell: (r) => clamp(r.risiko) },
+          { header: "Mitigasi risiko", hideable: true, defaultHidden: true, cell: (r) => clamp(r.mitigasi) },
+          { header: "Proses bisnis", hideable: true, defaultHidden: true, sortValue: (r) => r.probis.length, cell: (r) => links(r.probis) },
           { header: "Periode", hideable: true, defaultHidden: true, sortValue: (r) => r.period, cell: (r) => r.period },
         ]}
       />

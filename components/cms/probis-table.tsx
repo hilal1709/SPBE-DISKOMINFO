@@ -7,6 +7,7 @@ import { DataTable, type ServerPaging } from "@/components/blocks/data-table";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { FilterBar } from "@/components/blocks/filter-bar";
 import { ReviewBadge } from "@/components/cms/review-badge";
+import { clamp } from "@/components/cms/template-cells";
 import { ProbisDetail } from "@/components/cms/probis-detail";
 import { Icon } from "@/components/icon";
 import { Reveal } from "@/components/motion/reveal";
@@ -149,7 +150,6 @@ export function ProbisTable({
         }
         columns={[
           { header: "Status", sortKey: "status", sortValue: (r) => r.status, cell: (r) => <ReviewBadge status={r.status} /> },
-          { header: "ID", className: "whitespace-nowrap", sortKey: "code", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
           {
             header: "Nama proses bisnis",
             sortKey: "name", sortValue: (r) => r.name,
@@ -161,18 +161,21 @@ export function ProbisTable({
               </span>
             ),
           },
-          { header: "Perangkat Daerah", hideable: true, sortKey: "opd", sortValue: (r) => r.opdName, cell: (r) => r.opdName },
-          { header: "Diagram", hideable: true, sortKey: "diagram", sortValue: (r) => Number(r.hasDiagram), cell: (r) => <Badge variant={r.hasDiagram ? "success" : "muted"}>{r.hasDiagram ? "Ada" : "Belum"}</Badge> },
-          { header: "RAB 3", hideable: true, sortKey: "rab3", sortValue: (r) => r.rab3 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab3, r.period)}</span> },
-          { header: "Status probis", hideable: true, defaultHidden: true, sortKey: "probisStatus", sortValue: (r) => r.probisStatus, cell: (r) => probisLabel[r.probisStatus] },
-          { header: "RAB 1", hideable: true, defaultHidden: true, sortKey: "rab1", sortValue: (r) => r.rab1 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab1, r.period)}</span> },
-          { header: "RAB 2", hideable: true, defaultHidden: true, sortKey: "rab2", sortValue: (r) => r.rab2 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab2, r.period)}</span> },
+          { header: "ID", className: "whitespace-nowrap", sortKey: "code", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
+          { header: "Uraian", hideable: true, defaultHidden: true, cell: (r) => clamp(r.description) },
+          { header: "Unit kerja", hideable: true, sortKey: "opd", sortValue: (r) => r.opdName, cell: (r) => r.opdName },
           { header: "RAB 4", hideable: true, defaultHidden: true, sortKey: "rabL4", sortValue: (r) => r.rabL4 ?? "", cell: (r) => <span className="text-muted-foreground">{deep(r.rabL4, r.period)}</span> },
           { header: "RAB 5", hideable: true, defaultHidden: true, sortKey: "rabL5", sortValue: (r) => r.rabL5 ?? "", cell: (r) => <span className="text-muted-foreground">{deep(r.rabL5, r.period)}</span> },
-          { header: "Sasaran strategis", hideable: true, defaultHidden: true, cell: (r) => <span className="line-clamp-2 text-muted-foreground">{r.strategicGoal ?? "—"}</span> },
+          { header: "Sasaran strategis", hideable: true, defaultHidden: true, cell: (r) => clamp(r.strategicGoal) },
           { header: "IKU", hideable: true, defaultHidden: true, cell: (r) => r.iku ?? "—" },
-          { header: "Target / realisasi", hideable: true, defaultHidden: true, cell: (r) => `${r.ikuTarget ?? "—"} / ${r.ikuRealization ?? "—"}` },
+          { header: "Nilai IKU target", hideable: true, defaultHidden: true, cell: (r) => r.ikuTarget ?? "—" },
+          { header: "Nilai IKU terealisasi", hideable: true, defaultHidden: true, cell: (r) => r.ikuRealization ?? "—" },
+          { header: "RAB 1", hideable: true, defaultHidden: true, sortKey: "rab1", sortValue: (r) => r.rab1 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab1, r.period)}</span> },
+          { header: "RAB 2", hideable: true, defaultHidden: true, sortKey: "rab2", sortValue: (r) => r.rab2 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab2, r.period)}</span> },
+          { header: "RAB 3", hideable: true, sortKey: "rab3", sortValue: (r) => r.rab3 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab3, r.period)}</span> },
+          { header: "Status probis", hideable: true, defaultHidden: true, sortKey: "probisStatus", sortValue: (r) => r.probisStatus, cell: (r) => probisLabel[r.probisStatus] },
           { header: "Periode", hideable: true, defaultHidden: true, sortKey: "period", sortValue: (r) => r.period, cell: (r) => r.period },
+          { header: "Diagram", hideable: true, sortKey: "diagram", sortValue: (r) => Number(r.hasDiagram), cell: (r) => <Badge variant={r.hasDiagram ? "success" : "muted"}>{r.hasDiagram ? "Ada" : "Belum"}</Badge> },
         ]}
       />
 
