@@ -9,6 +9,8 @@ import * as repo from "@/lib/peta-rencana/cms-repo";
 import { readUpload, validateRows, type RencanaImportResult, type RencanaImportRow } from "@/lib/peta-rencana/import";
 import { statusKeys, type RencanaStatus } from "@/lib/peta-rencana/muatan";
 import { indicatorInput, rencanaInput, type RencanaInput } from "@/lib/peta-rencana/schema";
+import { opdBookSafe } from "@/lib/opd/repo";
+import { setPdBook } from "@/lib/probis/import";
 import * as periods from "@/lib/probis/periods";
 
 /** Hanya Diskominfo (Admin Operator) dan tim Diskominfo yang mengelola Peta Rencana. */
@@ -88,6 +90,7 @@ export async function previewRencanaImport(form: FormData): Promise<ActionResult
     await assertImportQuota((await manager()).id);
     const file = form.get("file");
     assertUploadFile(file, "Pilih berkas .xlsx.");
+    setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
     return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };

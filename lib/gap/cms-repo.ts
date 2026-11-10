@@ -35,12 +35,13 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
 }
 
 const SELECT = `
-  select g.id, g.code, ap.name as period, g.opd_id, o.name as opd_name, g.domain, g.rule, g.subject_code, g.subject_name, g.sasaran,
+  select g.id, g.code, ap.name as period, g.opd_id, o.code as opd_code, coalesce(op.name, o.name) as opd_name, g.domain, g.rule, g.subject_code, g.subject_name, g.sasaran,
          g.as_is, g.target, g.rekomendasi, g.priority, g.status, g.note, g.roadmap_item_id, r.code as roadmap_code, r.status as roadmap_status,
          g.updated_at, g.is_sample
   from gap_analyses g
   join architecture_periods ap on ap.id = g.period_id
   left join opd o on o.id = g.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = g.period_id
   left join roadmap_items r on r.id = g.roadmap_item_id`;
 
 type Row = Record<string, string | null> & { updated_at: Date; is_sample: boolean };
@@ -50,6 +51,7 @@ const toRecord = (r: Row): GapRecord => ({
   code: r.code!,
   period: r.period!,
   opdId: r.opd_id,
+  opdCode: r.opd_code,
   opdName: r.opd_name,
   domain: r.domain as Muatan,
   rule: r.rule,

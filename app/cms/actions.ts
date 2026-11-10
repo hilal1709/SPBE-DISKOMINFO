@@ -25,6 +25,9 @@ import * as ralRepo from "@/lib/layanan/ral";
 import type { RefKind, VersionedRef } from "@/lib/reference/versioned";
 import type { RabStatus } from "@/lib/probis/rab-index";
 import { diagramInput, makeProbisInput, type ProbisInput } from "@/lib/probis/schema";
+import * as opdRepo from "@/lib/opd/repo";
+import { opdBookSafe } from "@/lib/opd/repo";
+import { setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 export type { ActionResult } from "@/lib/cms/result";
@@ -163,6 +166,7 @@ export async function previewImport(form: FormData): Promise<ActionResult<Import
     await assertImportQuota(actor.id);
     const file = form.get("file");
     assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
+    setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const locked = can.lockedOpd(actor);
     const [lockedOpd, existing, options, resolve] = await Promise.all([
@@ -256,6 +260,36 @@ export async function deletePeriod(id: string): Promise<ActionResult> {
     arg(idSchema, id);
     await periodAdmin();
     await periods.deletePeriod(id);
+    refresh({ reference: true });
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/* ---------- Perangkat Daerah per periode ---------- */
+
+const opdNameSchema = z.string().trim().min(3, "Nama Perangkat Daerah minimal 3 huruf.").max(160, "Nama terlalu panjang.");
+const opdCodeSchema = z.string().trim().regex(/^[A-Z0-9]{2,20}$/, "Kode 2–20 huruf kapital/angka.");
+
+export async function saveOpdPeriod(periodId: string, opdId: string, name: string, active: boolean): Promise<ActionResult> {
+  try {
+    arg(idSchema, periodId);
+    arg(idSchema, opdId);
+    await periodAdmin();
+    await opdRepo.saveOpdPeriod(periodId, opdId, arg(opdNameSchema, name), arg(z.boolean(), active));
+    refresh({ reference: true });
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function createOpd(periodId: string, code: string, name: string): Promise<ActionResult> {
+  try {
+    arg(idSchema, periodId);
+    await periodAdmin();
+    await opdRepo.createOpd(periodId, arg(opdCodeSchema, code), arg(opdNameSchema, name));
     refresh({ reference: true });
     return { ok: true, data: undefined };
   } catch (error) {

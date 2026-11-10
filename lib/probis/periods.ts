@@ -1,5 +1,6 @@
 import { cached, TAGS } from "@/lib/cache";
 import { getDb } from "@/lib/db";
+import { inheritOpd } from "@/lib/opd/repo";
 import { sampleActivePeriod, samplePeriods, type PeriodOptions } from "./reference";
 
 /** Periode arsitektur (versioning tiap 2–5 tahun mengikuti perubahan SOTK — notulen). Server saja. */
@@ -113,16 +114,27 @@ export async function createPeriod(start: number, end: number) {
   if (overlap.rows.length) throw new Error(`Bertumpang tindih dengan periode ${overlap.rows.map((r) => r.name).join(", ")}.`);
   const name = `${start}–${end}`;
   // Periode baru memakai versi RAB, RAL, RAD, RAA, dan RAI terbit terbaru.
-  await db().query(
-    `insert into architecture_periods (name, start_year, end_year, is_active, rab_version_id, ral_version_id, rad_version_id, raa_version_id, rai_version_id)
+  const client = await db().connect();
+  try {
+    await client.query("begin");
+    const { rows } = await client.query(
+      `insert into architecture_periods (name, start_year, end_year, is_active, rab_version_id, ral_version_id, rad_version_id, raa_version_id, rai_version_id)
      values ($1, $2, $3, false,
        (select id from rab_versions where status = 'published' order by published_at desc nulls last limit 1),
        (select id from ral_versions where status = 'published' order by published_at desc nulls last limit 1),
        (select id from rad_versions where status = 'published' order by published_at desc nulls last limit 1),
        (select id from raa_versions where status = 'published' order by published_at desc nulls last limit 1),
-       (select id from rai_versions where status = 'published' order by published_at desc nulls last limit 1))`,
-    [name, start, end],
-  );
+       (select id from rai_versions where status = 'published' order by published_at desc nulls last limit 1)) returning id`,
+      [name, start, end],
+    );
+    await inheritOpd(client, rows[0].id);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
   return name;
 }
 

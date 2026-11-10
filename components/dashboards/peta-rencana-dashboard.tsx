@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -25,12 +25,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { muatanConfig, muatanKeys, muatanOptions, statusConfig, statusKeys, statusOptions, type Muatan } from "@/lib/peta-rencana/muatan";
 import { activeFilterCount, emptyFilter, filterFromParams, filterRencana, filterToParams, sanitizeFilter, withRencanaStatus, yearsOf, type RencanaFilter } from "@/lib/peta-rencana/query";
-import { pdByCode, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
+import { sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber, formatPercent, percent } from "@/lib/format";
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
 /** Dashboard publik Peta Rencana. Semua widget mengikuti filter aktif; widget yang juga filter mengabaikan filternya sendiri. */
@@ -46,6 +45,7 @@ export function PetaRencanaDashboard({
   currentYear: number;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const params = useUrlParams();
   const source = data;
   const all = source.rows;
@@ -54,7 +54,7 @@ export function PetaRencanaDashboard({
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod, sasaranList), {
       periods,
       defaultPeriod: activePeriod,
-      pd: new Set([...pdByCode.keys(), ...all.map((r) => r.opd)]),
+      pd: new Set([...opd.all().map((o) => o.code), ...all.map((r) => r.opd)]),
       sasaran: new Set(sasaranList),
       muatan: new Set(muatanKeys),
       status: new Set(statusKeys),
@@ -62,6 +62,9 @@ export function PetaRencanaDashboard({
   );
   const [selected, setSelected] = useState<Rencana | null>(null);
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Filter disimpan di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: RencanaFilter | ((current: RencanaFilter) => RencanaFilter)) => {
@@ -163,7 +166,7 @@ export function PetaRencanaDashboard({
         <StatCard tone="sky" label="Direncanakan" active={filter.status.length === 1 && filter.status[0] === "direncanakan"} onClick={() => selectStatus("direncanakan")} value={count("direncanakan")} />
         <StatCard tone="orange" label="Ditunda" active={filter.status.length === 1 && filter.status[0] === "ditunda"} onClick={() => selectStatus("ditunda")} value={count("ditunda")} hint={`${formatNumber(dialihkan)} dialihkan ke tahun berikutnya`} />
         <StatCard tone="plain" label="Batal" active={filter.status.length === 1 && filter.status[0] === "batal"} onClick={() => selectStatus("batal")} value={count("batal")} />
-        <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} PD`} />
+        <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${opd.list(filter.period).length} PD`} />
       </StatRow>
 
       {rows.length === 0 ? (

@@ -12,14 +12,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { priorityConfig, priorityKeys, type GapPriority } from "@/lib/gap/rules";
 import type { GapInput } from "@/lib/gap/schema";
 import { muatanOptions, type Muatan } from "@/lib/peta-rencana/muatan";
-import { perangkatDaerah, sasaranStrategis } from "@/lib/probis/reference";
+import { sasaranStrategis } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { GapRecord } from "@/lib/types";
 
 /** Dialog temuan manual (mis. kebutuhan SDM, kapasitas server) atau penyesuaian temuan otomatis. */
 export function GapForm({ gap, period, periods, onClose }: { gap: GapRecord | null; period: string; periods: string[]; onClose: () => void }) {
+  const opd = useOpd();
   const [values, setValues] = useState({
     period: gap?.period ?? period,
-    opd: perangkatDaerah.find((p) => p.name === gap?.opdName)?.code ?? "",
+    opd: gap?.opdCode ?? "",
     domain: (gap?.domain ?? "manajemen") as Muatan,
     subjectName: gap?.subjectName ?? "",
     sasaran: gap?.sasaran ?? "",
@@ -100,7 +102,7 @@ export function GapForm({ gap, period, periods, onClose }: { gap: GapRecord | nu
                 <SelectValue placeholder="Opsional" />
               </SelectTrigger>
               <SelectContent>
-                {perangkatDaerah.map((p) => (
+                {opd.list(values.period, values.opd).map((p) => (
                   <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
                 ))}
               </SelectContent>

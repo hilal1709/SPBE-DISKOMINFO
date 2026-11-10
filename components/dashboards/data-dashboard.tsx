@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -28,12 +28,11 @@ import { activeFilterCount, countBy, emptyFilter, filterData, filterFromParams, 
 import { jenisLabel, jenisOptions, sifatLabel, sifatOptions, validitasOptions, type Jenis, type Sifat } from "@/lib/data/reference";
 import { useRadSet } from "@/components/data/rad-context";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { DataInfo } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber, percent, formatPercent } from "@/lib/format";
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 const radLevels = ["", "Data pokok", "Data tematik", "Topik"];
@@ -62,6 +61,7 @@ export function DataDashboard({
   sample: boolean;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const params = useUrlParams();
   const rads = useRadSet();
   const all = data;
@@ -71,7 +71,7 @@ export function DataDashboard({
     const valid = {
       periods,
       defaultPeriod: activePeriod,
-      pd: new Set([...pdByCode.keys(), ...all.map((d) => d.wali)]),
+      pd: new Set([...opd.all().map((o) => o.code), ...all.map((d) => d.wali)]),
       sifat: new Set(Object.keys(sifatLabel)),
       jenis: new Set(Object.keys(jenisLabel)),
       validitas: new Set(validitasOptions),
@@ -83,6 +83,9 @@ export function DataDashboard({
   const [selected, setSelected] = useState<DataInfo | null>(null);
   /** Filter terbaru, untuk aksi tertunda (animasi chip, Urungkan di toast). */
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Simpan filter di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: DataFilter | ((current: DataFilter) => DataFilter)) => {
@@ -134,7 +137,7 @@ export function DataDashboard({
     return [...groups]
       .map(([code, list]) => ({ code, name: pdName(code), count: list.length, sektor: [...countBy(list, "rad2")].sort((a, b) => b[1] - a[1]) }))
       .sort((a, b) => b.count - a.count);
-  }, [withoutPd]);
+  }, [withoutPd, pdName]);
 
   const active = activeFilterCount(filter, activePeriod);
   const removeFrom = (key: "pd" | "sifat" | "jenis" | "validitas", code: string) => () => setFilter((c) => ({ ...c, [key]: c[key].filter((v) => v !== code) }));
@@ -192,7 +195,7 @@ export function DataDashboard({
         <>
           <StatRow>
             <StatCard tone="teal" label="Jumlah data" value={rows.length} hint={`${tree.length} data pokok RAD`} />
-            <StatCard tone="orange" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+            <StatCard tone="orange" label="Perangkat Daerah wali data" value={waliCount} hint={`dari ${opd.list(filter.period).length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Data terbuka" active={filter.sifat.includes("terbuka")} onClick={() => clickFilter("Data terbuka", (c) => ({ ...c, sifat: toggle(c.sifat, "terbuka") }), !filter.sifat.includes("terbuka"))} value={sifat.get("terbuka") ?? 0} hint={`${formatPercent(sifat.get("terbuka") ?? 0, rows.length)} dari seluruh data`} />
             <StatCard tone="amber" label="Produsen lintas PD" active={!!filter.lintas} onClick={() => clickFilter("Produsen lintas PD", (c) => ({ ...c, lintas: !c.lintas }), !filter.lintas)} value={lintas} hint="produsen berbeda dari wali" />
           </StatRow>

@@ -2,12 +2,14 @@
 import { commitAplikasiImport, previewAplikasiImport } from "@/app/cms/aplikasi/actions";
 import { useRaaSet } from "@/components/aplikasi/raa-context";
 import { ImportPanel } from "@/components/cms/import-panel";
+import { useOpd } from "@/components/opd/opd-context";
 import { Badge } from "@/components/ui/badge";
 import { kepemilikanLabel, kepemilikanOf } from "@/lib/aplikasi/reference";
 
 /** Impor/ekspor template Domain Arsitektur Aplikasi (template analis, 32 kolom). Zip berisi semua domain bisa langsung diunggah. */
 export function AplikasiImport({ canImport, canExport }: { canImport: boolean; canExport: boolean }) {
   const raas = useRaaSet();
+  const opd = useOpd();
   return (
     <ImportPanel
       canImport={canImport}
@@ -29,7 +31,7 @@ export function AplikasiImport({ canImport, canExport }: { canImport: boolean; c
         cell: (r) => (
           <span className="grid gap-1">
             <span className="text-muted-foreground">{r.raa ? raas.forPeriod(r.period).label(r.raa) : "—"}</span>
-            {r.pengembang && <Badge variant="muted">{kepemilikanLabel[kepemilikanOf(r.pengembang)]}</Badge>}
+            {r.pengembang && <Badge variant="muted">{kepemilikanLabel[kepemilikanOf(r.pengembang, opd.has)]}</Badge>}
           </span>
         ),
       }}

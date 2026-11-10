@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { jenisLabel, jenisOptions, sifatLabel, sifatOptions } from "@/lib/data/reference";
 import { can, type Actor } from "@/lib/permissions";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { DataRecord, SubmissionStatus } from "@/lib/types";
 
 type Tab = "all" | "review" | SubmissionStatus;
@@ -36,6 +37,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar data CMS: tab status, filter, tabel ramping (kolom inti), detail via pop-up. */
 export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: Actor; periods: PeriodOptions }) {
+  const opd = useOpd();
   const rads = useRadSet();
   /** Nama RAD mengikuti versi RAD periode masing-masing data. */
   const rad = (code: string | null, period: string) => (code ? rads.forPeriod(period).label(code) : "—");
@@ -88,7 +90,7 @@ export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: 
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Wali data", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Wali data", wide: true, multiple: true, searchable: true, options: opd.all().map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Sifat", multiple: true, options: sifatOptions, values: sifat, onValuesChange: setSifat },
           { label: "Jenis", multiple: true, options: jenisOptions, values: jenis, onValuesChange: setJenis },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },

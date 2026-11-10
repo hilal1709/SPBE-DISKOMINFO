@@ -4,6 +4,7 @@ import { CmsShell, type CmsUser } from "@/components/layout/cms-shell";
 import { CmsShellSkeleton } from "@/components/layout/cms-shell-skeleton";
 import { SampleBanner } from "@/components/cms/sample-banner";
 import { AiModeProvider } from "@/components/cms/ai-mode";
+import { OpdScope } from "@/components/opd/opd-scope";
 import { can, currentActor, opdScope } from "@/lib/access";
 import { cmsBadges } from "@/lib/cms/badges";
 import { opdCodeOf } from "@/lib/probis/repo";
@@ -52,7 +53,9 @@ async function CmsFrame({ children }: { children: React.ReactNode }) {
 
   return (
     <CmsShell user={user} notice={samples && can.managePeriods(actor) ? <SampleBanner count={samples} probis={probis.samples} layanan={layanan.samples} data={data.samples} aplikasi={aplikasi.samples} infrastruktur={infrastruktur.samples} keamanan={keamanan.samples} rencana={rencana.samples} gap={gaps.samples} canClear={can.managePeriods(actor)} /> : null}>
-      <AiModeProvider gemini={!!process.env.GEMINI_API_KEY}>{children}</AiModeProvider>
+      <AiModeProvider gemini={!!process.env.GEMINI_API_KEY}>
+        <OpdScope>{children}</OpdScope>
+      </AiModeProvider>
     </CmsShell>
   );
 }

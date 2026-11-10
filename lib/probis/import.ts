@@ -1,7 +1,8 @@
 import * as XLSX from "xlsx";
 import { readWorkbook, unzipSafe, uploadBudget } from "@/lib/security/upload";
 import type { RabIndex } from "./rab-index";
-import { perangkatDaerah, type PeriodOptions } from "./reference";
+import { fallbackDirectory, opdBook, type OpdBook } from "@/lib/opd/directory";
+import type { PeriodOptions } from "./reference";
 
 export type ImportIssue = { level: "error" | "warning"; message: string };
 export type ImportRow = {
@@ -61,12 +62,15 @@ const deepCode = (raw: string | null, rab: RabIndex) => {
   return code && rab.byCode.has(code) ? code : raw;
 };
 
+let pdBook: OpdBook = opdBook(fallbackDirectory);
+
+/** Dipanggil aksi impor sebelum membaca berkas, agar nama OPD dicocokkan ke direktori database (semua periode). */
+export function setPdBook(book: OpdBook) {
+  pdBook = book;
+}
+
 export function matchPd(raw: string | null) {
-  if (!raw) return null;
-  const key = raw.toLowerCase().trim();
-  return perangkatDaerah.find((pd) => pd.code.toLowerCase() === key || pd.name.toLowerCase() === key)?.code
-    ?? perangkatDaerah.find((pd) => key.includes(pd.name.toLowerCase()) || pd.name.toLowerCase().includes(key))?.code
-    ?? null;
+  return pdBook.match(raw);
 }
 
 const statusOf = (raw: string | null): ImportRow["probisStatus"] => {

@@ -16,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { can, type Actor } from "@/lib/permissions";
 import { useRabSet } from "@/components/probis/rab-context";
-import { perangkatDaerah, statusLabel as probisLabel, type PeriodOptions } from "@/lib/probis/reference";
+import { statusLabel as probisLabel, type PeriodOptions } from "@/lib/probis/reference";
 import { PAGE_SIZE, probisParams, type ProbisView } from "@/lib/probis/table-params";
+import { useOpd } from "@/components/opd/opd-context";
 import type { ProbisRecord } from "@/lib/types";
 
 type Tab = ProbisView["tab"];
@@ -51,6 +52,7 @@ export function ProbisTable({
   actor: Actor;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
@@ -108,7 +110,7 @@ export function ProbisTable({
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: opd.all(period).map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "RAB 1", multiple: true, options: rabs.forPeriod(period === "__all" ? undefined : period).level(1).map((n) => ({ value: n.code, label: `${n.code} ${n.name}` })), values: rab1, onValuesChange: setRab1 },
           { label: "Diagram", options: [{ value: "ada", label: "Sudah ada" }, { value: "belum", label: "Belum ada" }], value: diagram || "__all", onChange: (value: string) => update({ diagram: value === "ada" || value === "belum" ? value : "" }) },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },

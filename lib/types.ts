@@ -357,6 +357,7 @@ export type GapRecord = {
   code: string;
   period: string;
   opdId: string | null;
+  opdCode: string | null;
   opdName: string | null;
   domain: Rencana["muatan"];
   rule: string | null;

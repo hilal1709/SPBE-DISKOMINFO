@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -27,13 +27,12 @@ import { colorByCount } from "@/lib/palette";
 import { useRalSet } from "@/components/layanan/ral-context";
 import { RAL_PUBLIK, isDigital, metodeLabel, metodeOptions, targetLabel, targetOptions, type Metode, type Target } from "@/lib/layanan/reference";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import { useRabSet } from "@/components/probis/rab-context";
 import type { Layanan } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber, percent } from "@/lib/format";
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 const ralLevels = ["", "Jenis", "Urusan", "Sub-urusan"];
@@ -62,6 +61,7 @@ export function ServiceDashboard({
   sample: boolean;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const params = useUrlParams();
   const rals = useRalSet();
   const rabs = useRabSet();
@@ -69,13 +69,16 @@ export function ServiceDashboard({
   const [filter, setFilterState] = useState<LayananFilter>(() => {
     const parsed = filterFromParams(new URLSearchParams(params.toString()), activePeriod);
     const ral = rals.forPeriod(periods.includes(parsed.period) ? parsed.period : activePeriod);
-    const valid = { periods, defaultPeriod: activePeriod, pd: new Set([...pdByCode.keys(), ...all.map((l) => l.pd)]), target: new Set(Object.keys(targetLabel)), metode: new Set(Object.keys(metodeLabel)), ral };
+    const valid = { periods, defaultPeriod: activePeriod, pd: new Set([...opd.all().map((o) => o.code), ...all.map((l) => l.pd)]), target: new Set(Object.keys(targetLabel)), metode: new Set(Object.keys(metodeLabel)), ral };
     // RAL turunan yang tidak berada di bawah induk terpilih juga dibuang.
     return withRal(sanitizeFilter(parsed, valid), {}, ral);
   });
   const [selected, setSelected] = useState<Layanan | null>(null);
   /** Filter terbaru, untuk aksi tertunda (animasi chip, Urungkan di toast). */
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Simpan filter di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: LayananFilter | ((current: LayananFilter) => LayananFilter)) => {
@@ -119,7 +122,7 @@ export function ServiceDashboard({
     return [...groups]
       .map(([code, list]) => ({ code, name: pdName(code), count: list.length, sektor: [...countBy(list, "ral2")].sort((a, b) => b[1] - a[1]) }))
       .sort((a, b) => b.count - a.count);
-  }, [withoutPd]);
+  }, [withoutPd, pdName]);
 
   const active = activeFilterCount(filter, activePeriod);
   const removeFrom = (key: "pd" | "target" | "metode", code: string) => () => setFilter((c) => ({ ...c, [key]: c[key].filter((v) => v !== code) }));
@@ -177,7 +180,7 @@ export function ServiceDashboard({
         <>
           <StatRow>
             <StatCard tone="teal" label="Jumlah layanan" value={rows.length} hint={`${formatNumber(rows.length - publik)} administrasi pemerintahan`} />
-            <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+            <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${opd.list(filter.period).length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Terdigitalisasi" active={filter.metode.length === 2 && filter.metode.includes("elektronik") && filter.metode.includes("hybrid")} onClick={() => clickFilter("Elektronik dan hybrid", (c) => ({ ...c, metode: c.metode.length === 2 && c.metode.includes("elektronik") && c.metode.includes("hybrid") ? [] : ["elektronik", "hybrid"] }), true)} value={digital} hint="elektronik + hybrid" />
             <StatCard tone="amber" label="Layanan publik" active={filter.ral1.includes("RAL.01")} onClick={() => clickFilter("Layanan publik", (c) => withRal(c, { ral1: toggle(c.ral1, "RAL.01") }, rals.forPeriod(c.period)), !filter.ral1.includes("RAL.01"))} value={publik} />
           </StatRow>

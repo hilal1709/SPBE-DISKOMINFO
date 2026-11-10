@@ -19,6 +19,8 @@ import { makeInfrastrukturInput, type InfrastrukturInput } from "@/lib/infrastru
 import * as periods from "@/lib/probis/periods";
 import { listProbis, opdCodeOf, opdIdOf } from "@/lib/probis/repo";
 import { refResolver } from "@/lib/reference/versioned";
+import { opdBookSafe } from "@/lib/opd/repo";
+import { setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 /** Indeks RAI untuk periode tertentu (versi milik periode itu). */
@@ -160,6 +162,7 @@ export async function previewInfrastrukturImport(form: FormData): Promise<Action
     await assertImportQuota(actor.id);
     const file = form.get("file");
     assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
+    setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
     return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };

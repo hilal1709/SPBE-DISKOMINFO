@@ -63,12 +63,13 @@ export const RAI_JOIN = `
 
 const SELECT = `
   select i.id, i.code, i.kind, i.name, i.description, i.owner_name, i.ownership, i.manager, i.attributes,
-         o.code as opd_code, o.name as opd_name, o.id as opd_id,
+         o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id,
          ap.name as period, i.status::text as status, i.security, i.updated_at, i.is_sample, i.rai_review,
          ${RAI_SQL},
          ${LINKS_SQL}
   from infrastructures i
   join opd o on o.id = i.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = i.period_id
   join architecture_periods ap on ap.id = i.period_id
   ${RAI_JOIN}`;
 

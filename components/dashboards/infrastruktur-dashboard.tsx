@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -30,13 +30,12 @@ import {
 } from "@/lib/infrastruktur/jenis";
 import { activeFilterCount, countBy, emptyFilter, filterFromParams, filterInfra, filterToParams, raiOptions, sanitizeFilter, type InfraFilter } from "@/lib/infrastruktur/query";
 import { categoryColor, toneBgClass } from "@/lib/palette";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { Infrastruktur } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber, percent } from "@/lib/format";
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
@@ -61,6 +60,7 @@ export function InfrastrukturDashboard({
   sample: boolean;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const params = useUrlParams();
   const rai = useRai();
   const all = data;
@@ -68,7 +68,7 @@ export function InfrastrukturDashboard({
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod), {
       periods,
       defaultPeriod: activePeriod,
-      pd: new Set([...pdByCode.keys(), ...all.map((r) => r.opd)]),
+      pd: new Set([...opd.all().map((o) => o.code), ...all.map((r) => r.opd)]),
       jenis: new Set(jenisKeys),
       kepemilikan: new Set(Object.keys(kepemilikanLabel)),
       rai,
@@ -77,6 +77,9 @@ export function InfrastrukturDashboard({
   const [selected, setSelected] = useState<Infrastruktur | null>(null);
   /** Filter terbaru, untuk aksi tertunda (Urungkan di toast). */
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Simpan filter di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: InfraFilter | ((current: InfraFilter) => InfraFilter)) => {
@@ -120,7 +123,7 @@ export function InfrastrukturDashboard({
     return [...groups]
       .map(([code, list]) => ({ code, name: pdName(code), count: list.length, sektor: [...countBy(list, "jenis")].sort((a, b) => b[1] - a[1]) }))
       .sort((a, b) => b.count - a.count);
-  }, [withoutPd]);
+  }, [withoutPd, pdName]);
 
   const active = activeFilterCount(filter, activePeriod);
   const removeFrom = (key: "pd" | "jenis" | "kepemilikan" | "rai2", code: string) => () => setFilter((c) => ({ ...c, [key]: c[key].filter((v) => v !== code) }));

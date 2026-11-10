@@ -19,7 +19,8 @@ import { muatanConfig, statusConfig } from "@/lib/peta-rencana/muatan";
 import { yearsOf } from "@/lib/peta-rencana/query";
 import { inisiatifBySasaran } from "@/lib/peta-rencana/sasaran";
 import type { RencanaInput } from "@/lib/peta-rencana/schema";
-import { perangkatDaerah, sasaranStrategis } from "@/lib/probis/reference";
+import { sasaranStrategis } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { GapRecord } from "@/lib/types";
 
 export const GapStatus = ({ status }: { status: GapRecord["status"] }) => <ToneBadge tone={gapStatusConfig[status].tone}>{gapStatusConfig[status].label}</ToneBadge>;
@@ -143,13 +144,14 @@ export function GapDetail({ gap, canManage, onEdit, onClose }: { gap: GapRecord;
 
 /** Dialog usulan: isian kegiatan Peta Rencana yang sudah diisi dari temuan (muatan, PD, sasaran, nama, target). */
 function ProposeDialog({ gap, onClose, onDone }: { gap: GapRecord; onClose: () => void; onDone: () => void }) {
+  const opd = useOpd();
   const years = yearsOf(gap.period);
   const thisYear = String(new Date().getFullYear());
   const sasaran = gap.sasaran && sasaranStrategis.includes(gap.sasaran) ? gap.sasaran : "";
   const [values, setValues] = useState({
     year: years.find((y) => y > thisYear) ?? years.at(-1) ?? "",
     sasaran,
-    opd: perangkatDaerah.find((p) => p.name === gap.opdName)?.code ?? "",
+    opd: gap.opdCode ?? "",
     name: gap.rekomendasi,
     program: "",
   });
@@ -215,7 +217,7 @@ function ProposeDialog({ gap, onClose, onDone }: { gap: GapRecord; onClose: () =
                   <SelectValue placeholder="Pilih PD" />
                 </SelectTrigger>
                 <SelectContent>
-                  {perangkatDaerah.map((p) => (
+                  {opd.list(gap.period, gap.opdCode).map((p) => (
                     <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>

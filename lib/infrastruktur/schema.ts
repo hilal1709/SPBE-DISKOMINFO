@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { securityFields } from "@/lib/data/reference";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode } from "@/lib/probis/reference";
 import { jenisConfig, jenisKeys, kepemilikanOptions } from "./jenis";
 import { isRaiLeaf } from "./reference";
 
@@ -18,7 +17,7 @@ export function makeInfrastrukturInput(rai: RabIndex) {
   return z
     .object({
       /** Instansi (Perangkat Daerah pemilik isian). */
-      opd: z.string().refine((v) => pdByCode.has(v), "Pilih instansi pemilik"),
+      opd: z.string().trim().min(1, "Pilih instansi pemilik").max(40),
       jenis: z.enum(jenisKeys, { message: "Pilih komponen infrastruktur" }),
       name: z.string().trim().min(2, "Nama komponen minimal 2 karakter").max(200),
       /** Keberadaan periode dicek di server (daftar periode dikelola di CMS). */

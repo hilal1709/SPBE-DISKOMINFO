@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { basisLabel, basisOptions, kepemilikanLabel, kepemilikanOptions, lisensiLabel } from "@/lib/aplikasi/reference";
 import { can, type Actor } from "@/lib/permissions";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { AplikasiRecord, SubmissionStatus } from "@/lib/types";
 
 type Tab = "all" | "review" | SubmissionStatus;
@@ -35,6 +36,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar aplikasi CMS: tab status, filter, tabel ramping (kolom inti, notulen), detail via pop-up. */
 export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[]; actor: Actor; periods: PeriodOptions }) {
+  const opd = useOpd();
   const raas = useRaaSet();
   /** Nama RAA mengikuti versi RAA periode masing-masing aplikasi. */
   const raa = (code: string | null, period: string) => (code ? raas.forPeriod(period).label(code) : "—");
@@ -87,7 +89,7 @@ export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[];
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Unit operasional", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Unit operasional", wide: true, multiple: true, searchable: true, options: opd.all().map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Basis", multiple: true, options: basisOptions, values: basis, onValuesChange: setBasis },
           { label: "Kepemilikan", multiple: true, options: kepemilikanOptions, values: owner, onValuesChange: setOwner },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },

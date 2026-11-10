@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ActionResult } from "@/lib/cms/result";
-import { pdByCode } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/security/upload-limit";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,8 @@ type Saved = { created: number; updated: number; skipped: number };
 
 /** Unit kerja hasil pencocokan, dengan nilai asli berkas bila berbeda atau barisnya galat (B20). */
 function OpdCell({ row }: { row: PanelRow }) {
-  const name = row.opd ? pdByCode.get(row.opd)?.name ?? row.opd : null;
+  const opd = useOpd();
+  const name = row.opd ? opd.name(row.opd) : null;
   const raw = row.opdRaw?.trim() || null;
   const differs = !!raw && raw.toLowerCase() !== name?.toLowerCase() && raw.toLowerCase() !== row.opd?.toLowerCase();
   if (!name) return <span className="text-destructive">{raw ?? "—"}</span>;

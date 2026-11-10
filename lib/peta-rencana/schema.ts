@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { pdByCode } from "@/lib/probis/reference";
 import { muatanKeys, sourceKeys, statusKeys } from "./muatan";
 
 const optional = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
@@ -7,7 +6,7 @@ const optional = (max: number) => z.string().trim().max(max).optional().transfor
 /** Isian kegiatan Peta Rencana (kolom tabel Peta Rencana SPBE Gresik + kolom evaluasi & realisasi dari notulen). */
 export const rencanaInput = z
   .object({
-    opd: z.string().refine((v) => pdByCode.has(v), "Pilih perangkat daerah pelaksana"),
+    opd: z.string().trim().min(1, "Pilih perangkat daerah pelaksana").max(40),
     /** Keberadaan periode dicek di server (daftar periode dikelola di CMS). */
     period: z.string().trim().min(4, "Pilih periode arsitektur"),
     year: z.coerce.number().int("Tahun tidak valid").min(2000, "Tahun tidak valid").max(2100, "Tahun tidak valid"),

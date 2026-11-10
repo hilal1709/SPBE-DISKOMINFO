@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -27,13 +27,12 @@ import { kegiatanConfig, kegiatanKeys, kegiatanOptions, masihBerlaku, type Kegia
 import { activeFilterCount, emptyFilter, filterFromParams, filterKeamanan, filterToParams, sanitizeFilter, yearsOf, type KeamananFilter } from "@/lib/keamanan/query";
 import type { Coverage, CoverageDomain } from "@/lib/keamanan/repo";
 import { toneBgClass } from "@/lib/palette";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { KegiatanKeamanan } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber, percent, formatPercent } from "@/lib/format";
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 const domainLabel: Record<CoverageDomain, string> = { data: "data", aplikasi: "aplikasi", infrastruktur: "infrastruktur" };
 const byDate = (a: KegiatanKeamanan, b: KegiatanKeamanan) => (b.tanggal ?? "").localeCompare(a.tanggal ?? "");
@@ -52,6 +51,7 @@ export function KeamananDashboard({
   sample: boolean;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const params = useUrlParams();
   const all = data;
   const coverageAll = coverageFromDb;
@@ -59,12 +59,15 @@ export function KeamananDashboard({
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod), {
       periods,
       defaultPeriod: activePeriod,
-      pd: new Set([...pdByCode.keys(), ...all.map((r) => r.opd)]),
+      pd: new Set([...opd.all().map((o) => o.code), ...all.map((r) => r.opd)]),
       jenis: new Set(kegiatanKeys),
     }),
   );
   const [selected, setSelected] = useState<KegiatanKeamanan | null>(null);
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Simpan filter di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: KeamananFilter | ((current: KeamananFilter) => KeamananFilter)) => {
@@ -157,7 +160,7 @@ export function KeamananDashboard({
             <StatCard tone="orange" label="Standar berlaku" active={!!filter.berlaku} onClick={() => clickFilter("Standar berlaku", (c) => ({ ...c, berlaku: !c.berlaku }), !filter.berlaku)} value={berlaku} hint={`dari ${formatNumber(standar.length)} standar & prosedur`} />
             <StatCard tone="yellow" label="Audit keamanan" active={filter.jenis.includes("audit")} onClick={() => toggleJenis("audit")} value={audits.length} hint={`${new Set(audits.map((r) => r.opd)).size} instansi diaudit/mengaudit`} />
             <StatCard tone="amber" label="Insiden ditangani" active={filter.jenis.includes("insiden")} onClick={() => toggleJenis("insiden")} value={insiden.length} hint={scores.length ? `kematangan rata-rata ${maturity.toFixed(1).replace(".", ",")} dari 5` : "belum ada nilai kematangan"} />
-            <StatCard tone="sky" label="Instansi pelaksana" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+            <StatCard tone="sky" label="Instansi pelaksana" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${opd.list(filter.period).length} Perangkat Daerah`} />
           </StatRow>
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.2fr_1fr]">

@@ -1,5 +1,5 @@
 import {
-  Calendar03Icon, CheckListIcon, CheckmarkBadge01Icon, ComputerIcon, CustomerService01Icon, DashboardSquare01Icon,
+  Building03Icon, Calendar03Icon, CheckListIcon, CheckmarkBadge01Icon, ComputerIcon, CustomerService01Icon, DashboardSquare01Icon,
   Database01Icon, FileImportIcon, FlowConnectionIcon, GitCompareIcon, Layers01Icon, ListViewIcon, Route01Icon,
   ServerStack01Icon, Settings02Icon, ShieldKeyIcon, Target02Icon, TaskAdd01Icon, TaskDone01Icon, UserGroupIcon, UserLock01Icon,
 } from "@hugeicons/core-free-icons";
@@ -138,6 +138,7 @@ export const cmsNav: NavEntry[] = [
       { href: "/cms/pengaturan/referensi-raa", label: "Referensi RAA", icon: Layers01Icon, section: "Referensi RAA", description: "Kelola versi, kode, dan nama RAA", perm: "ref.raa" },
       { href: "/cms/pengaturan/referensi-rai", label: "Referensi RAI", icon: Layers01Icon, section: "Referensi RAI", description: "Kelola versi, kode, dan nama RAI", perm: "ref.rai" },
       { href: "/cms/pengaturan/periode", label: "Periode Arsitektur", icon: Calendar03Icon, section: "Periode Arsitektur", description: "Tambah dan aktifkan periode arsitektur", perm: "periods" },
+      { href: "/cms/pengaturan/opd", label: "Perangkat Daerah", icon: Building03Icon, section: "Perangkat Daerah", description: "Nama dan keberlakuan OPD per periode", perm: "periods" },
       { href: "/cms/pengaturan/pengguna", label: "Akun Pengguna", icon: UserGroupIcon, section: "Akun Pengguna", description: "Tambah, ubah peran, dan nonaktifkan akun", perm: "users" },
       { href: "/cms/pengaturan/hak-akses", label: "Hak Akses", icon: UserLock01Icon, section: "Hak Akses", description: "Atur izin tiap peran", perm: "users" },
     ],

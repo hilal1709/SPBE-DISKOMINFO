@@ -33,8 +33,9 @@ import { basisLabel, basisOptions, infraFields, instansiPusat, kepemilikanLabel,
 import { flowLines } from "@/lib/aplikasi/data-flow";
 import type { AplikasiInput } from "@/lib/aplikasi/schema";
 import type { SecurityKey } from "@/lib/data/reference";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { AplikasiRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Text = Exclude<keyof AplikasiInput, "probis" | "layanan" | "data" | "security">;
@@ -78,14 +79,11 @@ type InfraOption = { code: string; name: string; opd: string; jenis: string };
 const NONE = "__tidak";
 /** Isian lama yang tidak ada di daftar pilihan tetap tampil sebagai chip. */
 const withLegacy = (list: readonly LinkOption[], current: string[]) => [...list, ...current.filter((v) => !list.some((o) => o.code === v)).map((v) => ({ code: v, name: v, hint: "teks lama" }))];
-/** Supplier data: Perangkat Daerah atau instansi pusat (disimpan sebagai nama). */
-const supplierOptions: LinkOption[] = [...perangkatDaerah.map((pd) => ({ code: pd.name, name: pd.name })), ...instansiPusat.map((k) => ({ code: k, name: k, hint: "instansi pusat" }))];
-
-const isKnownDeveloper = (v: string) => !v || pdByCode.has(v) || instansiPusat.includes(v);
-const hintOf = (opd: string, own: string) => (opd === own ? undefined : pdByCode.get(opd)?.name);
 
 /** Form tambah/ubah aplikasi (kolom template analis "Domain Arsitektur Aplikasi") dengan asisten AI, pemilih RAA, dan dependensi. */
 export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }: { record: AplikasiRecord | null; lockedOpd: string | null; periods: PeriodOptions }) {
+  const opd = useOpd();
+  const isKnownDeveloper = (v: string) => !v || opd.has(v) || instansiPusat.includes(v);
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const [values, setValues] = useState<Values>(() => fromRecord(record, lockedOpd, active));
@@ -117,13 +115,13 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
     startDeps(async () => {
       const result = await listDependencyOptions(values.opd, values.period);
       if (!result.ok) return;
-      const map = (list: { code: string; name: string; opd: string }[]) => list.map((x) => ({ code: x.code, name: x.name, hint: hintOf(x.opd, values.opd) }));
+      const map = (list: { code: string; name: string; opd: string }[]) => list.map((x) => ({ code: x.code, name: x.name, hint: x.opd === values.opd ? undefined : opd.name(x.opd, values.period) }));
       setOptions({ probis: map(result.data.probis), layanan: map(result.data.layanan), data: map(result.data.data), infra: result.data.infra, loaded: true });
     });
-  }, [values.opd, values.period]);
+  }, [values.opd, values.period, opd]);
   /** Notulen: aplikasi wajib selaras proses bisnis yang sudah disetujui. */
   const noProbis = options.loaded && !loadingDeps && options.probis.length === 0;
-  const kepemilikan = values.pengembang ? kepemilikanOf(values.pengembang) : null;
+  const kepemilikan = values.pengembang ? kepemilikanOf(values.pengembang, opd.has) : null;
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -221,7 +219,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
                       <SelectValue placeholder="Pilih Perangkat Daerah" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perangkatDaerah.map((pd) => (
+                      {opd.list(values.period, values.opd).map((pd) => (
                         <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -261,7 +259,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
                       <SelectValue placeholder="Pilih pengembang" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perangkatDaerah.map((pd) => (
+                      {opd.list(values.period, values.pengembang).map((pd) => (
                         <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                       ))}
                       {instansiPusat.map((k) => (
@@ -412,7 +410,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
             {(
               [
                 ["inputData", "← Inputan data", "data", options.data],
-                ["supplier", "→ Supplier data", "instansi", supplierOptions],
+                ["supplier", "→ Supplier data", "instansi", [...opd.list(values.period).map((pd) => ({ code: pd.name, name: pd.name })), ...instansiPusat.map((k) => ({ code: k, name: k, hint: "instansi pusat" }))]],
                 ["outputData", "→ Luaran data", "data", options.data],
               ] as const
             ).map(([key, label, noun, list]) => (
@@ -543,7 +541,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Aplikasi diajukan" : "Draf tersimpan"}</DialogTitle>
-          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Aplikasi Diskominfo." : `${values.name} — ${pdByCode.get(values.opd)?.name ?? ""}`}</DialogDescription>
+          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Aplikasi Diskominfo." : `${values.name} — ${opd.name(values.opd, values.period)}`}</DialogDescription>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/aplikasi/${record.id}`) : (setDone(null), setValues(fromRecord(null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}

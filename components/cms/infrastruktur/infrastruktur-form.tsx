@@ -33,8 +33,9 @@ import type { InfrastrukturSuggestion } from "@/lib/ai/infrastruktur-suggest";
 import type { SecurityKey } from "@/lib/data/reference";
 import { infraTargets, jenisConfig, kepemilikanOptions, layers, type AttrField, type InfraJenis, type InfraKepemilikan } from "@/lib/infrastruktur/jenis";
 import type { InfrastrukturInput } from "@/lib/infrastruktur/schema";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { InfrastrukturRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Text = "opd" | "name" | "period" | "deskripsi" | "pemilik" | "kepemilikan" | "pengelola" | "rai";
@@ -69,7 +70,6 @@ const fromRecord = (r: InfrastrukturRecord | null, jenis: InfraJenis | null, loc
   security: (r?.security ?? {}) as Values["security"],
 });
 
-const hintOf = (opd: string, own: string) => (opd === own ? undefined : pdByCode.get(opd)?.name);
 
 /** Form tambah/ubah komponen infrastruktur: pilih komponen dulu, kolom khusus mengikuti template analis komponen itu. */
 export function InfrastrukturForm({
@@ -83,6 +83,7 @@ export function InfrastrukturForm({
   lockedOpd: string | null;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const picker = useRef<HTMLDivElement>(null);
@@ -113,16 +114,16 @@ export function InfrastrukturForm({
     startDeps(async () => {
       const result = await listInfraOptions(values.opd, values.period);
       if (!result.ok) return;
-      const map = (list: { code: string; name: string; opd: string }[]) => list.map((x) => ({ code: x.code, name: x.name, hint: hintOf(x.opd, values.opd) }));
+      const map = (list: { code: string; name: string; opd: string }[]) => list.map((x) => ({ code: x.code, name: x.name, hint: (x.opd === values.opd ? undefined : opd.name(x.opd, values.period)) }));
       setOptions({
-        infra: result.data.infra.filter((x) => x.code !== record?.code).map((x) => ({ code: x.code, name: x.name, jenis: x.jenis, hint: [jenisConfig[x.jenis].short, hintOf(x.opd, values.opd)].filter(Boolean).join(" · ") })),
+        infra: result.data.infra.filter((x) => x.code !== record?.code).map((x) => ({ code: x.code, name: x.name, jenis: x.jenis, hint: [jenisConfig[x.jenis].short, (x.opd === values.opd ? undefined : opd.name(x.opd, values.period))].filter(Boolean).join(" · ") })),
         aplikasi: map(result.data.aplikasi),
         data: map(result.data.data),
         probis: map(result.data.probis),
         loaded: true,
       });
     });
-  }, [values.opd, values.period, record?.code]);
+  }, [values.opd, values.period, record?.code, opd]);
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -289,7 +290,7 @@ export function InfrastrukturForm({
                           <SelectValue placeholder="Pilih Perangkat Daerah" />
                         </SelectTrigger>
                         <SelectContent>
-                          {perangkatDaerah.map((pd) => (
+                          {opd.list(values.period, values.opd).map((pd) => (
                             <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                           ))}
                         </SelectContent>
@@ -473,7 +474,7 @@ export function InfrastrukturForm({
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Komponen diajukan" : "Draf tersimpan"}</DialogTitle>
-          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Infrastruktur Diskominfo." : `${values.name} — ${pdByCode.get(values.opd)?.name ?? ""}`}</DialogDescription>
+          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Infrastruktur Diskominfo." : `${values.name} — ${opd.name(values.opd, values.period)}`}</DialogDescription>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Button
               variant="outline"

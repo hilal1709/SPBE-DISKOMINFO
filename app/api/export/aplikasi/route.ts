@@ -8,7 +8,8 @@ import { flowLabels } from "@/lib/aplikasi/data-flow";
 import { raa } from "@/lib/aplikasi/raa";
 import { basisLabel, lisensiLabel } from "@/lib/aplikasi/reference";
 import { securityFields } from "@/lib/data/reference";
-import { pdByCode, reviewLabel } from "@/lib/probis/reference";
+import { opdBookSafe } from "@/lib/opd/repo";
+import { reviewLabel } from "@/lib/probis/reference";
 import { refResolver } from "@/lib/reference/versioned";
 
 /** Urutan kolom keamanan di template aplikasi (berbeda dengan template data). */
@@ -23,6 +24,7 @@ export async function GET() {
   // Dependensi keamanan tertaut diekspor sebagai "kode nama" agar terbaca dan bisa diimpor ulang.
   const rows = withSecurityLabels(records, refs);
   const raaFor = refResolver(raaSet);
+  const opd = await opdBookSafe();
 
   const security = securityOrder.map((key) => `← ${securityLabel[key]} (Dependency)`);
   const header = [
@@ -62,7 +64,7 @@ export async function GET() {
         "→ Sistem Penghubung Layanan (Dependency)": r.splp ?? "",
         "→ Jaringan Intra Pemerintah (Dependency)": r.jip ?? "",
         "Kerangka Pengembangan": r.kerangka ?? "",
-        "← Unit Pengembang (Dependency)": pdByCode.get(r.pengembang)?.name ?? r.pengembang,
+        "← Unit Pengembang (Dependency)": opd.name(r.pengembang, r.period),
         "→ Unit Operasional Teknologi (Dependency)": r.opdName,
         ...Object.fromEntries(securityOrder.map((key, i) => [security[i], (r.security[key] ?? []).join("\n")])),
         Periode: r.period,

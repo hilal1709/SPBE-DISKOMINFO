@@ -4,7 +4,6 @@ import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import { usedCodesSql } from "@/lib/cms/codes";
 import { deleteWithAudit } from "@/lib/cms/audit";
-import { pdByCode } from "@/lib/probis/reference";
 import type { AplikasiRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import { kepemilikanOf } from "./reference";
 import type { AplikasiValues } from "./schema";
@@ -64,13 +63,14 @@ export const RAA_JOIN = `
 
 const SELECT = `
   select a.id, a.code, a.name, a.description, a.function_desc, a.output, a.db_engine, a.basis, a.license, a.language, a.framework,
-         o.code as opd_code, o.name as opd_name, o.id as opd_id, coalesce(dv.code, a.developer) as developer,
+         o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id, coalesce(dv.code, a.developer) as developer, dv.code as developer_opd,
          a.input_data, a.output_data, a.supplier, a.customer, a.cloud, a.server, a.splp, a.jip,
          ap.name as period, a.status::text as status, a.security, a.raa_l4, a.raa_l5, a.updated_at, a.is_sample, a.raa_review,
          ${RAA_SQL},
          ${LINKS_SQL}
   from applications a
   join opd o on o.id = a.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = a.period_id
   left join opd dv on dv.id = a.developer_opd_id
   join architecture_periods ap on ap.id = a.period_id
   ${RAA_JOIN}`;
@@ -100,7 +100,7 @@ const toRecord = (r: Row): AplikasiRecord => ({
   bahasa: r.language ?? "",
   kerangka: r.framework,
   pengembang: r.developer ?? r.opd_code!,
-  kepemilikan: kepemilikanOf(r.developer ?? r.opd_code!),
+  kepemilikan: kepemilikanOf(r.developer ?? r.opd_code!, () => !r.developer || !!r.developer_opd),
   opdId: r.opd_id!,
   opdCode: r.opd_code!,
   opdName: r.opd_name!,
@@ -302,7 +302,7 @@ const columns = (v: AplikasiValues, ref: { developer_opd_id: string | null }) =>
   v.lisensi,
   v.bahasa,
   v.kerangka,
-  ref.developer_opd_id ? null : pdByCode.has(v.pengembang) ? null : v.pengembang,
+  ref.developer_opd_id ? null : v.pengembang,
   v.inputData,
   v.outputData,
   v.supplier,

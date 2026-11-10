@@ -37,9 +37,10 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
 const SELECT = `
   select r.id, r.code, r.name, r.year, r.sasaran, r.inisiatif, r.muatan, r.program, r.target, r.jumlah::float as jumlah, r.satuan,
          r.status, r.realisasi, r.evaluation_note, r.source, r.source_ref, src.code as deferred_from,
-         o.code as opd_code, o.name as opd_name, o.id as opd_id, ap.name as period, r.updated_at, r.is_sample
+         o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id, ap.name as period, r.updated_at, r.is_sample
   from roadmap_items r
   join opd o on o.id = r.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = r.period_id
   join architecture_periods ap on ap.id = r.period_id
   left join roadmap_items src on src.id = r.deferred_from`;
 

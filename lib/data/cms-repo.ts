@@ -4,7 +4,6 @@ import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import { usedCodesSql } from "@/lib/cms/codes";
 import { deleteWithAudit } from "@/lib/cms/audit";
-import { pdByCode } from "@/lib/probis/reference";
 import type { DataRecord, ProbisReview, SubmissionStatus } from "@/lib/types";
 import type { DataValues } from "./schema";
 import { cached, TAGS } from "@/lib/cache";
@@ -35,7 +34,7 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
 
 // rad_id menunjuk node terdalam (L3, atau L2 tanpa turunan); L1–L3 diturunkan dari induknya.
 const SELECT = `
-  select d.id, d.code, d.name, d.description, d.purpose, o.code as opd_code, o.name as opd_name, o.id as opd_id,
+  select d.id, d.code, d.name, d.description, d.purpose, o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id,
          coalesce(po.code, d.producer) as producer, d.output_info, d.input_info, d.sifat, d.jenis, d.validitas, d.interoperable,
          ap.name as period, d.status::text as status, d.security, d.rad_l4, d.rad_l5, d.updated_at, d.is_sample, d.rad_review,
          case when n.level = 3 then p2.code else p1.code end as rad1,
@@ -49,6 +48,7 @@ const SELECT = `
                    where ds.dataset_id = d.id), '[]') as layanan
   from datasets d
   join opd o on o.id = d.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = d.period_id
   left join opd po on po.id = d.producer_opd_id
   join architecture_periods ap on ap.id = d.period_id
   left join rad_references n on n.id = d.rad_id
@@ -245,7 +245,7 @@ const columns = (v: DataValues, ref: { producer_opd_id: string | null }) => [
   v.name,
   v.uraian,
   v.tujuan,
-  ref.producer_opd_id ? null : v.produsen && !pdByCode.has(v.produsen) ? v.produsen : null,
+  ref.producer_opd_id ? null : v.produsen || null,
   v.output,
   v.input,
   v.sifat,

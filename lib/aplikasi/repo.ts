@@ -12,7 +12,7 @@ async function loadListApprovedAplikasi(): Promise<{ rows: Aplikasi[]; sample: b
   if (!pool) throw new Error("Database belum dikonfigurasi (DATABASE_URL).");
   const { rows } = await pool.query(
     `select a.code, a.name, a.description, a.function_desc, a.output, a.db_engine, a.basis, a.license, a.language, a.framework,
-            o.code as operasional, coalesce(dv.code, a.developer, o.code) as developer, ap.name as period, a.is_sample,
+            o.code as operasional, coalesce(dv.code, a.developer, o.code) as developer, (dv.code is not null or a.developer is null) as developer_opd, ap.name as period, a.is_sample,
             a.supplier, a.customer, a.cloud, a.server, a.splp, a.jip,
             ${RAA_SQL},
             ${linksSql(true)}
@@ -35,7 +35,7 @@ async function loadListApprovedAplikasi(): Promise<{ rows: Aplikasi[]; sample: b
     bahasa: r.language,
     kerangka: r.framework,
     pengembang: r.developer,
-    kepemilikan: kepemilikanOf(r.developer),
+    kepemilikan: kepemilikanOf(r.developer, () => r.developer_opd),
     operasional: r.operasional,
     period: r.period,
     raa1: r.raa1,

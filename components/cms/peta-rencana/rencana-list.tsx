@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { muatanConfig, muatanOptions, statusConfig, statusKeys, type RencanaStatus as Status } from "@/lib/peta-rencana/muatan";
 import { yearsOf } from "@/lib/peta-rencana/query";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { RencanaRecord } from "@/lib/types";
 
 type Tab = "all" | Status;
@@ -26,6 +27,7 @@ const tabs: { value: Tab; label: string }[] = [{ value: "all", label: "Semua" },
 
 /** Daftar kegiatan Peta Rencana CMS: tab status pelaksanaan, filter periode/tahun/PD/muatan, detail via pop-up. */
 export function RencanaList({ rows, periods, canManage, canExport, exportOwnOnly = false, openHighGaps = 0 }: { rows: RencanaRecord[]; periods: PeriodOptions; canManage: boolean; canExport: boolean; /** Ekspor dibatasi OPD akun (B17). */ exportOwnOnly?: boolean; /** Gap prioritas tinggi yang masih terbuka di periode aktif. */ openHighGaps?: number }) {
+  const opd = useOpd();
   const [tab, setTab] = useState<Tab>("all");
   const [period, setPeriod] = useState(periods.active);
   const [tahun, setTahun] = useState<string[]>([]);
@@ -89,7 +91,7 @@ export function RencanaList({ rows, periods, canManage, canExport, exportOwnOnly
         filters={[
           { label: "Periode", required: true, options: periods.periods, value: period, onChange: (v) => (setPeriod(v), setTahun([])) },
           { label: "Tahun", multiple: true, options: yearsOf(period), values: tahun, onValuesChange: setTahun },
-          { label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd },
+          { label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: opd.all(period).map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd },
           { label: "Muatan", multiple: true, options: muatanOptions, values: muatan, onValuesChange: setMuatan },
         ]}
       />

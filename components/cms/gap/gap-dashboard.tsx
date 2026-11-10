@@ -20,10 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { gapStatusConfig, gapStatusKeys, priorityConfig, priorityKeys, ruleConfig, type GapRule, type GapStatus as Status } from "@/lib/gap/rules";
 import { muatanConfig, muatanKeys, muatanOptions } from "@/lib/peta-rencana/muatan";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import { unpack, type Packed } from "@/lib/pack";
 import type { GapRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber } from "@/lib/format";
 
 
@@ -36,6 +37,7 @@ const tabs: { value: Tab; label: string }[] = [{ value: "all", label: "Semua" },
  */
 export function GapDashboard({ data, periods, canManage, canExport }: { data: Packed<GapRecord>; periods: PeriodOptions; canManage: boolean; canExport: boolean }) {
   // Ribuan temuan dikemas ringkas dari server; statistik dashboard tetap dihitung dari semua baris.
+  const opd = useOpd();
   const rows = useMemo(() => unpack(data), [data]);
   const [period, setPeriod] = useState(periods.active);
   const [domain, setDomain] = useState<string[]>([]);
@@ -49,7 +51,7 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
 
   const inPeriod = useMemo(() => rows.filter((r) => r.period === period), [rows, period]);
   const scoped = useMemo(
-    () => inPeriod.filter((r) => (!domain.length || domain.includes(r.domain)) && (!priority.length || priority.includes(r.priority)) && (!pd.length || pd.includes(perangkatDaerah.find((p) => p.name === r.opdName)?.code ?? ""))),
+    () => inPeriod.filter((r) => (!domain.length || domain.includes(r.domain)) && (!priority.length || priority.includes(r.priority)) && (!pd.length || pd.includes(r.opdCode ?? ""))),
     [inPeriod, domain, priority, pd],
   );
   const counts = useMemo(() => {
@@ -61,7 +63,7 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
   const open = scoped.filter((r) => r.status === "terbuka");
 
   // Matriks domain × prioritas dari temuan terbuka (tanpa filter domain/prioritas agar tetap bisa dipakai memilih).
-  const openForMatrix = inPeriod.filter((r) => r.status === "terbuka" && (!pd.length || pd.includes(perangkatDaerah.find((p) => p.name === r.opdName)?.code ?? "")));
+  const openForMatrix = inPeriod.filter((r) => r.status === "terbuka" && (!pd.length || pd.includes(r.opdCode ?? "")));
   const domains = muatanKeys.filter((k) => openForMatrix.some((r) => r.domain === k));
   const cell = (d: string, p: string) => openForMatrix.filter((r) => r.domain === d && r.priority === p).length;
   const maxCell = Math.max(1, ...domains.flatMap((d) => priorityKeys.map((p) => cell(d, p))));
@@ -115,7 +117,7 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
           { label: "Periode", required: true, options: periods.periods, value: period, onChange: setPeriod },
           { label: "Domain", multiple: true, options: muatanOptions, values: domain, onValuesChange: setDomain },
           { label: "Prioritas", multiple: true, options: priorityKeys.map((k) => ({ value: k, label: priorityConfig[k].label })), values: priority, onValuesChange: setPriority },
-          { label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd },
+          { label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: opd.all(period).map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd },
         ]}
         actions={actions}
       />

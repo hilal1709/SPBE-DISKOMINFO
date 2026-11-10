@@ -52,8 +52,10 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
        p.name as period, coalesce(t.${category}, '') as category, t.is_sample as sample
        from ${table} t join opd o on o.id=t.opd_id join architecture_periods p on p.id=t.period_id where t.status='approved'`).join(" union all ");
     const records = await client.query<Omit<DomainNode, "opdName"> & { sample: boolean }>(`select * from (${base}) n where ($2::text='' or period=$2) order by domain, code, id limit $1`, [NODE_LIMIT + 1, period]);
-    const opdRows = await client.query<{ code: string; name: string }>("select code, name from opd");
-    const opdName = new Map(opdRows.rows.map((o) => [o.code, o.name]));
+    // Nama OPD mengikuti periode rekaman (opd_periods); kunci "kode|periode", cadangan "kode".
+    const opdRows = await client.query<{ code: string; period: string | null; name: string }>(
+      "select o.code, null::text as period, o.name from opd o union all select o.code, p.name, op.name from opd_periods op join opd o on o.id=op.opd_id join architecture_periods p on p.id=op.period_id");
+    const opdName = new Map(opdRows.rows.map((o) => [o.period ? `${o.code}|${o.period}` : o.code, o.name]));
     const overflow = records.rows.length > NODE_LIMIT;
     // S1: pengunjung umum tidak melihat nama komponen infrastruktur yang memuat rincian teknis (versi OS/DB, VPN, dsb.).
     // S2: nama data tertutup juga tidak tampil bagi pengunjung umum (record tetap dihitung di peta hubungan).
@@ -62,7 +64,7 @@ export async function readArchitectureFromPool(db: Pick<Pool, "connect">, securi
       : n.domain === "infrastruktur" && MASKED_INFRA.has(n.category) ? `${jenisConfig[n.category as InfraJenis].label} ${n.code}`
       : n.domain === "data" && n.category === "tertutup" ? "Data tertutup"
       : n.name;
-    const nodes: DomainNode[] = records.rows.slice(0, NODE_LIMIT).map((n) => ({ id: `${n.domain}:${n.id}`, domain: n.domain, code: n.code, name: publicName(n), opd: n.opd, opdName: opdName.get(n.opd) ?? n.opd, period: n.period, category: n.category }));
+    const nodes: DomainNode[] = records.rows.slice(0, NODE_LIMIT).map((n) => ({ id: `${n.domain}:${n.id}`, domain: n.domain, code: n.code, name: publicName(n), opd: n.opd, opdName: opdName.get(`${n.opd}|${n.period}`) ?? opdName.get(n.opd) ?? n.opd, period: n.period, category: n.category }));
     const summary = overflow ? await readSummary(client, base, period) : summarize(records.rows, opdName);
     const byId = new Map(nodes.map((n) => [n.id, n]));
     /** Nama asli untuk pencocokan rujukan teks (nama tampilan bisa disamarkan). */
@@ -125,7 +127,7 @@ function summarize(rows: { domain: DomainKey; opd: string; period: string; categ
     const key = JSON.stringify([r.domain, r.opd, r.period, r.category]);
     const g = groups.get(key);
     if (g) { g.count++; g.sample ||= r.sample; }
-    else groups.set(key, { domain: r.domain, opd: r.opd, opdName: opdName.get(r.opd) ?? r.opd, period: r.period, category: r.category, count: 1, sample: r.sample });
+    else groups.set(key, { domain: r.domain, opd: r.opd, opdName: opdName.get(`${r.opd}|${r.period}`) ?? opdName.get(r.opd) ?? r.opd, period: r.period, category: r.category, count: 1, sample: r.sample });
   }
   return [...groups.values()];
 }
@@ -133,8 +135,10 @@ function summarize(rows: { domain: DomainKey; opd: string; period: string; categ
 /** Hanya saat record melebihi NODE_LIMIT: ringkasan tetap dihitung penuh di database. */
 async function readSummary(client: PoolClient, base: string, period: string): Promise<DomainSummary[]> {
   const { rows } = await client.query<DomainSummary & { opd_name: string }>(
-    `select domain, n.opd, o.name as opd_name, period, category, count(*)::int as count, bool_or(sample) as sample
-     from (${base}) n join opd o on o.code=n.opd where ($1::text='' or period=$1) group by domain, n.opd, o.name, period, category`, [period]);
+    `select domain, n.opd, coalesce(op.name, o.name) as opd_name, period, category, count(*)::int as count, bool_or(sample) as sample
+     from (${base}) n join opd o on o.code=n.opd
+     left join architecture_periods np on np.name=n.period left join opd_periods op on op.opd_id=o.id and op.period_id=np.id
+     where ($1::text='' or period=$1) group by domain, n.opd, coalesce(op.name, o.name), period, category`, [period]);
   return rows.map((r) => ({ domain: r.domain, opd: r.opd, opdName: r.opd_name, period: r.period, category: r.category, count: r.count, sample: r.sample }));
 }
 
@@ -180,10 +184,11 @@ const PAGE_SIZE = 100;
 const summaryPage = cached(async (domain: DomainKey, offset: number) => {
   const db = getDb(); if (!db) throw new Error("Database belum tersedia.");
   const [, table, category] = tables.find(([key]) => key === domain)!;
-  const { rows } = await db.query<DomainSummary>(`select '${domain}'::text as domain, o.code as opd, o.name as "opdName", p.name as period,
+  const { rows } = await db.query<DomainSummary>(`select '${domain}'::text as domain, o.code as opd, coalesce(op.name, o.name) as "opdName", p.name as period,
     coalesce(t.${category}, '') as category, count(*)::int as count, bool_or(t.is_sample) as sample
     from ${table} t join opd o on o.id=t.opd_id join architecture_periods p on p.id=t.period_id
-    where t.status='approved' group by o.code,o.name,p.name,t.${category}
+    left join opd_periods op on op.opd_id=o.id and op.period_id=t.period_id
+    where t.status='approved' group by o.code,coalesce(op.name, o.name),p.name,t.${category}
     order by o.code,p.name,t.${category} limit $1 offset $2`, [PAGE_SIZE, offset]);
   return rows;
 }, "portal:summary-page-v2", [TAGS.content, TAGS.reference]);

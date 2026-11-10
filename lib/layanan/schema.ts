@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode } from "@/lib/probis/reference";
 
 const optionalText = z.string().trim().max(2000).optional().transform((v) => v || null);
 
@@ -11,7 +10,7 @@ const optionalText = z.string().trim().max(2000).optional().transform((v) => v |
 export function makeLayananInput(ral: RabIndex, rab: RabIndex) {
   return z
     .object({
-      opd: z.string().refine((v) => pdByCode.has(v), "Pilih Perangkat Daerah"),
+      opd: z.string().trim().min(1, "Pilih Perangkat Daerah").max(40),
       name: z.string().trim().min(3, "Nama layanan minimal 3 karakter").max(200),
       /** Keberadaan periode dicek di server (daftar periode dikelola di CMS). */
       period: z.string().trim().min(4, "Pilih periode arsitektur"),

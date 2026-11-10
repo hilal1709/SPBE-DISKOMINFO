@@ -27,9 +27,10 @@ import type { ProbisSuggestion } from "@/lib/ai/probis-suggest";
 import { useRab } from "@/components/probis/rab-context";
 import { Banner } from "@/components/blocks/banner";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode, perangkatDaerah, sasaranStrategis, statusOptions, type PeriodOptions } from "@/lib/probis/reference";
+import { sasaranStrategis, statusOptions, type PeriodOptions } from "@/lib/probis/reference";
 import type { ProbisInput } from "@/lib/probis/schema";
 import type { ProbisRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Values = { [K in keyof ProbisInput]-?: string };
@@ -60,6 +61,7 @@ export function flash(el: Element | null) {
 
 /** Form tambah/ubah Proses Bisnis dengan asisten AI dan pemilih RAB otomatis. */
 export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: { record: ProbisRecord | null; lockedOpd: string | null; periods: PeriodOptions }) {
+  const opd = useOpd();
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const [values, setValues] = useState<Values>(() => fromRecord(record, lockedOpd, active));
@@ -163,7 +165,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
                     <SelectValue placeholder="Pilih Perangkat Daerah" />
                   </SelectTrigger>
                   <SelectContent>
-                    {perangkatDaerah.map((pd) => (
+                    {opd.list(values.period, values.opd).map((pd) => (
                       <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -365,7 +367,7 @@ export function ProbisForm({ record, lockedOpd, periods: { periods, active } }: 
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Probis diajukan" : "Draf tersimpan"}</DialogTitle>
           <DialogDescription>
-            {done?.submitted ? "Menunggu verifikasi Bagian Organisasi." : `${values.name} — ${pdByCode.get(values.opd)?.name ?? ""}`}
+            {done?.submitted ? "Menunggu verifikasi Bagian Organisasi." : `${values.name} — ${opd.name(values.opd, values.period)}`}
           </DialogDescription>
           {done && !done.submitted && (
             <Button variant="secondary" className="mt-2" onClick={() => router.push(`/cms/proses-bisnis/${done.id}/diagram`)}>

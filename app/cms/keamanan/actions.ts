@@ -12,6 +12,8 @@ import type { Kegiatan } from "@/lib/keamanan/jenis";
 import { keamananInput, type KeamananInput } from "@/lib/keamanan/schema";
 import * as periods from "@/lib/probis/periods";
 import { opdCodeOf, opdIdOf } from "@/lib/probis/repo";
+import { opdBookSafe } from "@/lib/opd/repo";
+import { setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 /** Operator hanya boleh menyimpan untuk OPD-nya sendiri (instansi pelaksana). */
@@ -120,6 +122,7 @@ export async function previewKeamananImport(form: FormData): Promise<ActionResul
     await assertImportQuota(actor.id);
     const file = form.get("file");
     assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
+    setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
     return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };

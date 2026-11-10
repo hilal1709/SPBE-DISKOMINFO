@@ -22,8 +22,9 @@ import { muatanConfig, muatanKeys, sourceLabel, statusConfig, statusKeys, type M
 import { yearsOf } from "@/lib/peta-rencana/query";
 import { inisiatifBySasaran } from "@/lib/peta-rencana/sasaran";
 import type { RencanaInput } from "@/lib/peta-rencana/schema";
-import { ikuBySasaran, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
+import { ikuBySasaran, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
 import type { RencanaRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Values = {
@@ -66,6 +67,7 @@ const fromRecord = (r: RencanaRecord | null, active: string): Values => ({
 
 /** Form kegiatan Peta Rencana: muatan → sasaran & inisiatif → kegiatan & target, lalu evaluasi & realisasi terpisah. */
 export function RencanaForm({ record, periods: { periods, active } }: { record: RencanaRecord | null; periods: PeriodOptions }) {
+  const opd = useOpd();
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const picker = useRef<HTMLDivElement>(null);
@@ -193,7 +195,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
                       <SelectValue placeholder="Pilih Perangkat Daerah" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perangkatDaerah.map((pd) => (
+                      {opd.list(values.period, values.opd).map((pd) => (
                         <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                       ))}
                     </SelectContent>

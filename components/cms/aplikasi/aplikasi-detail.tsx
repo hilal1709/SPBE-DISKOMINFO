@@ -12,7 +12,7 @@ import { flowLabels } from "@/lib/aplikasi/data-flow";
 import { basisLabel, infraFields, kepemilikanLabel, lisensiLabel } from "@/lib/aplikasi/reference";
 import { securityFields } from "@/lib/data/reference";
 import type { Actor, ReviewStage } from "@/lib/permissions";
-import { pdByCode } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { AplikasiRecord } from "@/lib/types";
 
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
@@ -50,7 +50,7 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
   const security = securityFields.filter((f) => record.security[f.key]?.length);
   const sec = useSecurityRefs();
   const aligned = record.probis.some((p) => p.status === "approved");
-  const pengembang = pdByCode.get(record.pengembang)?.name ?? record.pengembang;
+  const pengembang = useOpd().name(record.pengembang, record.period);
 
   return (
     <DetailDialog

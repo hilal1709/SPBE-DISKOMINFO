@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { pdByCode } from "@/lib/probis/reference";
 import { muatanKeys } from "@/lib/peta-rencana/muatan";
 import { priorityKeys } from "./rules";
 
@@ -9,8 +8,7 @@ export const gapInput = z.object({
   opd: z
     .string()
     .optional()
-    .transform((v) => v || null)
-    .refine((v) => !v || pdByCode.has(v), "Perangkat daerah tidak dikenal"),
+    .transform((v) => v || null),
   domain: z.enum(muatanKeys, { message: "Pilih domain" }),
   subjectName: z.string().trim().min(3, "Isi objek kesenjangan minimal 3 karakter").max(250),
   sasaran: z.string().trim().max(500).optional().transform((v) => v || null),

@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { metodeLabel, metodeOptions, targetLabel, targetOptions } from "@/lib/layanan/reference";
 import { can, type Actor } from "@/lib/permissions";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { LayananRecord, SubmissionStatus } from "@/lib/types";
 
 type Tab = "all" | "review" | SubmissionStatus;
@@ -36,6 +37,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar layanan CMS: tab status, filter, tabel ramping (kolom inti), detail via pop-up. */
 export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; actor: Actor; periods: PeriodOptions }) {
+  const opd = useOpd();
   const rals = useRalSet();
   /** Nama RAL mengikuti versi RAL periode masing-masing layanan. */
   const ral = (code: string | null, period: string) => (code ? rals.forPeriod(period).label(code) : "—");
@@ -91,7 +93,7 @@ export function LayananTable({ rows, actor, periods }: { rows: LayananRecord[]; 
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: opd.all().map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Metode", multiple: true, options: metodeOptions, values: metode, onValuesChange: setMetode },
           { label: "Target", multiple: true, options: targetOptions, values: target, onValuesChange: setTarget },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },

@@ -36,10 +36,11 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
 
 const SELECT = `
   select s.id, s.code, s.kind, s.name, s.description, to_char(s.activity_date, 'YYYY-MM-DD') as activity_date, s.attributes,
-         o.code as opd_code, o.name as opd_name, o.id as opd_id,
+         o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id,
          ap.name as period, s.status::text as status, s.updated_at, s.is_sample
   from security_activities s
   join opd o on o.id = s.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = s.period_id
   join architecture_periods ap on ap.id = s.period_id`;
 
 type Row = Record<string, string | null> & { updated_at: Date; is_sample: boolean; attributes: Record<string, string> };

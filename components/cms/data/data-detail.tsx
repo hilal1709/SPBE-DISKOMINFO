@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSecurityRefs } from "@/components/keamanan/security-context";
 import { jenisLabel, securityFields, sifatLabel } from "@/lib/data/reference";
 import type { Actor, ReviewStage } from "@/lib/permissions";
-import { pdByCode } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { DataRecord } from "@/lib/types";
 
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
@@ -34,6 +34,7 @@ function Links({ items, empty }: { items: { id: string; name: string }[]; empty:
 
 /** Pop-up detail data: semua kolom template analis, riwayat verifikasi, dan aksi sesuai peran. */
 export function DataDetail({ record, actor, onClose }: { record: DataRecord; actor: Actor; onClose: () => void }) {
+  const opd = useOpd();
   const index = useRad(record.period);
   /** RAD menurut versi periode data; tandai bila sudah tidak berlaku. */
   const rad = (code: string | null) => {
@@ -73,7 +74,7 @@ export function DataDetail({ record, actor, onClose }: { record: DataRecord; act
         </div>
       </DetailSection>
       <div className="grid gap-2 sm:grid-cols-2">
-        <DetailField label="Produsen data" value={record.produsen ? (pdByCode.get(record.produsen)?.name ?? record.produsen) : record.opdName} />
+        <DetailField label="Produsen data" value={record.produsen ? opd.name(record.produsen, record.period) : record.opdName} />
         <DetailField label="Jenis data" value={jenisLabel[record.jenis]} />
         <DetailField label="Validitas" value={record.validitas} />
         <DetailField label="Interoperabilitas" value={record.interoperabel ? "Ya" : "Tidak"} />
