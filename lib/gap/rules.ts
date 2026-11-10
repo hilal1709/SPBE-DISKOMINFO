@@ -1,3 +1,4 @@
+import type { DomainKey } from "@/lib/domains";
 import type { Muatan } from "@/lib/peta-rencana/muatan";
 
 /**
@@ -5,28 +6,40 @@ import type { Muatan } from "@/lib/peta-rencana/muatan";
  * Rancangan sendiri berdasarkan notulen 1 Juli 2026 (data analis belum memuat template Gap Analysis).
  */
 
+/** Rantai analisis gap (notulen Diskominfo): Probis → Layanan → Data → Aplikasi → Infrastruktur → Keamanan. */
+export const chainStages = ["layanan", "data", "aplikasi", "infrastruktur", "keamanan"] as const;
+export type ChainStage = (typeof chainStages)[number];
+export const chainLabel: Record<ChainStage, string> = { layanan: "Layanan", data: "Data", aplikasi: "Aplikasi", infrastruktur: "Infrastruktur", keamanan: "Keamanan" };
+
+/** Urut mengikuti rantai: tiap aturan memeriksa satu mata rantai (`stage` = tahap yang seharusnya tersambung). */
 export const ruleKeys = [
-  "probis_tanpa_aplikasi",
   "probis_tanpa_layanan",
   "layanan_belum_digital",
+  "layanan_tanpa_data",
+  "data_tidak_interoperabel",
+  "probis_tanpa_aplikasi",
+  "layanan_tanpa_aplikasi",
+  "data_tanpa_aplikasi",
   "aplikasi_tanpa_infra",
   "aplikasi_tanpa_keamanan",
-  "data_tidak_interoperabel",
-  "data_tanpa_aplikasi",
+  "infra_tanpa_keamanan",
   "standar_kedaluwarsa",
 ] as const;
 export type GapRule = (typeof ruleKeys)[number];
 
-/** `subject` = jenis entri yang diperiksa (untuk tautan & label). */
-export const ruleConfig: Record<GapRule, { label: string; domain: Muatan; subject: string; target: string }> = {
-  probis_tanpa_aplikasi: { label: "Probis baru/upgrade belum didukung aplikasi", domain: "aplikasi", subject: "Proses bisnis", target: "Proses bisnis didukung aplikasi yang selaras" },
-  probis_tanpa_layanan: { label: "Probis belum menghasilkan layanan", domain: "layanan", subject: "Proses bisnis", target: "Proses bisnis menghasilkan layanan yang terdaftar" },
-  layanan_belum_digital: { label: "Layanan belum elektronik", domain: "layanan", subject: "Layanan", target: "Layanan diselenggarakan secara elektronik" },
-  aplikasi_tanpa_infra: { label: "Aplikasi belum tercatat di infrastruktur", domain: "infrastruktur", subject: "Aplikasi", target: "Aplikasi berjalan di infrastruktur yang tercatat (pusat data/cloud)" },
-  aplikasi_tanpa_keamanan: { label: "Aplikasi tanpa standar/audit keamanan", domain: "keamanan", subject: "Aplikasi", target: "Aplikasi menerapkan standar keamanan dan diaudit" },
-  data_tidak_interoperabel: { label: "Data belum interoperabel", domain: "data", subject: "Data", target: "Data interoperabel dan tersedia di Satu Data" },
-  data_tanpa_aplikasi: { label: "Data belum dikelola aplikasi", domain: "data", subject: "Data", target: "Data dihasilkan atau dipakai aplikasi" },
-  standar_kedaluwarsa: { label: "Standar keamanan kedaluwarsa", domain: "tata_kelola", subject: "Standar keamanan", target: "Standar & prosedur keamanan berlaku" },
+/** `subject` = jenis entri yang diperiksa (label); `subjectDomain` = domain arsitekturnya (untuk tautan ke Peta Rencana). */
+export const ruleConfig: Record<GapRule, { label: string; domain: Muatan; stage: ChainStage; subject: string; subjectDomain: DomainKey; target: string }> = {
+  probis_tanpa_layanan: { label: "Probis belum menghasilkan layanan", domain: "layanan", stage: "layanan", subject: "Proses bisnis", subjectDomain: "probis", target: "Proses bisnis menghasilkan layanan yang terdaftar" },
+  layanan_belum_digital: { label: "Layanan belum elektronik", domain: "layanan", stage: "layanan", subject: "Layanan", subjectDomain: "layanan", target: "Layanan diselenggarakan secara elektronik" },
+  layanan_tanpa_data: { label: "Layanan belum memiliki data", domain: "data", stage: "data", subject: "Layanan", subjectDomain: "layanan", target: "Layanan menghasilkan atau memakai data yang terdaftar" },
+  data_tidak_interoperabel: { label: "Data belum interoperabel", domain: "data", stage: "data", subject: "Data", subjectDomain: "data", target: "Data interoperabel dan tersedia di Satu Data" },
+  probis_tanpa_aplikasi: { label: "Probis baru/upgrade belum didukung aplikasi", domain: "aplikasi", stage: "aplikasi", subject: "Proses bisnis", subjectDomain: "probis", target: "Proses bisnis didukung aplikasi yang selaras" },
+  layanan_tanpa_aplikasi: { label: "Layanan belum didukung aplikasi", domain: "aplikasi", stage: "aplikasi", subject: "Layanan", subjectDomain: "layanan", target: "Layanan didukung aplikasi yang terdaftar" },
+  data_tanpa_aplikasi: { label: "Data belum dikelola aplikasi", domain: "data", stage: "aplikasi", subject: "Data", subjectDomain: "data", target: "Data dihasilkan atau dipakai aplikasi" },
+  aplikasi_tanpa_infra: { label: "Aplikasi belum tercatat di infrastruktur", domain: "infrastruktur", stage: "infrastruktur", subject: "Aplikasi", subjectDomain: "aplikasi", target: "Aplikasi berjalan di infrastruktur yang tercatat (pusat data/cloud)" },
+  aplikasi_tanpa_keamanan: { label: "Aplikasi tanpa standar/audit keamanan", domain: "keamanan", stage: "keamanan", subject: "Aplikasi", subjectDomain: "aplikasi", target: "Aplikasi menerapkan standar keamanan dan diaudit" },
+  infra_tanpa_keamanan: { label: "Infrastruktur tanpa kegiatan keamanan", domain: "keamanan", stage: "keamanan", subject: "Infrastruktur", subjectDomain: "infrastruktur", target: "Komponen infrastruktur tercakup kegiatan Keamanan SPBE" },
+  standar_kedaluwarsa: { label: "Standar keamanan kedaluwarsa", domain: "tata_kelola", stage: "keamanan", subject: "Standar keamanan", subjectDomain: "keamanan", target: "Standar & prosedur keamanan berlaku" },
 };
 
 export const priorityKeys = ["tinggi", "sedang", "rendah"] as const;

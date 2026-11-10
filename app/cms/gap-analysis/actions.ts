@@ -1,7 +1,9 @@
 "use server";
 import { arg, editOptions, idSchema, isValid, noteSchema, periodName } from "@/lib/security/schemas";
 import { z } from "zod";
-import { can, currentActor } from "@/lib/access";
+import { can, currentActor, opdScope } from "@/lib/access";
+import { chainCoverage, type ChainRow } from "@/lib/gap/chain";
+import { pack, type Packed } from "@/lib/pack";
 import { fail, refresh, type ActionResult } from "@/lib/cms/result";
 import * as repo from "@/lib/gap/cms-repo";
 import { gapInput, type GapInput } from "@/lib/gap/schema";
@@ -17,6 +19,18 @@ async function manager() {
 const gapStatusArgs = z.object({ id: idSchema, status: z.enum(["terbuka", "diabaikan"], "Data tidak valid."), note: noteSchema.optional() });
 
 const fieldErrors = (issues: { path: PropertyKey[]; message: string }[]) => Object.fromEntries(issues.map((issue) => [String(issue.path[0]), issue.message]));
+
+/** Rantai arsitektur per proses bisnis (probis → layanan → data → aplikasi → infrastruktur → keamanan) untuk satu periode. */
+export async function chainAction(period: string): Promise<ActionResult<Packed<ChainRow>>> {
+  try {
+    arg(periodName, period);
+    const actor = await currentActor();
+    if (!can.viewGap(actor)) throw new Error("Anda tidak memiliki akses ke Gap Analysis.");
+    return { ok: true, data: pack(await chainCoverage(period, opdScope(actor))) };
+  } catch (error) {
+    return fail(error);
+  }
+}
 
 /** Pindai ulang kesenjangan satu periode dari data tervalidasi semua domain. */
 export async function scanGapAction(period: string): Promise<ActionResult<{ created: number; updated: number; closed: number; total: number }>> {

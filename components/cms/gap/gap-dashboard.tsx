@@ -11,6 +11,7 @@ import { StatCard } from "@/components/blocks/stat-card";
 import { StatRow } from "@/components/blocks/stat-row";
 import { ToneBadge } from "@/components/blocks/status-badge";
 import { GapDetail, GapPriority, GapStatus } from "@/components/cms/gap/gap-detail";
+import { GapChain } from "@/components/cms/gap/gap-chain";
 import { GapForm } from "@/components/cms/gap/gap-form";
 import { GapFunnel } from "@/components/cms/gap/gap-funnel";
 import { StatusTabs } from "@/components/cms/status-tabs";
@@ -18,7 +19,7 @@ import { Icon } from "@/components/icon";
 import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { gapStatusConfig, gapStatusKeys, priorityConfig, priorityKeys, ruleConfig, type GapRule, type GapStatus as Status } from "@/lib/gap/rules";
+import { chainLabel, chainStages, gapStatusConfig, gapStatusKeys, priorityConfig, priorityKeys, ruleConfig, type GapRule, type GapStatus as Status } from "@/lib/gap/rules";
 import { muatanConfig, muatanKeys, muatanOptions } from "@/lib/peta-rencana/muatan";
 import { type PeriodOptions } from "@/lib/probis/reference";
 import { unpack, type Packed } from "@/lib/pack";
@@ -29,6 +30,8 @@ import { formatNumber } from "@/lib/format";
 
 
 type Tab = "all" | Status;
+/** Urutan tahap rantai yang diperiksa aturan temuan; -1 untuk temuan manual. */
+const stageOf = (r: GapRecord) => (r.rule && ruleConfig[r.rule as GapRule] ? chainStages.indexOf(ruleConfig[r.rule as GapRule].stage) : -1);
 const tabs: { value: Tab; label: string }[] = [{ value: "all", label: "Semua" }, ...gapStatusKeys.map((k) => ({ value: k, label: gapStatusConfig[k].label }))];
 
 /**
@@ -122,6 +125,8 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
         actions={actions}
       />
 
+      <GapChain period={period} pd={pd} />
+
       {inPeriod.length === 0 ? (
         <Card data-reveal>
           <EmptyState illustration="gap-bridge" title="Belum ada temuan di periode ini" description="Pindai kesenjangan untuk membandingkan data tervalidasi tiap domain dengan target arsitektur, atau tambah temuan manual.">
@@ -210,6 +215,7 @@ export function GapDashboard({ data, periods, canManage, canExport }: { data: Pa
                 ),
               },
               { header: "Domain", sortValue: (r) => r.domain, cell: (r) => <ToneBadge tone={muatanConfig[r.domain].tone}>{muatanConfig[r.domain].label}</ToneBadge> },
+              { header: "Tahap rantai", hideable: true, sortValue: (r) => stageOf(r), cell: (r) => (stageOf(r) >= 0 ? chainLabel[chainStages[stageOf(r)]!] : "—") },
               { header: "Perangkat Daerah", hideable: true, sortValue: (r) => r.opdName ?? "", cell: (r) => r.opdName ?? "—" },
               { header: "Status", hideable: true, defaultHidden: true, sortValue: (r) => r.status, cell: (r) => <GapStatus status={r.status} /> },
               { header: "AS-IS", hideable: true, defaultHidden: true, cell: (r) => <span className="line-clamp-2">{r.asIs}</span> },

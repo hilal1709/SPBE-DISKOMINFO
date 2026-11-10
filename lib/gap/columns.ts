@@ -1,6 +1,6 @@
 import { muatanConfig } from "@/lib/peta-rencana/muatan";
 import type { GapRecord } from "@/lib/types";
-import { gapStatusConfig, priorityConfig, ruleConfig, type GapRule } from "./rules";
+import { chainLabel, gapStatusConfig, priorityConfig, ruleConfig, type GapRule } from "./rules";
 
 /** Kolom ekspor Gap Analysis. */
 export const gapColumns: { header: string; width: number; value: (r: GapRecord) => string }[] = [
@@ -8,6 +8,7 @@ export const gapColumns: { header: string; width: number; value: (r: GapRecord) 
   { header: "Periode", width: 12, value: (r) => r.period },
   { header: "Domain", width: 14, value: (r) => muatanConfig[r.domain].label },
   { header: "Aturan", width: 34, value: (r) => (r.rule ? (ruleConfig[r.rule as GapRule]?.label ?? r.rule) : "Manual") },
+  { header: "Tahap Rantai", width: 16, value: (r) => (r.rule && ruleConfig[r.rule as GapRule] ? chainLabel[ruleConfig[r.rule as GapRule].stage] : "") },
   { header: "Objek", width: 40, value: (r) => r.subjectName },
   { header: "ID Objek", width: 16, value: (r) => r.subjectCode ?? "" },
   { header: "Perangkat Daerah", width: 32, value: (r) => r.opdName ?? "" },

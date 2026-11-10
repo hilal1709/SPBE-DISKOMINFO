@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import type { GapPriority, GapRule } from "./rules";
+import { ruleKeys, type GapPriority, type GapRule } from "./rules";
 
 /** Temuan hasil satu aturan (sebelum disimpan). */
 export type Finding = { rule: GapRule; subject_code: string; subject_name: string; opd_id: string | null; sasaran: string | null; as_is: string; rekomendasi: string; priority: GapPriority };
@@ -51,6 +51,27 @@ const queries: Record<GapRule, string> = {
            case when exists (select 1 from application_services x where x.application_id = a.id) then 'tinggi' else 'sedang' end
     from applications a
     where a.period_id = $1 and a.status = 'approved' and not (${hasArray("standar")} and ${hasArray("audit")})`,
+  layanan_tanpa_data: `
+    select s.code, s.name, s.opd_id, ${sasaranVia("service_process_businesses", "service_id", "s.id")},
+           'Belum ada data tervalidasi yang tertaut ke layanan ini', 'Pendataan data yang dihasilkan/dipakai layanan ' || s.name, 'rendah'
+    from services s
+    where s.period_id = $1 and s.status = 'approved'
+      and not exists (select 1 from dataset_services x join datasets d on d.id = x.dataset_id and d.status = 'approved' where x.service_id = s.id)`,
+  layanan_tanpa_aplikasi: `
+    select s.code, s.name, s.opd_id, ${sasaranVia("service_process_businesses", "service_id", "s.id")},
+           'Belum ada aplikasi tervalidasi yang mendukung layanan ini', 'Penyediaan aplikasi pendukung layanan ' || s.name,
+           case s.method when 'elektronik' then 'tinggi' else 'sedang' end
+    from services s
+    where s.period_id = $1 and s.status = 'approved'
+      and not exists (select 1 from application_services x join applications a on a.id = x.application_id and a.status = 'approved' where x.service_id = s.id)`,
+  infra_tanpa_keamanan: `
+    select i.code, i.name, i.opd_id, ${sasaranVia("infrastructure_process_businesses", "infrastructure_id", "i.id")},
+           'Belum ada kegiatan Keamanan SPBE yang tertaut ke komponen ini', 'Penerapan standar dan audit keamanan untuk ' || i.name, 'sedang'
+    from infrastructures i
+    where i.period_id = $1 and i.status = 'approved'
+      and not exists (
+        select 1 from jsonb_each(case when jsonb_typeof(i.security) = 'object' then i.security else '{}'::jsonb end) e
+        where jsonb_typeof(e.value) = 'array' and jsonb_array_length(e.value) > 0)`,
   data_tidak_interoperabel: `
     select d.code, d.name, d.opd_id, ${sasaranVia("dataset_process_businesses", "dataset_id", "d.id")},
            'Data belum interoperabel', 'Integrasi ' || d.name || ' ke portal Satu Data', 'sedang'
@@ -76,7 +97,8 @@ const COLUMNS = ["subject_code", "subject_name", "opd_id", "sasaran", "as_is", "
 export async function detectGaps(client: PoolClient, periodId: string): Promise<Finding[]> {
   // Berurutan: satu koneksi transaksi tidak boleh menjalankan query paralel.
   const findings: Finding[] = [];
-  for (const [rule, sql] of Object.entries(queries) as [GapRule, string][]) {
+  for (const rule of ruleKeys) {
+    const sql = queries[rule];
     const { rows } = await client.query({ text: sql, values: [periodId], rowMode: "array" });
     findings.push(...rows.map((r: unknown[]) => ({ rule, ...Object.fromEntries(COLUMNS.map((c, i) => [c, r[i]])) }) as Finding));
   }
