@@ -332,6 +332,22 @@ export function updateProbis(id: string, v: ProbisValues, actor: Actor, submit: 
   });
 }
 
+export type ProbisHistoryItem = { id: string; period: string; name: string; opdName: string; status: SubmissionStatus; hasDiagram: boolean };
+
+/** Probis berkode sama di semua periode, urut waktu (nama bisa berubah antarperiode). */
+export async function probisHistory(code: string): Promise<ProbisHistoryItem[]> {
+  const { rows } = await db().query(
+    `select pb.id, ap.name as period, pb.name, coalesce(op.name, o.name) as opd_name, pb.status::text as status, pb.bpmn_xml is not null as has_diagram
+     from process_businesses pb
+     join opd o on o.id = pb.opd_id
+     join architecture_periods ap on ap.id = pb.period_id
+     left join opd_periods op on op.opd_id = o.id and op.period_id = pb.period_id
+     where pb.code = $1 order by ap.start_year`,
+    [code],
+  );
+  return rows.map((r) => ({ id: r.id, period: r.period, name: r.name, opdName: r.opd_name, status: r.status, hasDiagram: r.has_diagram }));
+}
+
 export type ProbisDiagram = { xml: string | null; svg: string | null; updatedAt: string | null };
 
 export async function getProbisDiagram(id: string): Promise<ProbisDiagram> {

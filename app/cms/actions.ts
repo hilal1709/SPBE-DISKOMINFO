@@ -128,6 +128,19 @@ export async function getProbisDiagram(id: string): Promise<ActionResult<repo.Pr
   }
 }
 
+/** Riwayat satu probis lintas periode (kode sama): nama, OPD, dan statusnya di tiap periode. */
+export async function getProbisHistory(id: string): Promise<ActionResult<repo.ProbisHistoryItem[]>> {
+  try {
+    arg(idSchema, id);
+    const actor = await currentActor();
+    const current = await repo.getProbis(id);
+    if (!current || !can.read(actor, current.opdId)) throw new Error("Probis tidak ditemukan.");
+    return { ok: true, data: await repo.probisHistory(current.code) };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 /** Simpan diagram BPMN; aturan sama dengan menyunting rekamannya (draf/dikembalikan, OPD sendiri). */
 export async function saveProbisDiagram(id: string, input: { xml: string; svg: string }): Promise<ActionResult<{ updatedAt: string }>> {
   try {
@@ -228,16 +241,21 @@ export async function commitImport(rows: ImportRow[], options: { status: "draft"
 async function periodAdmin() {
   const actor = await currentActor();
   if (!can.managePeriods(actor)) throw new Error("Hanya tim Diskominfo yang dapat mengelola periode.");
+  return actor;
 }
 
-export async function createPeriod(start: number, end: number): Promise<ActionResult<{ name: string }>> {
+/** `importFrom` = id periode sumber impor history (probis tervalidasi disalin sebagai draf). */
+export async function createPeriod(start: number, end: number, importFrom?: string | null): Promise<ActionResult<{ name: string; copied: number; review: number }>> {
   try {
     arg(yearSchema, start);
     arg(yearSchema, end);
-    await periodAdmin();
-    const name = await periods.createPeriod(start, end);
+    if (importFrom) arg(idSchema, importFrom);
+    const actor = await periodAdmin();
+    const created = await periods.createPeriod(start, end, importFrom ? { periodId: importFrom, actor } : undefined);
+    // Salinan masih memakai versi RAB periode sumber: petakan ke versi terbit terbaru seperti saat ganti versi.
+    const remap = created.remapTo ? await rabRepo.rab.remapPeriod(created.id, created.remapTo, actor) : null;
     refresh({ reference: true });
-    return { ok: true, data: { name } };
+    return { ok: true, data: { name: created.name, copied: created.copied, review: remap?.review ?? 0 } };
   } catch (error) {
     return fail(error);
   }

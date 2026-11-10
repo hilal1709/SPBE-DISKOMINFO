@@ -46,6 +46,9 @@ export function PeriodManager({
   const last = periods.at(-1);
   const [start, setStart] = useState(String((last?.end ?? new Date().getFullYear() - 1) + 1));
   const [end, setEnd] = useState(String(Number(start) + 4));
+  /** Impor history: id periode sumber, atau "" bila periode baru dimulai kosong. Bawaan: periode aktif. */
+  const [importFrom, setImportFrom] = useState((periods.find((p) => p.active) ?? last)?.id ?? "");
+  const source = periods.find((p) => p.id === importFrom);
   const [fresh, setFresh] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [pending, start_] = useTransition();
@@ -65,9 +68,14 @@ export function PeriodManager({
 
   const add = () =>
     start_(async () => {
-      const result = await createPeriod(Number(start), Number(end));
+      const result = await createPeriod(Number(start), Number(end), importFrom || null);
       if (!result.ok) return void toast.error(result.error);
-      toast.success(`Periode ${result.data.name} ditambahkan`, { description: "Jadikan aktif bila sudah mulai dipakai." });
+      const { copied, review } = result.data;
+      toast.success(`Periode ${result.data.name} ditambahkan`, {
+        description: copied
+          ? `${formatNumber(copied)} proses bisnis disalin sebagai draf${review ? `, ${formatNumber(review)} perlu pemetaan RAB` : ""}.`
+          : "Jadikan aktif bila sudah mulai dipakai.",
+      });
       setFresh(result.data.name);
       const next = Number(end) + 1;
       setStart(String(next));
@@ -195,6 +203,25 @@ export function PeriodManager({
           <FieldDescription>
             {Number.isFinite(span) && span > 0 ? `Periode ${start}–${end} · ${span} tahun` : "Isi tahun mulai dan selesai"}
           </FieldDescription>
+          <Field>
+            <FieldLabel htmlFor="import-from">Impor history proses bisnis</FieldLabel>
+            <Select value={importFrom || "none"} onValueChange={(v) => setImportFrom(v === "none" ? "" : v)}>
+              <SelectTrigger id="import-from" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Tidak, mulai kosong</SelectItem>
+                {periods.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>Dari {p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              {source
+                ? `${formatNumber(source.approved)} proses bisnis tervalidasi beserta diagramnya disalin sebagai draf. Domain lain mulai kosong.`
+                : "Semua domain mulai kosong."}
+            </FieldDescription>
+          </Field>
           <Button loading={pending} onClick={add}>
             {!pending && <Icon icon={Add01Icon} size={16} />}
             Tambah periode

@@ -94,6 +94,8 @@ export function BusinessProcessDashboard({
   const all = useMemo(() => unpack(data), [data]);
 
   const rows = useMemo(() => filterProbis(all, filter), [all, filter]);
+  /** Probis terpilih di semua periode (kode sama), urut periode. */
+  const history = useMemo(() => (selected ? all.filter((p) => p.id === selected.id).sort((a, b) => a.period.localeCompare(b.period)) : []), [all, selected]);
   /** Widget yang juga berfungsi sebagai filter memakai data tanpa filternya sendiri, agar pilihan lain tetap terlihat. */
   const withoutRab1 = useMemo(() => filterProbis(all, { ...filter, rab1: [] }), [all, filter]);
   const withoutRab2 = useMemo(() => filterProbis(all, { ...filter, rab2: [] }), [all, filter]);
@@ -247,6 +249,18 @@ export function BusinessProcessDashboard({
             <DetailField label="Indikator Kinerja Utama" value={selected.iku} />
             <DetailField label="Periode" value={selected.period} />
           </div>
+          {history.length > 1 && (
+            <DetailSection title="Riwayat antarperiode">
+              <ul className="grid gap-2">
+                {history.map((p) => (
+                  <li key={p.period} className="flex flex-wrap items-baseline gap-x-3 text-sm">
+                    <span className="font-semibold tabular-nums">{p.period}</span>
+                    <span className={p.period === selected.period ? undefined : "text-muted-foreground"}>{p.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </DetailSection>
+          )}
           {selected.diagram && (
             <DetailSection title="Diagram proses">
               <div data-aos="fade-blur">
