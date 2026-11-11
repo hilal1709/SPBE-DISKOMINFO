@@ -7,6 +7,7 @@ import { DataTable, type ServerPaging } from "@/components/blocks/data-table";
 import { EmptyState } from "@/components/blocks/empty-state";
 import { FilterBar } from "@/components/blocks/filter-bar";
 import { ReviewBadge } from "@/components/cms/review-badge";
+import { clamp } from "@/components/cms/template-cells";
 import { ProbisDetail } from "@/components/cms/probis-detail";
 import { Icon } from "@/components/icon";
 import { Reveal } from "@/components/motion/reveal";
@@ -16,8 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { can, type Actor } from "@/lib/permissions";
 import { useRabSet } from "@/components/probis/rab-context";
-import { perangkatDaerah, statusLabel as probisLabel, type PeriodOptions } from "@/lib/probis/reference";
+import { statusLabel as probisLabel, type PeriodOptions } from "@/lib/probis/reference";
 import { PAGE_SIZE, probisParams, type ProbisView } from "@/lib/probis/table-params";
+import { useOpd } from "@/components/opd/opd-context";
 import type { ProbisRecord } from "@/lib/types";
 
 type Tab = ProbisView["tab"];
@@ -51,6 +53,7 @@ export function ProbisTable({
   actor: Actor;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
@@ -59,7 +62,7 @@ export function ProbisTable({
   const rab = (code: string | null, period: string) => (code ? rabs.forPeriod(period).label(code) : "—");
   const deep = (value: string | null, period: string) => rabs.forPeriod(period).text(value) ?? "—";
   const [selected, setSelected] = useState<ProbisRecord | null>(null);
-  const { tab, pd, rab1, period } = view;
+  const { tab, pd, rab1, period, diagram } = view;
 
   /** Ubah tampilan lewat URL; server menghitung halaman baru tanpa memuat ulang halaman. */
   const update = (patch: Partial<ProbisView>) => {
@@ -108,8 +111,9 @@ export function ProbisTable({
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Perangkat Daerah", wide: true, multiple: true, searchable: true, options: opd.all(period).map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "RAB 1", multiple: true, options: rabs.forPeriod(period === "__all" ? undefined : period).level(1).map((n) => ({ value: n.code, label: `${n.code} ${n.name}` })), values: rab1, onValuesChange: setRab1 },
+          { label: "Diagram", options: [{ value: "ada", label: "Sudah ada" }, { value: "belum", label: "Belum ada" }], value: diagram || "__all", onChange: (value: string) => update({ diagram: value === "ada" || value === "belum" ? value : "" }) },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
         ]}
       />
@@ -123,7 +127,7 @@ export function ProbisTable({
         searchPlaceholder="Cari nama, ID, atau OPD"
         onRowClick={setSelected}
         pageSize={PAGE_SIZE}
-        minWidth={860}
+        minWidth={940}
         actions={
           <>
             {can.export(actor) && (
@@ -146,7 +150,6 @@ export function ProbisTable({
         }
         columns={[
           { header: "Status", sortKey: "status", sortValue: (r) => r.status, cell: (r) => <ReviewBadge status={r.status} /> },
-          { header: "ID", className: "whitespace-nowrap", sortKey: "code", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
           {
             header: "Nama proses bisnis",
             sortKey: "name", sortValue: (r) => r.name,
@@ -158,17 +161,21 @@ export function ProbisTable({
               </span>
             ),
           },
-          { header: "Perangkat Daerah", hideable: true, sortKey: "opd", sortValue: (r) => r.opdName, cell: (r) => r.opdName },
-          { header: "RAB 3", hideable: true, sortKey: "rab3", sortValue: (r) => r.rab3 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab3, r.period)}</span> },
-          { header: "Status probis", hideable: true, defaultHidden: true, sortKey: "probisStatus", sortValue: (r) => r.probisStatus, cell: (r) => probisLabel[r.probisStatus] },
-          { header: "RAB 1", hideable: true, defaultHidden: true, sortKey: "rab1", sortValue: (r) => r.rab1 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab1, r.period)}</span> },
-          { header: "RAB 2", hideable: true, defaultHidden: true, sortKey: "rab2", sortValue: (r) => r.rab2 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab2, r.period)}</span> },
+          { header: "ID", className: "whitespace-nowrap", sortKey: "code", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
+          { header: "Uraian", hideable: true, defaultHidden: true, cell: (r) => clamp(r.description) },
+          { header: "Unit kerja", hideable: true, sortKey: "opd", sortValue: (r) => r.opdName, cell: (r) => r.opdName },
           { header: "RAB 4", hideable: true, defaultHidden: true, sortKey: "rabL4", sortValue: (r) => r.rabL4 ?? "", cell: (r) => <span className="text-muted-foreground">{deep(r.rabL4, r.period)}</span> },
           { header: "RAB 5", hideable: true, defaultHidden: true, sortKey: "rabL5", sortValue: (r) => r.rabL5 ?? "", cell: (r) => <span className="text-muted-foreground">{deep(r.rabL5, r.period)}</span> },
-          { header: "Sasaran strategis", hideable: true, defaultHidden: true, cell: (r) => <span className="line-clamp-2 text-muted-foreground">{r.strategicGoal ?? "—"}</span> },
+          { header: "Sasaran strategis", hideable: true, defaultHidden: true, cell: (r) => clamp(r.strategicGoal) },
           { header: "IKU", hideable: true, defaultHidden: true, cell: (r) => r.iku ?? "—" },
-          { header: "Target / realisasi", hideable: true, defaultHidden: true, cell: (r) => `${r.ikuTarget ?? "—"} / ${r.ikuRealization ?? "—"}` },
+          { header: "Nilai IKU target", hideable: true, defaultHidden: true, cell: (r) => r.ikuTarget ?? "—" },
+          { header: "Nilai IKU terealisasi", hideable: true, defaultHidden: true, cell: (r) => r.ikuRealization ?? "—" },
+          { header: "RAB 1", hideable: true, defaultHidden: true, sortKey: "rab1", sortValue: (r) => r.rab1 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab1, r.period)}</span> },
+          { header: "RAB 2", hideable: true, defaultHidden: true, sortKey: "rab2", sortValue: (r) => r.rab2 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab2, r.period)}</span> },
+          { header: "RAB 3", hideable: true, sortKey: "rab3", sortValue: (r) => r.rab3 ?? "", cell: (r) => <span className="text-muted-foreground">{rab(r.rab3, r.period)}</span> },
+          { header: "Status probis", hideable: true, defaultHidden: true, sortKey: "probisStatus", sortValue: (r) => r.probisStatus, cell: (r) => probisLabel[r.probisStatus] },
           { header: "Periode", hideable: true, defaultHidden: true, sortKey: "period", sortValue: (r) => r.period, cell: (r) => r.period },
+          { header: "Diagram", hideable: true, sortKey: "diagram", sortValue: (r) => Number(r.hasDiagram), cell: (r) => <Badge variant={r.hasDiagram ? "success" : "muted"}>{r.hasDiagram ? "Ada" : "Belum"}</Badge> },
         ]}
       />
 

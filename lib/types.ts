@@ -1,3 +1,4 @@
+import type { DefaultMuatan } from "@/lib/peta-rencana/muatan";
 /** Peran bawaan (sheet Functional Requirement). */
 export type BuiltinRole = "operator_opd" | "organisasi" | "validator_data" | "validator_aplikasi" | "validator_infrastruktur" | "validator_keamanan" | "operator_diskominfo" | "admin" | "pimpinan" | "superadmin";
 /** Peran akun: bawaan atau peran kustom yang dibuat Superadmin di Pengaturan → Hak Akses. */
@@ -321,7 +322,7 @@ export type Rencana = {
   year: number;
   sasaran: string;
   inisiatif: string | null;
-  muatan: "aplikasi" | "layanan" | "data" | "infrastruktur" | "keamanan" | "tata_kelola" | "manajemen" | "audit";
+  muatan: string;
   program: string | null;
   target: string | null;
   jumlah: number;
@@ -335,6 +336,8 @@ export type Rencana = {
   deferredFrom: string | null;
   /** Portal publik: kegiatan Keamanan/Audit, hanya untuk agregat (tidak tampil di katalog). */
   restricted?: boolean;
+  /** Entri arsitektur yang ditunjuk kegiatan ini. */
+  tautan?: RencanaLink[];
 };
 
 /** Kegiatan Peta Rencana di CMS (satu baris tabel roadmap_items). */
@@ -346,10 +349,14 @@ export type RencanaRecord = Omit<Rencana, "id" | "opd"> & {
   opdName: string;
   updatedAt: string;
   isSample: boolean;
+  tautan: RencanaLink[];
 };
 
 /** Indikator sasaran beserta target per tahun (kunci = tahun). */
 export type RencanaIndicator = { id: string; period: string; sasaran: string; inisiatif: string | null; indikator: string; targets: Record<string, string> };
+
+/** Entri arsitektur yang ditunjuk kegiatan Peta Rencana (kode pada periode kegiatan). */
+export type RencanaLink = { domain: "probis" | "layanan" | "data" | "aplikasi" | "infrastruktur" | "keamanan"; code: string; name: string };
 
 /** Temuan Gap Analysis (satu baris tabel gap_analyses). `rule` null = temuan manual. */
 export type GapRecord = {
@@ -357,8 +364,9 @@ export type GapRecord = {
   code: string;
   period: string;
   opdId: string | null;
+  opdCode: string | null;
   opdName: string | null;
-  domain: Rencana["muatan"];
+  domain: DefaultMuatan;
   rule: string | null;
   subjectCode: string | null;
   subjectName: string;

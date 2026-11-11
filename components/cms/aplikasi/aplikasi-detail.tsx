@@ -1,4 +1,5 @@
 "use client";
+import { RelatedPlans } from "@/components/peta-rencana/related-plans";
 import { deleteAplikasi, getAplikasiReviews, reviewAplikasi } from "@/app/cms/aplikasi/actions";
 import { useRaa, useRaaSet } from "@/components/aplikasi/raa-context";
 import { Banner } from "@/components/blocks/banner";
@@ -12,7 +13,7 @@ import { flowLabels } from "@/lib/aplikasi/data-flow";
 import { basisLabel, infraFields, kepemilikanLabel, lisensiLabel } from "@/lib/aplikasi/reference";
 import { securityFields } from "@/lib/data/reference";
 import type { Actor, ReviewStage } from "@/lib/permissions";
-import { pdByCode } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { AplikasiRecord } from "@/lib/types";
 
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
@@ -22,8 +23,8 @@ function Links({ items, empty }: { items: { id: string; name: string; status?: s
     <ul className="grid gap-1.5 text-sm">
       {items.map((p) => (
         <li key={p.id} className="flex items-baseline gap-2">
-          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{p.id}</span>
-          <span>
+          <span className="w-36 shrink-0 text-xs text-muted-foreground tabular-nums">{p.id}</span>
+          <span className="min-w-0 break-words">
             {p.name}
             {p.status && p.status !== "approved" && (
               <Badge variant="warning" className="ml-2 align-middle">
@@ -50,7 +51,7 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
   const security = securityFields.filter((f) => record.security[f.key]?.length);
   const sec = useSecurityRefs();
   const aligned = record.probis.some((p) => p.status === "approved");
-  const pengembang = pdByCode.get(record.pengembang)?.name ?? record.pengembang;
+  const pengembang = useOpd().name(record.pengembang, record.period);
 
   return (
     <DetailDialog
@@ -88,7 +89,7 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
         <DetailField label="Periode" value={record.period} />
       </div>
       <DetailSection title="Dependensi">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 [&>*]:min-w-0">
           <div className="grid content-start gap-1.5">
             <p className="text-xs font-medium text-muted-foreground">← Proses bisnis</p>
             <Links items={record.probis} empty="Belum ditautkan ke proses bisnis." />
@@ -130,6 +131,8 @@ export function AplikasiDetail({ record, actor, onClose }: { record: AplikasiRec
         </DetailSection>
       )}
       <p className="text-xs text-muted-foreground">Diperbarui {date.format(new Date(record.updatedAt))}</p>
+
+      <RelatedPlans domain="aplikasi" code={record.code} period={record.period} />
 
       <ReviewHistory id={record.id} load={getAplikasiReviews} />
       <ReviewActions record={record} actor={actor} noun="Aplikasi" domain="aplikasi" editHref={`/cms/aplikasi/${record.id}`} onReview={reviewAplikasi} onDelete={deleteAplikasi} onDone={onClose} />

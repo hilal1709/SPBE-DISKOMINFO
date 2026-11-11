@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { deferRencana, deleteRencana, undoDeferRencana } from "@/app/cms/peta-rencana/actions";
 import { DetailDialog } from "@/components/blocks/detail-dialog";
 import { Icon } from "@/components/icon";
-import { RencanaBody, rencanaMeta } from "@/components/peta-rencana/rencana-body";
+import { RencanaBody, RencanaMeta } from "@/components/peta-rencana/rencana-body";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { RencanaRecord } from "@/lib/types";
@@ -47,7 +47,7 @@ export function RencanaDetail({ record, canManage, onClose }: { record: RencanaR
     });
 
   return (
-    <DetailDialog open onOpenChange={(open) => !open && onClose()} eyebrow={record.code} title={record.name} meta={<>{rencanaMeta(record)}{record.isSample && <Badge variant="muted">Data contoh</Badge>}</>}>
+    <DetailDialog open onOpenChange={(open) => !open && onClose()} eyebrow={record.code} title={record.name} meta={<><RencanaMeta r={record} />{record.isSample && <Badge variant="muted">Data contoh</Badge>}</>}>
       <RencanaBody r={record} />
       <p className="text-xs text-muted-foreground">Diperbarui {date.format(new Date(record.updatedAt))}</p>
       {canManage && (

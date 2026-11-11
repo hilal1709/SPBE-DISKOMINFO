@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode } from "@/lib/probis/reference";
 import { CLOSED_INTEROP_MESSAGE, closedInterop } from "./classification";
 import { isRadLeaf, securityFields, validitasOptions } from "./reference";
 
@@ -15,7 +14,7 @@ export function makeDataInput(rad: RabIndex) {
   return z
     .object({
       /** Wali data (Penanggung Jawab Data). */
-      opd: z.string().refine((v) => pdByCode.has(v), "Pilih Perangkat Daerah wali data"),
+      opd: z.string().trim().min(1, "Pilih Perangkat Daerah wali data").max(40),
       name: z.string().trim().min(3, "Nama data minimal 3 karakter").max(200),
       /** Keberadaan periode dicek di server (daftar periode dikelola di CMS). */
       period: z.string().trim().min(4, "Pilih periode arsitektur"),

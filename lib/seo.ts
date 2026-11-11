@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { publicNav } from "@/lib/navigation";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
-/** Halaman portal yang boleh diindeks mesin pencari (keamanan wajib login). */
-export const indexablePages = publicNav.filter((item) => !item.locked);
+/** Halaman portal yang boleh diindeks mesin pencari (Keamanan tidak). */
+export const indexablePages = publicNav.filter((item) => !item.locked && !item.noindex);
 
 const pageOf = (path: string) => {
   const item = publicNav.find((entry) => entry.href === path);
@@ -16,7 +16,7 @@ const shareImage = { url: "/opengraph-image", width: 1200, height: 630, alt: sit
 
 /** Metadata halaman portal dari `publicNav`: judul, deskripsi, URL kanonis, dan Open Graph. */
 export function pageMetadata(path: string): Metadata {
-  const { section, description = siteConfig.description, locked } = pageOf(path);
+  const { section, description = siteConfig.description, locked, noindex } = pageOf(path);
   // Beranda memakai judul lengkap situs, halaman lain "<section> · SPBE Gresik" lewat template root.
   const title = path === "/" ? { absolute: `${section} · ${siteConfig.name}` } : section;
   const shareTitle = path === "/" ? siteConfig.name : `${section} · ${siteConfig.shortName}`;
@@ -27,7 +27,7 @@ export function pageMetadata(path: string): Metadata {
     alternates: { canonical: path },
     openGraph: { type: "website", locale: siteConfig.locale, siteName: siteConfig.name, title: shareTitle, description, url: path, images: [shareImage] },
     twitter: { card: "summary_large_image", title: shareTitle, description, images: [shareImage] },
-    ...(locked && { robots: { index: false, follow: false } }),
+    ...((locked || noindex) && { robots: { index: false, follow: false } }),
   };
 }
 

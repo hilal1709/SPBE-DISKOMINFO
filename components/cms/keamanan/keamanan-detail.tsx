@@ -1,4 +1,5 @@
 "use client";
+import { RelatedPlans } from "@/components/peta-rencana/related-plans";
 import { deleteKeamanan, getKeamananReviews, reviewKeamanan } from "@/app/cms/keamanan/actions";
 import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
 import { ToneBadge } from "@/components/blocks/status-badge";
@@ -46,6 +47,8 @@ export function KeamananDetail({ record, actor, onClose }: { record: KeamananRec
         ))}
       </div>
       <p className="text-xs text-muted-foreground">Diperbarui {date.format(new Date(record.updatedAt))}</p>
+
+      <RelatedPlans domain="keamanan" code={record.code} period={record.period} />
 
       <ReviewHistory id={record.id} load={getKeamananReviews} />
       <ReviewActions record={record} actor={actor} noun="Kegiatan" domain="keamanan" editHref={`/cms/keamanan/${record.id}`} onReview={reviewKeamanan} onDelete={deleteKeamanan} onDone={onClose} />

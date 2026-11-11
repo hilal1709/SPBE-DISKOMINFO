@@ -10,6 +10,7 @@ import { FilterBar } from "@/components/blocks/filter-bar";
 import { StatusBadge } from "@/components/blocks/status-badge";
 import { DataDetail } from "@/components/cms/data/data-detail";
 import { ReviewBadge } from "@/components/cms/review-badge";
+import { clamp, links, securityColumns } from "@/components/cms/template-cells";
 import { useRadSet } from "@/components/data/rad-context";
 import { Icon } from "@/components/icon";
 import { Reveal } from "@/components/motion/reveal";
@@ -19,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { jenisLabel, jenisOptions, sifatLabel, sifatOptions } from "@/lib/data/reference";
 import { can, type Actor } from "@/lib/permissions";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { DataRecord, SubmissionStatus } from "@/lib/types";
 
 type Tab = "all" | "review" | SubmissionStatus;
@@ -36,6 +38,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar data CMS: tab status, filter, tabel ramping (kolom inti), detail via pop-up. */
 export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: Actor; periods: PeriodOptions }) {
+  const opd = useOpd();
   const rads = useRadSet();
   /** Nama RAD mengikuti versi RAD periode masing-masing data. */
   const rad = (code: string | null, period: string) => (code ? rads.forPeriod(period).label(code) : "—");
@@ -88,7 +91,7 @@ export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: 
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Wali data", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Wali data", wide: true, multiple: true, searchable: true, options: opd.all().map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Sifat", multiple: true, options: sifatOptions, values: sifat, onValuesChange: setSifat },
           { label: "Jenis", multiple: true, options: jenisOptions, values: jenis, onValuesChange: setJenis },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
@@ -126,7 +129,6 @@ export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: 
         }
         columns={[
           { header: "Status", sortValue: (r) => r.status, cell: (r) => <ReviewBadge status={r.status} /> },
-          { header: "ID", className: "whitespace-nowrap", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
           {
             header: "Nama data",
             sortValue: (r) => r.name,
@@ -138,15 +140,25 @@ export function DataList({ rows, actor, periods }: { rows: DataRecord[]; actor: 
               </span>
             ),
           },
-          { header: "Sifat", hideable: true, sortValue: (r) => r.sifat, cell: (r) => <StatusBadge status={sifatLabel[r.sifat]} /> },
+          { header: "ID", className: "whitespace-nowrap", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
+          { header: "Uraian", hideable: true, defaultHidden: true, cell: (r) => clamp(r.uraian) },
+          { header: "Tujuan", hideable: true, defaultHidden: true, cell: (r) => clamp(r.tujuan) },
+          { header: "Produsen data", hideable: true, defaultHidden: true, sortValue: (r) => r.produsen ?? "", cell: (r) => (r.produsen ? opd.name(r.produsen, r.period) : "—") },
           { header: "Wali data", hideable: true, sortValue: (r) => r.opdName, cell: (r) => r.opdName },
-          { header: "RAD", hideable: true, sortValue: (r) => r.rad3 ?? r.rad2 ?? "", cell: (r) => <span className="text-muted-foreground">{rad(r.rad3 ?? r.rad2, r.period)}</span> },
-          { header: "Jenis", hideable: true, defaultHidden: true, sortValue: (r) => r.jenis, cell: (r) => jenisLabel[r.jenis] },
-          { header: "Validitas", hideable: true, defaultHidden: true, sortValue: (r) => r.validitas, cell: (r) => r.validitas },
-          { header: "Interoperabel", hideable: true, defaultHidden: true, sortValue: (r) => Number(r.interoperabel), cell: (r) => (r.interoperabel ? "Ya" : "Tidak") },
-          { header: "Uraian", hideable: true, defaultHidden: true, cell: (r) => <span className="line-clamp-2 text-muted-foreground">{r.uraian}</span> },
-          { header: "Proses bisnis", hideable: true, defaultHidden: true, sortValue: (r) => r.probis.length, cell: (r) => (r.probis.length ? `${r.probis.length} probis` : "—") },
-          { header: "Layanan", hideable: true, defaultHidden: true, sortValue: (r) => r.layanan.length, cell: (r) => (r.layanan.length ? `${r.layanan.length} layanan` : "—") },
+          { header: "Informasi terkait (output)", hideable: true, defaultHidden: true, cell: (r) => clamp(r.output) },
+          { header: "Informasi terkait (input)", hideable: true, defaultHidden: true, cell: (r) => clamp(r.input) },
+          { header: "RAD 4", hideable: true, defaultHidden: true, sortValue: (r) => r.radL4 ?? "", cell: (r) => <span className="text-muted-foreground">{rads.forPeriod(r.period).text(r.radL4) ?? "—"}</span> },
+          { header: "Sifat data", hideable: true, sortValue: (r) => r.sifat, cell: (r) => <StatusBadge status={sifatLabel[r.sifat]} /> },
+          { header: "Jenis data", hideable: true, defaultHidden: true, sortValue: (r) => r.jenis, cell: (r) => jenisLabel[r.jenis] },
+          { header: "Validitas data", hideable: true, defaultHidden: true, sortValue: (r) => r.validitas, cell: (r) => r.validitas },
+          { header: "Interoperabilitas", hideable: true, defaultHidden: true, sortValue: (r) => Number(r.interoperabel), cell: (r) => (r.interoperabel ? "Ya" : "Tidak") },
+          { header: "RAD 1", hideable: true, defaultHidden: true, sortValue: (r) => r.rad1 ?? "", cell: (r) => <span className="text-muted-foreground">{rad(r.rad1, r.period)}</span> },
+          { header: "RAD 2", hideable: true, defaultHidden: true, sortValue: (r) => r.rad2 ?? "", cell: (r) => <span className="text-muted-foreground">{rad(r.rad2, r.period)}</span> },
+          { header: "RAD 3", hideable: true, sortValue: (r) => r.rad3 ?? r.rad2 ?? "", cell: (r) => <span className="text-muted-foreground">{rad(r.rad3 ?? r.rad2, r.period)}</span> },
+          { header: "Proses bisnis", hideable: true, defaultHidden: true, sortValue: (r) => r.probis.length, cell: (r) => links(r.probis) },
+          { header: "Layanan", hideable: true, defaultHidden: true, sortValue: (r) => r.layanan.length, cell: (r) => links(r.layanan) },
+          ...securityColumns<DataRecord>(),
+          { header: "Periode", hideable: true, defaultHidden: true, sortValue: (r) => r.period, cell: (r) => r.period },
         ]}
       />
 

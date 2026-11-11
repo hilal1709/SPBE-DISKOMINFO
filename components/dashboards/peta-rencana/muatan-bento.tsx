@@ -1,7 +1,8 @@
 "use client";
 import { CountUp } from "@/components/motion/count-up";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { muatanConfig, type Muatan } from "@/lib/peta-rencana/muatan";
+import { useMuatan } from "@/components/peta-rencana/muatan-context";
+import type { Muatan } from "@/lib/peta-rencana/muatan";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils";
  * Warna petak = token muatan; klik petak untuk memfilter.
  */
 export function MuatanBento({ counts, selected, onToggle, className }: { counts: [Muatan, number][]; selected: string[]; onToggle: (k: Muatan) => void; className?: string }) {
+  const book = useMuatan();
   const total = counts.reduce((n, [, v]) => n + v, 0);
   return (
     <Card className={cn("gap-3", className)}>
@@ -17,7 +19,7 @@ export function MuatanBento({ counts, selected, onToggle, className }: { counts:
       </CardHeader>
       <CardContent className="grid flex-1 auto-rows-[minmax(5.5rem,auto)] grid-cols-2 gap-2 sm:grid-cols-4">
         {counts.map(([k, n], i) => {
-          const cfg = muatanConfig[k];
+          const cfg = book.get(k);
           const on = selected.includes(k);
           const dim = selected.length > 0 && !on;
           return (

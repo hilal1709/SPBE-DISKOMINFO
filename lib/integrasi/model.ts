@@ -135,3 +135,44 @@ export function unpackArchitecture(p: PackedArchitecture): Architecture {
   const edges: DomainEdge[] = p.edges.map(([s, t, l, k], i) => ({ id: String(i), source: nodes[s]!.id, target: nodes[t]!.id, label: p.labels[l]!, storage: storages[k]!, origin: "" }));
   return { nodes, edges, summary: p.summary, securityVisible: p.securityVisible, partial: p.partial, available: p.available };
 }
+
+/** Lajur tampilan Integrasi berpusat aplikasi, urut alur: layanan → data masuk → [aplikasi] → data keluar → infrastruktur → keamanan. */
+export const flowLanes = [
+  { key: "layanan", label: "Layanan", empty: "Belum ada layanan yang didukung" },
+  { key: "input", label: "Data masuk", empty: "Belum ada data masuk" },
+  { key: "output", label: "Data keluar", empty: "Belum ada data keluar" },
+  { key: "infrastruktur", label: "Infrastruktur", empty: "Belum tercatat di infrastruktur" },
+  { key: "keamanan", label: "Keamanan", empty: "Belum ada kegiatan keamanan" },
+] as const;
+export type FlowLane = (typeof flowLanes)[number];
+export type AppFlow = { app: DomainNode; dataLain: DomainNode[] } & Record<FlowLane["key"], DomainNode[]>;
+
+/**
+ * Tetangga langsung tiap aplikasi, dikelompokkan per lajur. Arah aliran data mengikuti label rujukan
+ * ("Input data" / "Output data"); data yang hanya tertaut tanpa arah masuk `dataLain`.
+ */
+export function appFlows(nodes: DomainNode[], edges: DomainEdge[]): AppFlow[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const flows = new Map<string, AppFlow>();
+  const seen = new Set<string>();
+  for (const app of nodes) if (app.domain === "aplikasi") flows.set(app.id, { app, layanan: [], input: [], output: [], dataLain: [], infrastruktur: [], keamanan: [] });
+  const put = (flow: AppFlow, lane: FlowLane["key"] | "dataLain", node: DomainNode) => {
+    const key = `${flow.app.id}|${lane}|${node.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    flow[lane].push(node);
+  };
+  for (const e of edges) {
+    const a = byId.get(e.source), b = byId.get(e.target);
+    if (!a || !b) continue;
+    for (const [app, other] of [[a, b], [b, a]] as const) {
+      const flow = app.domain === "aplikasi" ? flows.get(app.id) : undefined;
+      if (!flow || other.domain === "aplikasi" || other.domain === "probis") continue;
+      if (other.domain === "data") put(flow, e.label === "Input data" ? "input" : e.label === "Output data" ? "output" : "dataLain", other);
+      else put(flow, other.domain, other);
+    }
+  }
+  return [...flows.values()]
+    .map((flow) => ({ ...flow, dataLain: flow.dataLain.filter((d) => !flow.input.includes(d) && !flow.output.includes(d)) }))
+    .sort((x, y) => x.app.name.localeCompare(y.app.name, "id"));
+}

@@ -1,14 +1,15 @@
+import { domains } from "@/lib/domains";
 import type { RencanaIndicator, RencanaRecord } from "@/lib/types";
-import { muatanConfig, sourceLabel, statusConfig } from "./muatan";
+import { defaultMuatanBook, sourceLabel, statusConfig, type MuatanBook } from "./muatan";
 
 /** Kolom ekspor kegiatan Peta Rencana; header bisa dibaca ulang oleh lib/peta-rencana/import.ts. */
 export type Column<R> = { header: string; width: number; value: (r: R) => string | number };
 
-export const rencanaColumns: Column<RencanaRecord>[] = [
+export const rencanaColumns = (muatan: MuatanBook = defaultMuatanBook): Column<RencanaRecord>[] => [
   { header: "ID", width: 16, value: (r) => r.code },
   { header: "Sasaran", width: 44, value: (r) => r.sasaran },
   { header: "Inisiatif Strategis", width: 32, value: (r) => r.inisiatif ?? "" },
-  { header: "Muatan", width: 14, value: (r) => muatanConfig[r.muatan].label },
+  { header: "Muatan", width: 14, value: (r) => muatan.get(r.muatan).label },
   { header: "Program", width: 36, value: (r) => r.program ?? "" },
   { header: "Kegiatan", width: 44, value: (r) => r.name },
   { header: "Perangkat Daerah", width: 32, value: (r) => r.opdName },
@@ -22,6 +23,7 @@ export const rencanaColumns: Column<RencanaRecord>[] = [
   { header: "Catatan Evaluasi", width: 32, value: (r) => r.evaluasi ?? "" },
   { header: "Asal Usulan", width: 18, value: (r) => sourceLabel[r.source] },
   { header: "Referensi Asal", width: 16, value: (r) => r.sourceRef ?? "" },
+  { header: "Arsitektur Terkait", width: 44, value: (r) => r.tautan.map((l) => `${domains[l.domain].label}: ${l.code} ${l.name}`).join("\n") },
 ];
 
 /** Kolom sheet indikator: target per tahun periode. */

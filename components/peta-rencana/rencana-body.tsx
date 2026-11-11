@@ -1,7 +1,9 @@
 import { DetailField, DetailSection } from "@/components/blocks/detail-dialog";
 import { StatusBadge, ToneBadge } from "@/components/blocks/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { muatanConfig, sourceLabel, statusConfig } from "@/lib/peta-rencana/muatan";
+import { domains } from "@/lib/domains";
+import { useMuatan } from "@/components/peta-rencana/muatan-context";
+import { sourceLabel, statusConfig } from "@/lib/peta-rencana/muatan";
 import type { Rencana } from "@/lib/types";
 
 /** Bagian detail kegiatan Peta Rencana yang dipakai CMS dan dashboard publik. */
@@ -10,11 +12,12 @@ type Item = Omit<Rencana, "id" | "opd"> & { opdName: string };
 
 export const RencanaStatus = ({ status }: { status: Rencana["status"] }) => <StatusBadge status={statusConfig[status].label} />;
 
-export function rencanaMeta(r: Item) {
+export function RencanaMeta({ r }: { r: Item }) {
+  const muatanBook = useMuatan();
   return (
     <>
       <RencanaStatus status={r.status} />
-      <ToneBadge tone={muatanConfig[r.muatan].tone}>{muatanConfig[r.muatan].label}</ToneBadge>
+      <ToneBadge tone={muatanBook.get(r.muatan).tone}>{muatanBook.get(r.muatan).label}</ToneBadge>
       <Badge variant="muted">{r.year}</Badge>
       <Badge variant="muted">{r.opdName}</Badge>
     </>
@@ -46,6 +49,19 @@ export function RencanaBody({ r }: { r: Item }) {
         <DetailField label="Periode" value={r.period} />
         <DetailField label="Asal usulan" value={r.sourceRef ? `${sourceLabel[r.source]} · ${r.sourceRef}` : sourceLabel[r.source]} className="sm:col-span-2" />
       </div>
+      {!!r.tautan?.length && (
+        <DetailSection title="Arsitektur terkait">
+          <ul className="grid gap-2">
+            {r.tautan.map((l) => (
+              <li key={`${l.domain}:${l.code}`} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                <Badge variant="muted">{domains[l.domain].label}</Badge>
+                <span className="font-medium">{l.name}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">{l.code}</span>
+              </li>
+            ))}
+          </ul>
+        </DetailSection>
+      )}
       <DetailSection title="Evaluasi & realisasi" tone="accent">
         <div className="grid gap-2 sm:grid-cols-2">
           <DetailField label="Realisasi" value={r.realisasi ?? "Belum ada"} className="bg-card" />

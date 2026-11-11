@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -27,15 +27,14 @@ import { colorByCount } from "@/lib/palette";
 import { activeFilterCount, countBy, emptyFilter, filterFromParams, filterProbis, filterToParams, rabOptions, rabTree, type ProbisFilter } from "@/lib/probis/query";
 import { useRabSet } from "@/components/probis/rab-context";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode, perangkatDaerah, statusLabel, statusOptions, type PeriodOptions } from "@/lib/probis/reference";
+import { statusLabel, statusOptions, type PeriodOptions } from "@/lib/probis/reference";
 import type { Probis } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber } from "@/lib/format";
 
 // bpmn-js hanya dimuat saat probis yang dibuka punya diagram.
 const BpmnViewer = dynamic(() => import("@/components/cms/bpmn/bpmn-viewer").then((m) => m.BpmnViewer), { ssr: false, loading: () => <Skeleton className="h-80 w-full sm:h-96" /> });
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
@@ -63,12 +62,16 @@ export function BusinessProcessDashboard({
   sample: boolean;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const params = useUrlParams();
   const rabs = useRabSet();
   const [filter, setFilterState] = useState<ProbisFilter>(() => filterFromParams(new URLSearchParams(params.toString()), activePeriod));
   const [selected, setSelected] = useState<Probis | null>(null);
   /** Filter terbaru, untuk aksi tertunda (animasi chip, Urungkan di toast). */
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Simpan filter di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: ProbisFilter | ((current: ProbisFilter) => ProbisFilter)) => {
@@ -91,6 +94,8 @@ export function BusinessProcessDashboard({
   const all = useMemo(() => unpack(data), [data]);
 
   const rows = useMemo(() => filterProbis(all, filter), [all, filter]);
+  /** Probis terpilih di semua periode (kode sama), urut periode. */
+  const history = useMemo(() => (selected ? all.filter((p) => p.id === selected.id).sort((a, b) => a.period.localeCompare(b.period)) : []), [all, selected]);
   /** Widget yang juga berfungsi sebagai filter memakai data tanpa filternya sendiri, agar pilihan lain tetap terlihat. */
   const withoutRab1 = useMemo(() => filterProbis(all, { ...filter, rab1: [] }), [all, filter]);
   const withoutRab2 = useMemo(() => filterProbis(all, { ...filter, rab2: [] }), [all, filter]);
@@ -115,7 +120,7 @@ export function BusinessProcessDashboard({
     return [...groups]
       .map(([code, list]) => ({ code, name: pdName(code), count: list.length, sektor: [...countBy(list, "rab1")].sort((a, b) => b[1] - a[1]) }))
       .sort((a, b) => b.count - a.count);
-  }, [withoutPd]);
+  }, [withoutPd, pdName]);
   const active = activeFilterCount(filter, activePeriod);
   const chips: Chip[] = [
     ...filter.pd.map((code) => ({ id: `pd:${code}`, group: "PD", label: pdName(code), onRemove: () => setFilter((c) => ({ ...c, pd: c.pd.filter((v) => v !== code) })) })),
@@ -161,7 +166,7 @@ export function BusinessProcessDashboard({
         <>
           <StatRow>
             <StatCard tone="teal" label="Jumlah proses bisnis" value={rows.length} hint={`${formatNumber(statusCount.get("as_is") ?? 0)} AS-IS`} />
-            <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+            <StatCard tone="orange" label="Perangkat Daerah pemilik" value={pdCount} hint={`dari ${opd.list(filter.period).length} Perangkat Daerah`} />
             <StatCard tone="yellow" label="Rencana upgrade" active={filter.status.includes("upgrade")} onClick={() => clickFilter("Probis upgrade", (c) => ({ ...c, status: toggle(c.status, "upgrade") }), !filter.status.includes("upgrade"))} value={statusCount.get("upgrade") ?? 0} hint="pengembangan dari AS-IS" />
             <StatCard tone="amber" label="Probis baru" active={filter.status.includes("new")} onClick={() => clickFilter("Probis baru", (c) => ({ ...c, status: toggle(c.status, "new") }), !filter.status.includes("new"))} value={statusCount.get("new") ?? 0} hint={`${tree.length} sektor RAB terisi`} />
           </StatRow>
@@ -204,6 +209,7 @@ export function BusinessProcessDashboard({
               { header: "Nama proses bisnis", sortValue: (p) => p.name, cell: (p) => <span className="font-semibold">{p.name}</span> },
               { header: "Status", hideable: true, sortValue: (p) => statusLabel[p.status], cell: (p) => <StatusBadge status={statusLabel[p.status]} /> },
               { header: "Perangkat Daerah", hideable: true, sortValue: (p) => pdName(p.pd), cell: (p) => pdName(p.pd) },
+              { header: "Diagram", hideable: true, sortValue: (p) => Number(!!p.diagram), cell: (p) => <Badge variant={p.diagram ? "success" : "muted"}>{p.diagram ? "Ada" : "Belum"}</Badge> },
               { header: "Sasaran strategis", hideable: true, defaultHidden: true, sortValue: (p) => p.sasaran, cell: (p) => <span className="line-clamp-2 text-muted-foreground">{p.sasaran}</span> },
               { header: "RAB 1", hideable: true, defaultHidden: true, sortValue: (p) => p.rab1, cell: (p) => <span className="text-muted-foreground">{rabLabel(p.rab1)}</span> },
               { header: "RAB 2", hideable: true, defaultHidden: true, sortValue: (p) => p.rab2, cell: (p) => <span className="text-muted-foreground">{rabLabel(p.rab2)}</span> },
@@ -243,6 +249,18 @@ export function BusinessProcessDashboard({
             <DetailField label="Indikator Kinerja Utama" value={selected.iku} />
             <DetailField label="Periode" value={selected.period} />
           </div>
+          {history.length > 1 && (
+            <DetailSection title="Riwayat antarperiode">
+              <ul className="grid gap-2">
+                {history.map((p) => (
+                  <li key={p.period} className="flex flex-wrap items-baseline gap-x-3 text-sm">
+                    <span className="font-semibold tabular-nums">{p.period}</span>
+                    <span className={p.period === selected.period ? undefined : "text-muted-foreground"}>{p.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </DetailSection>
+          )}
           {selected.diagram && (
             <DetailSection title="Diagram proses">
               <div data-aos="fade-blur">

@@ -1,4 +1,5 @@
 "use client";
+import { RelatedPlans } from "@/components/peta-rencana/related-plans";
 import { deleteLayanan, getLayananReviews, reviewLayanan } from "@/app/cms/layanan/actions";
 import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
 import { StatusBadge } from "@/components/blocks/status-badge";
@@ -84,6 +85,8 @@ export function LayananDetail({ record, actor, onClose }: { record: LayananRecor
           <p className="text-sm text-muted-foreground">Belum ditautkan ke proses bisnis.</p>
         )}
       </DetailSection>
+
+      <RelatedPlans domain="layanan" code={record.code} period={record.period} />
 
       <ReviewHistory id={record.id} load={getLayananReviews} />
       <ReviewActions record={record} actor={actor} noun="Layanan" domain="layanan" editHref={`/cms/layanan/${record.id}`} onReview={reviewLayanan} onDelete={deleteLayanan} onDone={onClose} />

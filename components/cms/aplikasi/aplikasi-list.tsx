@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/blocks/empty-state";
 import { FilterBar } from "@/components/blocks/filter-bar";
 import { AplikasiDetail } from "@/components/cms/aplikasi/aplikasi-detail";
 import { ReviewBadge } from "@/components/cms/review-badge";
+import { clamp, lines, links, securityColumns } from "@/components/cms/template-cells";
+import { flowLabels } from "@/lib/aplikasi/data-flow";
 import { Icon } from "@/components/icon";
 import { Reveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { basisLabel, basisOptions, kepemilikanLabel, kepemilikanOptions, lisensiLabel } from "@/lib/aplikasi/reference";
 import { can, type Actor } from "@/lib/permissions";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { AplikasiRecord, SubmissionStatus } from "@/lib/types";
 
 type Tab = "all" | "review" | SubmissionStatus;
@@ -35,6 +38,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar aplikasi CMS: tab status, filter, tabel ramping (kolom inti, notulen), detail via pop-up. */
 export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[]; actor: Actor; periods: PeriodOptions }) {
+  const opd = useOpd();
   const raas = useRaaSet();
   /** Nama RAA mengikuti versi RAA periode masing-masing aplikasi. */
   const raa = (code: string | null, period: string) => (code ? raas.forPeriod(period).label(code) : "—");
@@ -87,7 +91,7 @@ export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[];
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Unit operasional", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Unit operasional", wide: true, multiple: true, searchable: true, options: opd.all().map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Basis", multiple: true, options: basisOptions, values: basis, onValuesChange: setBasis },
           { label: "Kepemilikan", multiple: true, options: kepemilikanOptions, values: owner, onValuesChange: setOwner },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
@@ -125,7 +129,6 @@ export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[];
         }
         columns={[
           { header: "Status", sortValue: (r) => r.status, cell: (r) => <ReviewBadge status={r.status} /> },
-          { header: "ID", className: "whitespace-nowrap", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
           {
             header: "Nama aplikasi",
             sortValue: (r) => r.name,
@@ -137,14 +140,32 @@ export function AplikasiList({ rows, actor, periods }: { rows: AplikasiRecord[];
               </span>
             ),
           },
-          { header: "Unit operasional", hideable: true, sortValue: (r) => r.opdName, cell: (r) => r.opdName },
-          { header: "Kepemilikan", hideable: true, sortValue: (r) => r.kepemilikan, cell: (r) => <Badge variant="muted">{kepemilikanLabel[r.kepemilikan]}</Badge> },
-          { header: "RAA", hideable: true, sortValue: (r) => r.raa3 ?? r.raa2 ?? "", cell: (r) => <span className="text-muted-foreground">{raa(r.raa3 ?? r.raa2, r.period)}</span> },
-          { header: "Basis", hideable: true, defaultHidden: true, sortValue: (r) => r.basis, cell: (r) => basisLabel[r.basis] },
-          { header: "Lisensi", hideable: true, defaultHidden: true, sortValue: (r) => r.lisensi, cell: (r) => lisensiLabel[r.lisensi] },
+          { header: "ID", className: "whitespace-nowrap", sortValue: (r) => r.code, cell: (r) => <span className="text-muted-foreground tabular-nums">{r.code}</span> },
+          { header: "Uraian", hideable: true, defaultHidden: true, cell: (r) => clamp(r.uraian) },
+          { header: "Fungsi", hideable: true, defaultHidden: true, cell: (r) => clamp(r.fungsi) },
+          { header: "Luaran", hideable: true, defaultHidden: true, cell: (r) => clamp(r.luaran) },
           { header: "Mesin basis data", hideable: true, defaultHidden: true, sortValue: (r) => r.mesin ?? "", cell: (r) => r.mesin ?? "—" },
-          { header: "Proses bisnis", hideable: true, defaultHidden: true, sortValue: (r) => r.probis.length, cell: (r) => `${r.probis.length} probis` },
-          { header: "Layanan", hideable: true, defaultHidden: true, sortValue: (r) => r.layanan.length, cell: (r) => (r.layanan.length ? `${r.layanan.length} layanan` : "—") },
+          { header: "Basis aplikasi", hideable: true, defaultHidden: true, sortValue: (r) => r.basis, cell: (r) => basisLabel[r.basis] },
+          { header: "Tipe lisensi", hideable: true, defaultHidden: true, sortValue: (r) => r.lisensi, cell: (r) => lisensiLabel[r.lisensi] },
+          { header: "Bahasa pemrograman", hideable: true, defaultHidden: true, sortValue: (r) => r.bahasa, cell: (r) => r.bahasa || "—" },
+          { header: "RAA 1", hideable: true, defaultHidden: true, sortValue: (r) => r.raa1 ?? "", cell: (r) => <span className="text-muted-foreground">{raa(r.raa1, r.period)}</span> },
+          { header: "RAA 2", hideable: true, sortValue: (r) => r.raa3 ?? r.raa2 ?? "", cell: (r) => <span className="text-muted-foreground">{raa(r.raa3 ?? r.raa2, r.period)}</span> },
+          { header: "Layanan", hideable: true, sortValue: (r) => r.layanan.length, cell: (r) => links(r.layanan) },
+          { header: "Data yang digunakan", hideable: true, defaultHidden: true, sortValue: (r) => r.data.length, cell: (r) => links(r.data) },
+          { header: "Proses bisnis", hideable: true, defaultHidden: true, sortValue: (r) => r.probis.length, cell: (r) => links(r.probis) },
+          { header: "Inputan data", hideable: true, sortValue: (r) => flowLabels(r.inputData, r.dataNames).length, cell: (r) => lines(flowLabels(r.inputData, r.dataNames).join("\n")) },
+          { header: "Supplier data", hideable: true, defaultHidden: true, cell: (r) => lines(r.supplier) },
+          { header: "Luaran data", hideable: true, sortValue: (r) => flowLabels(r.outputData, r.dataNames).length, cell: (r) => lines(flowLabels(r.outputData, r.dataNames).join("\n")) },
+          { header: "Customer data", hideable: true, defaultHidden: true, cell: (r) => lines(r.customer) },
+          { header: "Komputasi awan", hideable: true, defaultHidden: true, cell: (r) => lines(r.cloud) },
+          { header: "Perangkat keras server", hideable: true, defaultHidden: true, cell: (r) => lines(r.server) },
+          { header: "Sistem penghubung layanan", hideable: true, defaultHidden: true, cell: (r) => lines(r.splp) },
+          { header: "Jaringan intra pemerintah", hideable: true, defaultHidden: true, cell: (r) => lines(r.jip) },
+          { header: "Kerangka pengembangan", hideable: true, defaultHidden: true, sortValue: (r) => r.kerangka ?? "", cell: (r) => r.kerangka ?? "—" },
+          { header: "Unit pengembang", hideable: true, defaultHidden: true, sortValue: (r) => r.pengembang, cell: (r) => <span>{opd.name(r.pengembang, r.period)} <Badge variant="muted" className="ml-1 align-middle">{kepemilikanLabel[r.kepemilikan]}</Badge></span> },
+          { header: "Unit operasional", hideable: true, sortValue: (r) => r.opdName, cell: (r) => r.opdName },
+          ...securityColumns<AplikasiRecord>(["standar", "audit", "peningkatan", "insiden", "edukasi", "kelaikan", "kerentanan"]),
+          { header: "Periode", hideable: true, defaultHidden: true, sortValue: (r) => r.period, cell: (r) => r.period },
         ]}
       />
 

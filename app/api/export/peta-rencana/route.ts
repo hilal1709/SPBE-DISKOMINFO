@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import { forbidden, xlsxResponse } from "@/lib/export/xlsx-response";
 import { can, currentActor, opdScope } from "@/lib/access";
 import { listIndicatorsCms, listRencana } from "@/lib/peta-rencana/cms-repo";
+import { muatanBookSafe } from "@/lib/peta-rencana/muatan-repo";
 import { indicatorColumns, rencanaColumns, type Column } from "@/lib/peta-rencana/columns";
 
 /** Ekspor Peta Rencana: sheet kegiatan (format tabel peta rencana + evaluasi & realisasi) dan sheet indikator & target. */
@@ -18,7 +19,7 @@ export async function GET() {
     ws["!cols"] = cols.map((c) => ({ wch: c.width }));
     XLSX.utils.book_append_sheet(book, ws, name);
   };
-  sheet(rencanaColumns, rows, "Peta Rencana");
+  sheet(rencanaColumns(await muatanBookSafe()), rows, "Peta Rencana");
   sheet(indicatorColumns([...new Set(indicators.flatMap((i) => Object.keys(i.targets)))].sort()), indicators, "Indikator");
   return xlsxResponse(book, "peta-rencana");
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -19,18 +19,18 @@ import { YearTrack, type YearStat } from "@/components/dashboards/peta-rencana/y
 import { ExploreHint } from "@/components/dashboards/probis/explore-hint";
 import { Icon } from "@/components/icon";
 import { Reveal } from "@/components/motion/reveal";
-import { RencanaBody, RencanaStatus, rencanaMeta } from "@/components/peta-rencana/rencana-body";
+import { RencanaBody, RencanaStatus, RencanaMeta } from "@/components/peta-rencana/rencana-body";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { muatanConfig, muatanKeys, muatanOptions, statusConfig, statusKeys, statusOptions, type Muatan } from "@/lib/peta-rencana/muatan";
+import { useMuatan } from "@/components/peta-rencana/muatan-context";
+import { statusConfig, statusKeys, statusOptions, type Muatan } from "@/lib/peta-rencana/muatan";
 import { activeFilterCount, emptyFilter, filterFromParams, filterRencana, filterToParams, sanitizeFilter, withRencanaStatus, yearsOf, type RencanaFilter } from "@/lib/peta-rencana/query";
-import { pdByCode, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
+import { sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber, formatPercent, percent } from "@/lib/format";
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
 /** Dashboard publik Peta Rencana. Semua widget mengikuti filter aktif; widget yang juga filter mengabaikan filternya sendiri. */
@@ -46,6 +46,8 @@ export function PetaRencanaDashboard({
   currentYear: number;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
+  const muatanBook = useMuatan();
   const params = useUrlParams();
   const source = data;
   const all = source.rows;
@@ -54,14 +56,17 @@ export function PetaRencanaDashboard({
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod, sasaranList), {
       periods,
       defaultPeriod: activePeriod,
-      pd: new Set([...pdByCode.keys(), ...all.map((r) => r.opd)]),
+      pd: new Set([...opd.all().map((o) => o.code), ...all.map((r) => r.opd)]),
       sasaran: new Set(sasaranList),
-      muatan: new Set(muatanKeys),
+      muatan: new Set(muatanBook.keys),
       status: new Set(statusKeys),
     }),
   );
   const [selected, setSelected] = useState<Rencana | null>(null);
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Filter disimpan di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: RencanaFilter | ((current: RencanaFilter) => RencanaFilter)) => {
@@ -113,7 +118,7 @@ export function PetaRencanaDashboard({
     for (const r of list) muatan[r.muatan] = (muatan[r.muatan] ?? 0) + 1;
     return { year, total: list.length, terlaksana: list.filter((r) => r.status === "terlaksana").length, muatan };
   });
-  const muatanCounts = muatanKeys.map((k) => [k, withoutMuatan.filter((r) => r.muatan === k).length] as [Muatan, number]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const muatanCounts = muatanBook.keys.map((k) => [k, withoutMuatan.filter((r) => r.muatan === k).length] as [Muatan, number]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
 
   const active = activeFilterCount(filter, activePeriod);
   const removeFrom = (key: "pd" | "tahun" | "sasaran" | "muatan" | "status", code: string) => () => setFilter((c) => ({ ...c, [key]: c[key].filter((v) => v !== code) }));
@@ -121,7 +126,7 @@ export function PetaRencanaDashboard({
     ...filter.tahun.map((code) => ({ id: `tahun:${code}`, group: "Tahun", label: code, onRemove: removeFrom("tahun", code) })),
     ...filter.pd.map((code) => ({ id: `pd:${code}`, group: "PD", label: pdName(code), onRemove: removeFrom("pd", code) })),
     ...filter.sasaran.map((code) => ({ id: `sasaran:${code}`, group: "Sasaran", label: code.length > 48 ? `${code.slice(0, 46)}…` : code, onRemove: removeFrom("sasaran", code) })),
-    ...filter.muatan.map((code) => ({ id: `muatan:${code}`, group: "Muatan", label: muatanConfig[code as Muatan].label, onRemove: removeFrom("muatan", code) })),
+    ...filter.muatan.map((code) => ({ id: `muatan:${code}`, group: "Muatan", label: muatanBook.get(code).label, onRemove: removeFrom("muatan", code) })),
     ...filter.status.map((code) => ({ id: `status:${code}`, group: "Status", label: statusConfig[code as Rencana["status"]].label, onRemove: removeFrom("status", code) })),
     ...(filter.period !== activePeriod ? [{ id: "period", group: "Periode", label: filter.period, onRemove: () => setFilter((c) => ({ ...c, period: activePeriod, tahun: [] })) }] : []),
   ];
@@ -143,7 +148,7 @@ export function PetaRencanaDashboard({
           { label: "Tahun", multiple: true, options: years, values: filter.tahun, onValuesChange: (tahun) => setFilter((c) => ({ ...c, tahun })) },
           { label: "PD", wide: true, multiple: true, searchable: true, options: pdOptions, values: filter.pd, onValuesChange: (pd) => setFilter((c) => ({ ...c, pd })) },
           { label: "Sasaran", wide: true, multiple: true, searchable: true, options: sasaranList, values: filter.sasaran, onValuesChange: (sasaran) => setFilter((c) => ({ ...c, sasaran })) },
-          { label: "Muatan", multiple: true, options: muatanOptions, values: filter.muatan, onValuesChange: (muatan) => setFilter((c) => ({ ...c, muatan })) },
+          { label: "Muatan", multiple: true, options: muatanBook.options, values: filter.muatan, onValuesChange: (muatan) => setFilter((c) => ({ ...c, muatan })) },
           { label: "Status", multiple: true, options: statusOptions, values: filter.status, onValuesChange: (status) => setFilter((c) => ({ ...c, status })) },
         ]}
         actions={
@@ -163,7 +168,7 @@ export function PetaRencanaDashboard({
         <StatCard tone="sky" label="Direncanakan" active={filter.status.length === 1 && filter.status[0] === "direncanakan"} onClick={() => selectStatus("direncanakan")} value={count("direncanakan")} />
         <StatCard tone="orange" label="Ditunda" active={filter.status.length === 1 && filter.status[0] === "ditunda"} onClick={() => selectStatus("ditunda")} value={count("ditunda")} hint={`${formatNumber(dialihkan)} dialihkan ke tahun berikutnya`} />
         <StatCard tone="plain" label="Batal" active={filter.status.length === 1 && filter.status[0] === "batal"} onClick={() => selectStatus("batal")} value={count("batal")} />
-        <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${perangkatDaerah.length} PD`} />
+        <StatCard tone="sky" label="Perangkat daerah" value={new Set(rows.map((r) => r.opd)).size} hint={`dari ${opd.list(filter.period).length} PD`} />
       </StatRow>
 
       {rows.length === 0 ? (
@@ -188,7 +193,7 @@ export function PetaRencanaDashboard({
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1fr_1.1fr]">
             <div data-aos="fade-blur" suppressHydrationWarning>
-              <MuatanBento counts={muatanCounts} selected={filter.muatan} onToggle={(k) => clickFilter(muatanConfig[k].label, "muatan", k)} className="h-full" />
+              <MuatanBento counts={muatanCounts} selected={filter.muatan} onToggle={(k) => clickFilter(muatanBook.get(k).label, "muatan", k)} className="h-full" />
             </div>
             <Card data-reveal className="gap-3">
               <CardHeader>
@@ -225,7 +230,7 @@ export function PetaRencanaDashboard({
               { header: "PD", sortValue: (r) => pdName(r.opd), cell: (r) => pdName(r.opd) },
               { header: "Tahun", className: "tabular-nums", sortValue: (r) => r.year, cell: (r) => r.year },
               { header: "Status", sortValue: (r) => statusKeys.indexOf(r.status), cell: (r) => <RencanaStatus status={r.status} /> },
-              { header: "Muatan", hideable: true, defaultHidden: true, sortValue: (r) => r.muatan, cell: (r) => <ToneBadge tone={muatanConfig[r.muatan].tone}>{muatanConfig[r.muatan].label}</ToneBadge> },
+              { header: "Muatan", hideable: true, defaultHidden: true, sortValue: (r) => r.muatan, cell: (r) => <ToneBadge tone={muatanBook.get(r.muatan).tone}>{muatanBook.get(r.muatan).label}</ToneBadge> },
               { header: "Sasaran", hideable: true, defaultHidden: true, sortValue: (r) => r.sasaran, cell: (r) => <span className="line-clamp-2">{r.sasaran}</span> },
               { header: "Inisiatif", hideable: true, defaultHidden: true, sortValue: (r) => r.inisiatif ?? "", cell: (r) => r.inisiatif ?? "—" },
               { header: "Program", hideable: true, defaultHidden: true, sortValue: (r) => r.program ?? "", cell: (r) => r.program ?? "—" },
@@ -237,7 +242,7 @@ export function PetaRencanaDashboard({
       )}
 
       {selected && (
-        <DetailDialog open onOpenChange={(open) => !open && setSelected(null)} eyebrow={selected.id} title={selected.name} meta={rencanaMeta({ ...selected, opdName: pdName(selected.opd) })}>
+        <DetailDialog open onOpenChange={(open) => !open && setSelected(null)} eyebrow={selected.id} title={selected.name} meta={<RencanaMeta r={{ ...selected, opdName: pdName(selected.opd) }} />}>
           <RencanaBody r={{ ...selected, opdName: pdName(selected.opd) }} />
         </DetailDialog>
       )}

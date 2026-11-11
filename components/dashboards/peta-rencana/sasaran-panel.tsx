@@ -7,7 +7,8 @@ import { Icon } from "@/components/icon";
 import { MOTION_OK, gsap, useGSAP } from "@/components/motion/gsap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { muatanConfig, muatanKeys, statusConfig, statusKeys } from "@/lib/peta-rencana/muatan";
+import { useMuatan } from "@/components/peta-rencana/muatan-context";
+import { statusConfig, statusKeys } from "@/lib/peta-rencana/muatan";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
@@ -38,6 +39,7 @@ function StatusBar({ list, width }: { list: Rencana[]; width: number }) {
  * inisiatif, indikator, dan target tiap tahun (menggantikan dua tabel indikator referensi Gresik).
  */
 export function SasaranPanel({ rows, indicators, years, selected, onFilter, className }: { rows: Rencana[]; indicators: RencanaIndicator[]; years: string[]; selected: string[]; onFilter: (sasaran: string) => void; className?: string }) {
+  const muatanBook = useMuatan();
   const [open, setOpen] = useState<string | null>(null);
   const bySasaran = new Map<string, Rencana[]>();
   for (const r of rows) bySasaran.set(r.sasaran, [...(bySasaran.get(r.sasaran) ?? []), r]);
@@ -85,9 +87,9 @@ export function SasaranPanel({ rows, indicators, years, selected, onFilter, clas
           meta={<span className="text-sm text-muted-foreground">{formatNumber(detail.list.length)} kegiatan · {Math.round((detail.done / (detail.list.length || 1)) * 100)}% terlaksana</span>}
         >
           <div className="flex flex-wrap gap-2">
-            {muatanKeys.map((k) => {
+            {muatanBook.keys.map((k) => {
               const n = detail.list.filter((r) => r.muatan === k).length;
-              return n ? <ToneBadge key={k} tone={muatanConfig[k].tone}>{muatanConfig[k].label} · {n}</ToneBadge> : null;
+              return n ? <ToneBadge key={k} tone={muatanBook.get(k).tone}>{muatanBook.get(k).label} · {n}</ToneBadge> : null;
             })}
           </div>
           {[...new Set(detail.list.map((r) => r.inisiatif).filter(Boolean))].length > 0 && (

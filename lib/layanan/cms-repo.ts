@@ -33,7 +33,7 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
 }
 
 const SELECT = `
-  select s.id, s.code, s.name, s.purpose, s.function_name, s.unit, o.code as opd_code, o.name as opd_name, o.id as opd_id,
+  select s.id, s.code, s.name, s.purpose, s.function_name, s.unit, o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id,
          ap.name as period, s.target, s.method, s.status::text as status,
          r1.code as ral1, r2.code as ral2, r3.code as ral3, s.ral_l4, s.ral_l5, rb.code as rab2,
          s.benefit, s.economic_potential, s.risk, s.mitigation, s.kl, s.updated_at, s.is_sample, s.ral_review,
@@ -42,6 +42,7 @@ const SELECT = `
                    where sp.service_id = s.id), '[]') as probis
   from services s
   join opd o on o.id = s.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = s.period_id
   join architecture_periods ap on ap.id = s.period_id
   left join ral_references r3 on r3.id = s.ral_id
   left join ral_references r2 on r2.id = r3.parent_id

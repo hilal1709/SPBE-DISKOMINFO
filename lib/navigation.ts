@@ -1,5 +1,5 @@
 import {
-  Calendar03Icon, CheckListIcon, CheckmarkBadge01Icon, ComputerIcon, CustomerService01Icon, DashboardSquare01Icon,
+  Building03Icon, Calendar03Icon, CheckListIcon, CheckmarkBadge01Icon, ComputerIcon, CustomerService01Icon, DashboardSquare01Icon,
   Database01Icon, FileImportIcon, FlowConnectionIcon, GitCompareIcon, Layers01Icon, ListViewIcon, Route01Icon,
   ServerStack01Icon, Settings02Icon, ShieldKeyIcon, Target02Icon, TaskAdd01Icon, TaskDone01Icon, UserGroupIcon, UserLock01Icon,
 } from "@hugeicons/core-free-icons";
@@ -17,6 +17,8 @@ export type NavItem = {
   soon?: boolean;
   /** Wajib login (portal); ditandai gembok selama pengunjung belum masuk. */
   locked?: boolean;
+  /** Tidak diindeks mesin pencari (data internal). */
+  noindex?: boolean;
   /** Penjelasan singkat fungsi menu (tampil di bawah label & di header halaman). */
   description?: string;
   /** Kunci angka lencana (mis. jumlah antrean). */
@@ -38,7 +40,7 @@ export const publicNav: NavItem[] = [
   { href: "/data", label: "Data", icon: Database01Icon, section: "Domain Data", description: "Katalog data dan informasi perangkat daerah Kabupaten Gresik beserta sifat, format, dan Referensi Arsitektur Data (RAD)." },
   { href: "/aplikasi", label: "Aplikasi", icon: ComputerIcon, section: "Domain Aplikasi", description: "Inventaris aplikasi SPBE Kabupaten Gresik: aplikasi umum dan khusus, pengelola, serta keterhubungannya dengan layanan." },
   { href: "/infrastruktur", label: "Infrastruktur", icon: ServerStack01Icon, section: "Domain Infrastruktur", description: "Infrastruktur SPBE Kabupaten Gresik: pusat data, jaringan intra pemerintah, dan sistem penghubung layanan." },
-  { href: "/keamanan", label: "Keamanan", icon: ShieldKeyIcon, section: "Domain Keamanan", locked: true, description: "Arsitektur keamanan SPBE Kabupaten Gresik (khusus pengguna yang masuk)." },
+  { href: "/keamanan", label: "Keamanan", icon: ShieldKeyIcon, section: "Domain Keamanan", noindex: true, description: "Arsitektur keamanan SPBE Kabupaten Gresik." },
   { href: "/integrasi", label: "Integrasi Domain", icon: Layers01Icon, section: "Integrasi Domain", description: "Jelajahi hubungan record dan simulasi dampak perubahan arsitektur SPBE." },
   { href: "/peta-rencana", label: "Peta Rencana", icon: Route01Icon, section: "Peta Rencana", description: "Peta rencana SPBE Kabupaten Gresik 2025–2029: program, kegiatan, target, dan realisasi tiap tahun." },
 ];
@@ -125,6 +127,7 @@ export const cmsNav: NavEntry[] = [
       { href: "/cms/peta-rencana", label: "Peta Rencana", icon: Route01Icon, section: "Peta Rencana", description: "Kegiatan target arsitektur per tahun" },
       { href: "/cms/peta-rencana/baru", label: "Tambah Kegiatan", icon: TaskAdd01Icon, section: "Tambah Kegiatan Rencana", description: "Isi kegiatan rencana baru", perm: "rencana" },
       { href: "/cms/peta-rencana/indikator", label: "Indikator & Target", icon: Target02Icon, section: "Indikator Peta Rencana", description: "Target indikator sasaran per tahun", perm: "rencana" },
+      { href: "/cms/peta-rencana/muatan", label: "Muatan", icon: Target02Icon, section: "Muatan Peta Rencana", description: "Tambah atau hapus fokus arsitektur kegiatan", perm: "rencana" },
       { href: "/cms/peta-rencana/impor", label: "Impor & Ekspor", icon: FileImportIcon, section: "Impor & Ekspor Peta Rencana", description: "Unggah atau unduh peta rencana", perm: "rencana" },
     ],
   },
@@ -138,6 +141,7 @@ export const cmsNav: NavEntry[] = [
       { href: "/cms/pengaturan/referensi-raa", label: "Referensi RAA", icon: Layers01Icon, section: "Referensi RAA", description: "Kelola versi, kode, dan nama RAA", perm: "ref.raa" },
       { href: "/cms/pengaturan/referensi-rai", label: "Referensi RAI", icon: Layers01Icon, section: "Referensi RAI", description: "Kelola versi, kode, dan nama RAI", perm: "ref.rai" },
       { href: "/cms/pengaturan/periode", label: "Periode Arsitektur", icon: Calendar03Icon, section: "Periode Arsitektur", description: "Tambah dan aktifkan periode arsitektur", perm: "periods" },
+      { href: "/cms/pengaturan/opd", label: "Perangkat Daerah", icon: Building03Icon, section: "Perangkat Daerah", description: "Nama dan keberlakuan OPD per periode", perm: "periods" },
       { href: "/cms/pengaturan/pengguna", label: "Akun Pengguna", icon: UserGroupIcon, section: "Akun Pengguna", description: "Tambah, ubah peran, dan nonaktifkan akun", perm: "users" },
       { href: "/cms/pengaturan/hak-akses", label: "Hak Akses", icon: UserLock01Icon, section: "Hak Akses", description: "Atur izin tiap peran", perm: "users" },
     ],

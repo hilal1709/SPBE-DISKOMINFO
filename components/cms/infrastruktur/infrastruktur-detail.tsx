@@ -1,4 +1,5 @@
 "use client";
+import { RelatedPlans } from "@/components/peta-rencana/related-plans";
 import { deleteInfrastruktur, getInfrastrukturReviews, reviewInfrastruktur } from "@/app/cms/infrastruktur/actions";
 import { useRai, useRaiSet } from "@/components/infrastruktur/rai-context";
 import { DetailDialog, DetailField, DetailSection } from "@/components/blocks/detail-dialog";
@@ -77,6 +78,8 @@ export function InfrastrukturDetail({ record, actor, onClose }: { record: Infras
         </DetailSection>
       )}
       <p className="text-xs text-muted-foreground">Diperbarui {date.format(new Date(record.updatedAt))}</p>
+
+      <RelatedPlans domain="infrastruktur" code={record.code} period={record.period} />
 
       <ReviewHistory id={record.id} load={getInfrastrukturReviews} />
       <ReviewActions

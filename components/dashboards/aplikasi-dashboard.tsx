@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
 import { FilterResetIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -29,13 +29,12 @@ import {
   type Basis, type Kepemilikan, type Lisensi, UNKNOWN, isSpecialValue,
 } from "@/lib/aplikasi/reference";
 import { colorByCount } from "@/lib/palette";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { Aplikasi } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useOpd } from "@/components/opd/opd-context";
 import { formatNumber, percent, formatPercent } from "@/lib/format";
 
-const pdName = (code: string) => pdByCode.get(code)?.name ?? code;
-const pdOptions = perangkatDaerah.map((pd) => ({ value: pd.code, label: pd.name }));
 const toOptions = (nodes: { code: string; name: string }[]) => nodes.map((n) => ({ value: n.code, label: `${n.code} ${n.name}` }));
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 const raa = sampleRaa;
@@ -43,7 +42,6 @@ const raaLabel = raa.label;
 /** "01.02 Administrasi Pemerintahan" — nama RAA L2 tanpa awalan L1 agar muat di grafik. */
 const raaShort = (code: string) => `${code.slice(4)} ${(raa.byCode.get(code)?.name ?? "").replace(/^Aplikasi (Umum|Khusus)\s+/, "")}`;
 const raa2Codes = raa.level(2).map((n) => n.code);
-const pengembangName = (a: Aplikasi) => (pdByCode.has(a.pengembang) ? pdName(a.pengembang) : a.pengembang);
 
 /** Dashboard publik Domain Aplikasi. Semua widget mengikuti filter aktif. */
 export function AplikasiDashboard({
@@ -56,13 +54,14 @@ export function AplikasiDashboard({
   sample: boolean;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const params = useUrlParams();
   const all = data;
   const [filter, setFilterState] = useState<AplikasiFilter>(() =>
     sanitizeFilter(filterFromParams(new URLSearchParams(params.toString()), activePeriod), {
       periods,
       defaultPeriod: activePeriod,
-      pd: new Set([...pdByCode.keys(), ...all.map((a) => a.operasional)]),
+      pd: new Set([...opd.all().map((o) => o.code), ...all.map((a) => a.operasional)]),
       basis: new Set(Object.keys(basisLabel)),
       lisensi: new Set(Object.keys(lisensiLabel)),
       kepemilikan: new Set(Object.keys(kepemilikanLabel)),
@@ -72,6 +71,9 @@ export function AplikasiDashboard({
   const [selected, setSelected] = useState<Aplikasi | null>(null);
   /** Filter terbaru, untuk aksi tertunda (animasi chip, Urungkan di toast). */
   const latest = useRef(filter);
+  /** Nama Perangkat Daerah mengikuti periode yang dipilih. */
+  const pdName = useCallback((code: string) => opd.name(code, filter.period), [opd, filter.period]);
+  const pdOptions = opd.all(filter.period).map((o) => ({ value: o.code, label: o.name }));
 
   /** Simpan filter di URL agar tampilan bisa dibagikan, tanpa memicu navigasi. */
   const setFilter = (next: AplikasiFilter | ((current: AplikasiFilter) => AplikasiFilter)) => {
@@ -127,7 +129,7 @@ export function AplikasiDashboard({
     return [...groups]
       .map(([code, list]) => ({ code, name: pdName(code), count: list.length, sektor: [...countBy(list, "raa2")].sort((a, b) => b[1] - a[1]) }))
       .sort((a, b) => b.count - a.count);
-  }, [withoutPd]);
+  }, [withoutPd, pdName]);
   const raaBars = raa2Codes.filter((code) => withoutOwnerRaa.some((a) => a.raa2 === code));
 
   const active = activeFilterCount(filter, activePeriod);
@@ -185,7 +187,7 @@ export function AplikasiDashboard({
             <StatCard tone="teal" label="Jumlah aplikasi" value={total} hint={`${formatNumber(umum)} umum · ${formatNumber(total - umum)} khusus`} />
             <StatCard tone="orange" label="Aplikasi Pemda" active={filter.kepemilikan.includes("pemda")} onClick={() => clickFilter("Aplikasi Pemda", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "pemda") }), !filter.kepemilikan.includes("pemda"))} value={owner.get("pemda") ?? 0} hint={`${formatPercent(owner.get("pemda") ?? 0, total)} dibangun Perangkat Daerah`} />
             <StatCard tone="yellow" label="Aplikasi Instansi Pusat" active={filter.kepemilikan.includes("pusat")} onClick={() => clickFilter("Aplikasi Instansi Pusat", (c) => ({ ...c, kepemilikan: toggle(c.kepemilikan, "pusat") }), !filter.kepemilikan.includes("pusat"))} value={pusat.length} hint={`dioperasikan ${new Set(pusat.map((a) => a.operasional)).size} Perangkat Daerah`} />
-            <StatCard tone="amber" label="Unit operasional" value={pdCount} hint={`dari ${perangkatDaerah.length} Perangkat Daerah`} />
+            <StatCard tone="amber" label="Unit operasional" value={pdCount} hint={`dari ${opd.list(filter.period).length} Perangkat Daerah`} />
           </StatRow>
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.6fr_1fr]">
@@ -353,7 +355,7 @@ export function AplikasiDashboard({
               { header: "Lisensi", hideable: true, defaultHidden: true, sortValue: (a) => a.lisensi, cell: (a) => lisensiLabel[a.lisensi] },
               { header: "Bahasa", hideable: true, defaultHidden: true, sortValue: (a) => a.bahasa, cell: (a) => a.bahasa },
               { header: "Mesin basis data", hideable: true, defaultHidden: true, sortValue: (a) => a.mesin ?? "", cell: (a) => a.mesin ?? "—" },
-              { header: "Pengembang", hideable: true, defaultHidden: true, sortValue: (a) => pengembangName(a), cell: (a) => pengembangName(a) },
+              { header: "Pengembang", hideable: true, defaultHidden: true, sortValue: (a) => pdName(a.pengembang), cell: (a) => pdName(a.pengembang) },
             ]}
           />
         </>
@@ -381,7 +383,7 @@ export function AplikasiDashboard({
             <DetailField label={`RAA Level 1 · ${selected.raa1}`} value={raa.byCode.get(selected.raa1)?.name} />
             <DetailField label={`RAA Level 2 · ${selected.raa2}`} value={raa.byCode.get(selected.raa2)?.name} />
             <DetailField label="Unit operasional teknologi" value={pdName(selected.operasional)} />
-            <DetailField label="Unit pengembang" value={pengembangName(selected)} />
+            <DetailField label="Unit pengembang" value={pdName(selected.pengembang)} />
             <DetailField label="Luaran" value={selected.luaran} />
             <DetailField label="Pengguna (customer data)" value={selected.customer ?? "—"} />
           </div>

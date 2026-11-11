@@ -1,19 +1,20 @@
 import { z } from "zod";
-import { pdByCode } from "@/lib/probis/reference";
-import { muatanKeys, sourceKeys, statusKeys } from "./muatan";
+import { domainKeys } from "@/lib/domains";
+import { sourceKeys, statusKeys } from "./muatan";
 
 const optional = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
 
 /** Isian kegiatan Peta Rencana (kolom tabel Peta Rencana SPBE Gresik + kolom evaluasi & realisasi dari notulen). */
 export const rencanaInput = z
   .object({
-    opd: z.string().refine((v) => pdByCode.has(v), "Pilih perangkat daerah pelaksana"),
+    opd: z.string().trim().min(1, "Pilih perangkat daerah pelaksana").max(40),
     /** Keberadaan periode dicek di server (daftar periode dikelola di CMS). */
     period: z.string().trim().min(4, "Pilih periode arsitektur"),
     year: z.coerce.number().int("Tahun tidak valid").min(2000, "Tahun tidak valid").max(2100, "Tahun tidak valid"),
     sasaran: z.string().trim().min(3, "Pilih sasaran strategis").max(500),
     inisiatif: optional(250),
-    muatan: z.enum(muatanKeys, { message: "Pilih muatan" }),
+    /** Keberadaan muatan dicek di server (daftar muatan dikelola di CMS). */
+    muatan: z.string().trim().min(1, "Pilih muatan").max(60),
     program: optional(250),
     name: z.string().trim().min(3, "Nama kegiatan minimal 3 karakter").max(250),
     target: optional(500),
@@ -24,6 +25,8 @@ export const rencanaInput = z
     evaluasi: optional(2000),
     source: z.enum(sourceKeys).default("manual"),
     sourceRef: optional(120),
+    /** Entri arsitektur terkait. Tidak dikirim (impor) = tautan yang ada tidak diubah. */
+    tautan: z.array(z.object({ domain: z.enum(domainKeys), code: z.string().trim().min(1).max(60) })).max(80).optional(),
   })
   .superRefine((v, ctx) => {
     const [start, end] = v.period.split(/[–-]/).map(Number);
@@ -44,3 +47,12 @@ export const indicatorInput = z.object({
 });
 
 export type IndicatorValues = z.output<typeof indicatorInput>;
+
+/** Isian muatan (master): kunci dibuat dari label saat baru. Singkatan dipakai di ID otomatis GSK-PRN {singkatan}.nnn. */
+export const muatanInput = z.object({
+  key: z.string().trim().max(60).optional(),
+  label: z.string().trim().min(2, "Nama minimal 2 karakter").max(40, "Nama maksimal 40 karakter"),
+  abbr: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{2,5}$/, "Singkatan 2–5 huruf/angka"),
+  tone: z.string().regex(/^--brand-(teal|sky|yellow|amber|orange)$/, "Pilih warna"),
+});
+export type MuatanValues = z.infer<typeof muatanInput>;

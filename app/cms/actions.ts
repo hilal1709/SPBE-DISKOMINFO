@@ -25,6 +25,9 @@ import * as ralRepo from "@/lib/layanan/ral";
 import type { RefKind, VersionedRef } from "@/lib/reference/versioned";
 import type { RabStatus } from "@/lib/probis/rab-index";
 import { diagramInput, makeProbisInput, type ProbisInput } from "@/lib/probis/schema";
+import * as opdRepo from "@/lib/opd/repo";
+import { assertOpdBerlaku, opdBookSafe } from "@/lib/opd/repo";
+import { flagInactivePd, setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 export type { ActionResult } from "@/lib/cms/result";
@@ -55,10 +58,12 @@ export async function saveProbis(input: ProbisInput, options: { id?: string; sub
     if (options.id) {
       const current = await repo.getProbis(options.id);
       if (!current) throw new Error("Probis tidak ditemukan.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period, current.opdCode);
       if (!can.edit(actor, current)) throw new Error("Probis ini tidak dapat diubah pada status sekarang.");
       id = await repo.updateProbis(options.id, parsed.data, actor, options.submit);
     } else {
       if (!can.create(actor)) throw new Error("Peran Anda tidak dapat menambah probis.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period);
       id = await repo.createProbis(parsed.data, actor, options.submit);
     }
     refresh();
@@ -125,6 +130,19 @@ export async function getProbisDiagram(id: string): Promise<ActionResult<repo.Pr
   }
 }
 
+/** Riwayat satu probis lintas periode (kode sama): nama, OPD, dan statusnya di tiap periode. */
+export async function getProbisHistory(id: string): Promise<ActionResult<repo.ProbisHistoryItem[]>> {
+  try {
+    arg(idSchema, id);
+    const actor = await currentActor();
+    const current = await repo.getProbis(id);
+    if (!current || !can.read(actor, current.opdId)) throw new Error("Probis tidak ditemukan.");
+    return { ok: true, data: await repo.probisHistory(current.code) };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 /** Simpan diagram BPMN; aturan sama dengan menyunting rekamannya (draf/dikembalikan, OPD sendiri). */
 export async function saveProbisDiagram(id: string, input: { xml: string; svg: string }): Promise<ActionResult<{ updatedAt: string }>> {
   try {
@@ -163,6 +181,7 @@ export async function previewImport(form: FormData): Promise<ActionResult<Import
     await assertImportQuota(actor.id);
     const file = form.get("file");
     assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
+    setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const locked = can.lockedOpd(actor);
     const [lockedOpd, existing, options, resolve] = await Promise.all([
@@ -171,7 +190,7 @@ export async function previewImport(form: FormData): Promise<ActionResult<Import
       periods.periodOptions(),
       rabFor(),
     ]);
-    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, { existing, lockedOpd, periods: options, rabFor: resolve }) } };
+    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: flagInactivePd(validateRows(upload.rows, { existing, lockedOpd, periods: options, rabFor: resolve })) } };
   } catch (error) {
     return fail(error);
   }
@@ -192,7 +211,8 @@ export async function commitImport(rows: ImportRow[], options: { status: "draft"
       periods.periodOptions(),
       rabFor(),
     ]);
-    const valid = validateRows(rows, { existing, lockedOpd, periods: periodList, rabFor: resolve }).filter((r) => !r.issues.some((i) => i.level === "error"));
+    setPdBook(await opdBookSafe());
+    const valid = flagInactivePd(validateRows(rows, { existing, lockedOpd, periods: periodList, rabFor: resolve })).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...makeProbisInput(resolve(r.period)).parse({
         opd: r.opd,
@@ -224,16 +244,21 @@ export async function commitImport(rows: ImportRow[], options: { status: "draft"
 async function periodAdmin() {
   const actor = await currentActor();
   if (!can.managePeriods(actor)) throw new Error("Hanya tim Diskominfo yang dapat mengelola periode.");
+  return actor;
 }
 
-export async function createPeriod(start: number, end: number): Promise<ActionResult<{ name: string }>> {
+/** `importFrom` = id periode sumber impor history (probis tervalidasi disalin sebagai draf). */
+export async function createPeriod(start: number, end: number, importFrom?: string | null): Promise<ActionResult<{ name: string; copied: number; review: number }>> {
   try {
     arg(yearSchema, start);
     arg(yearSchema, end);
-    await periodAdmin();
-    const name = await periods.createPeriod(start, end);
+    if (importFrom) arg(idSchema, importFrom);
+    const actor = await periodAdmin();
+    const created = await periods.createPeriod(start, end, importFrom ? { periodId: importFrom, actor } : undefined);
+    // Salinan masih memakai versi RAB periode sumber: petakan ke versi terbit terbaru seperti saat ganti versi.
+    const remap = created.remapTo ? await rabRepo.rab.remapPeriod(created.id, created.remapTo, actor) : null;
     refresh({ reference: true });
-    return { ok: true, data: { name } };
+    return { ok: true, data: { name: created.name, copied: created.copied, review: remap?.review ?? 0 } };
   } catch (error) {
     return fail(error);
   }
@@ -256,6 +281,36 @@ export async function deletePeriod(id: string): Promise<ActionResult> {
     arg(idSchema, id);
     await periodAdmin();
     await periods.deletePeriod(id);
+    refresh({ reference: true });
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/* ---------- Perangkat Daerah per periode ---------- */
+
+const opdNameSchema = z.string().trim().min(3, "Nama Perangkat Daerah minimal 3 huruf.").max(160, "Nama terlalu panjang.");
+const opdCodeSchema = z.string().trim().regex(/^[A-Z0-9]{2,20}$/, "Kode 2–20 huruf kapital/angka.");
+
+export async function saveOpdPeriod(periodId: string, opdId: string, name: string, active: boolean): Promise<ActionResult> {
+  try {
+    arg(idSchema, periodId);
+    arg(idSchema, opdId);
+    await periodAdmin();
+    await opdRepo.saveOpdPeriod(periodId, opdId, arg(opdNameSchema, name), arg(z.boolean(), active));
+    refresh({ reference: true });
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function createOpd(periodId: string, code: string, name: string): Promise<ActionResult> {
+  try {
+    arg(idSchema, periodId);
+    await periodAdmin();
+    await opdRepo.createOpd(periodId, arg(opdCodeSchema, code), arg(opdNameSchema, name));
     refresh({ reference: true });
     return { ok: true, data: undefined };
   } catch (error) {

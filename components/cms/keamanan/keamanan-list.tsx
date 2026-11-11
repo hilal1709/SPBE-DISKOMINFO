@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { kegiatanConfig, kegiatanOptions } from "@/lib/keamanan/jenis";
 import { can, type Actor } from "@/lib/permissions";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { KeamananRecord, SubmissionStatus } from "@/lib/types";
 
 type Tab = "all" | SubmissionStatus;
@@ -35,6 +36,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar kegiatan keamanan CMS: tab status, filter kegiatan, tabel ramping, detail via pop-up. */
 export function KeamananList({ rows, actor, periods }: { rows: KeamananRecord[]; actor: Actor; periods: PeriodOptions }) {
+  const opd = useOpd();
   const { tab, setTab, period, setPeriod } = useListFilters();
   const [pd, setPd] = useState<string[]>([]);
   const [jenis, setJenis] = useState<string[]>([]);
@@ -76,7 +78,7 @@ export function KeamananList({ rows, actor, periods }: { rows: KeamananRecord[];
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Instansi", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Instansi", wide: true, multiple: true, searchable: true, options: opd.all().map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Kegiatan", wide: true, multiple: true, options: kegiatanOptions, values: jenis, onValuesChange: setJenis },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },
         ]}

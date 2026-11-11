@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { securityFields } from "@/lib/data/reference";
 import type { RabIndex } from "@/lib/probis/rab-index";
-import { pdByCode } from "@/lib/probis/reference";
 import { isRaaLeaf } from "./reference";
 
 const optionalText = z.string().trim().max(2000).optional().transform((v) => v || null);
@@ -17,7 +16,7 @@ export function makeAplikasiInput(raa: RabIndex) {
   return z
     .object({
       /** Unit operasional teknologi (Perangkat Daerah pemilik isian). */
-      opd: z.string().refine((v) => pdByCode.has(v), "Pilih unit operasional teknologi"),
+      opd: z.string().trim().min(1, "Pilih unit operasional teknologi").max(40),
       name: z.string().trim().min(2, "Nama aplikasi minimal 2 karakter").max(200),
       /** Keberadaan periode dicek di server (daftar periode dikelola di CMS). */
       period: z.string().trim().min(4, "Pilih periode arsitektur"),

@@ -31,8 +31,9 @@ import { Textarea } from "@/components/ui/textarea";
 import type { LayananSuggestion } from "@/lib/ai/layanan-suggest";
 import { metodeLabel, metodeOptions, targetLabel, targetOptions, type Metode, type Target } from "@/lib/layanan/reference";
 import type { LayananInput } from "@/lib/layanan/schema";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { LayananRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Values = { [K in Exclude<keyof LayananInput, "probis">]-?: string } & { probis: string[] };
@@ -64,6 +65,7 @@ const fromRecord = (r: LayananRecord | null, lockedOpd: string | null, activePer
 
 /** Form tambah/ubah layanan (kolom template analis) dengan asisten AI, pemilih RAL, dan tautan proses bisnis. */
 export function LayananForm({ record, lockedOpd, periods: { periods, active } }: { record: LayananRecord | null; lockedOpd: string | null; periods: PeriodOptions }) {
+  const opd = useOpd();
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const [values, setValues] = useState<Values>(() => fromRecord(record, lockedOpd, active));
@@ -186,7 +188,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
                       <SelectValue placeholder="Pilih Perangkat Daerah" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perangkatDaerah.map((pd) => (
+                      {opd.list(values.period, values.opd).map((pd) => (
                         <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -353,7 +355,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
         <Card data-reveal>
           <CardHeader>
             <CardTitle as="h2" className="section-title">Proses bisnis yang dilayani</CardTitle>
-            <CardDescription>Proses bisnis {pdByCode.get(values.opd)?.name ?? "Perangkat Daerah"} pada periode {values.period}.</CardDescription>
+            <CardDescription>Proses bisnis {(values.opd ? opd.name(values.opd, values.period) : "Perangkat Daerah")} pada periode {values.period}.</CardDescription>
           </CardHeader>
           <CardContent>
             <Field data-field="probis" data-invalid={!!errors.probis || undefined} className="rounded-lg">
@@ -439,7 +441,7 @@ export function LayananForm({ record, lockedOpd, periods: { periods, active } }:
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Layanan diajukan" : "Draf tersimpan"}</DialogTitle>
-          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Bagian Organisasi." : `${values.name} — ${pdByCode.get(values.opd)?.name ?? ""}`}</DialogDescription>
+          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Bagian Organisasi." : `${values.name} — ${opd.name(values.opd, values.period)}`}</DialogDescription>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/layanan/${record.id}`) : (setDone(null), setValues(fromRecord(null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}

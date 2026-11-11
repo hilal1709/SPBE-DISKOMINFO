@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { RabIndex } from "./rab-index";
-import { pdByCode } from "./reference";
 
 const optionalText = z.string().trim().max(2000).optional().transform((v) => v || null);
 
@@ -11,7 +10,7 @@ const optionalText = z.string().trim().max(2000).optional().transform((v) => v |
 export function makeProbisInput(rab: RabIndex) {
   return z
     .object({
-      opd: z.string().refine((v) => pdByCode.has(v), "Pilih Perangkat Daerah"),
+      opd: z.string().trim().min(1, "Pilih Perangkat Daerah").max(40),
       name: z.string().trim().min(3, "Nama proses bisnis minimal 3 karakter").max(200),
       description: optionalText,
       probisStatus: z.enum(["new", "upgrade", "as_is"]),

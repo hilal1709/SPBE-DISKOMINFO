@@ -1,5 +1,6 @@
 import { cached, TAGS } from "@/lib/cache";
 import { getDb } from "@/lib/db";
+import { inheritOpd } from "@/lib/opd/repo";
 import { sampleActivePeriod, samplePeriods, type PeriodOptions } from "./reference";
 
 /** Periode arsitektur (versioning tiap 2–5 tahun mengikuti perubahan SOTK — notulen). Server saja. */
@@ -11,6 +12,8 @@ export type Period = {
   active: boolean;
   /** Jumlah proses bisnis. */
   count: number;
+  /** Proses bisnis tervalidasi (yang bisa diimpor sebagai history ke periode baru). */
+  approved: number;
   /** Jumlah layanan. */
   services: number;
   /** Versi RAB (probis). */
@@ -46,6 +49,7 @@ export async function listPeriods(): Promise<Period[]> {
   const { rows } = await db().query(
     `select ap.id, ap.name, ap.start_year, ap.end_year, coalesce(ap.is_active, false) as active,
             (select count(*)::int from process_businesses pb where pb.period_id = ap.id) as n,
+            (select count(*)::int from process_businesses pb where pb.period_id = ap.id and pb.status = 'approved') as approved,
             (select count(*)::int from services s where s.period_id = ap.id) as services,
             (select count(*)::int from datasets d where d.period_id = ap.id) as datasets,
             (select count(*)::int from applications a where a.period_id = ap.id) as applications,
@@ -67,6 +71,7 @@ export async function listPeriods(): Promise<Period[]> {
     end: r.end_year,
     active: r.active,
     count: r.n,
+    approved: r.approved,
     services: r.services,
     versionId: r.rab_version_id,
     versionName: r.version_name,
@@ -105,7 +110,14 @@ export async function periodOptions(): Promise<PeriodOptions> {
   return { periods: samplePeriods, active: sampleActivePeriod };
 }
 
-export async function createPeriod(start: number, end: number) {
+const COPY_COLUMNS = "code, name, description, rab_l4, rab_l5, strategic_goal, iku, iku_target, probis_status, opd_id, rab_id, rab4_id, rab5_id, is_sample, bpmn_xml, bpmn_svg, bpmn_updated_at";
+
+/**
+ * Buat periode. `importFrom` = id periode sumber "impor history": probis tervalidasinya disalin sebagai draf
+ * (kode sama, diagram BPMN ikut, realisasi IKU dikosongkan) agar OPD meninjau dan mengajukannya lagi. Domain lain tidak disalin.
+ * Periode hasil impor sementara memakai versi RAB sumber; `remapTo` = versi RAB terbit terbaru bila berbeda (dipetakan pemanggil).
+ */
+export async function createPeriod(start: number, end: number, importFrom?: { periodId: string; actor: { id: string | null; name: string } }) {
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 2000 || end > 2100) throw new Error("Tahun tidak valid.");
   const span = end - start + 1;
   if (span < MIN_SPAN || span > MAX_SPAN) throw new Error(`Rentang periode ${MIN_SPAN}–${MAX_SPAN} tahun (sekarang ${span} tahun).`);
@@ -113,17 +125,48 @@ export async function createPeriod(start: number, end: number) {
   if (overlap.rows.length) throw new Error(`Bertumpang tindih dengan periode ${overlap.rows.map((r) => r.name).join(", ")}.`);
   const name = `${start}–${end}`;
   // Periode baru memakai versi RAB, RAL, RAD, RAA, dan RAI terbit terbaru.
-  await db().query(
-    `insert into architecture_periods (name, start_year, end_year, is_active, rab_version_id, ral_version_id, rad_version_id, raa_version_id, rai_version_id)
+  let id = "";
+  let copied = 0;
+  let remapTo: string | null = null;
+  const client = await db().connect();
+  try {
+    await client.query("begin");
+    const { rows } = await client.query(
+      `insert into architecture_periods (name, start_year, end_year, is_active, rab_version_id, ral_version_id, rad_version_id, raa_version_id, rai_version_id)
      values ($1, $2, $3, false,
-       (select id from rab_versions where status = 'published' order by published_at desc nulls last limit 1),
+       coalesce((select rab_version_id from architecture_periods where id = $4), (select id from rab_versions where status = 'published' order by published_at desc nulls last limit 1)),
        (select id from ral_versions where status = 'published' order by published_at desc nulls last limit 1),
        (select id from rad_versions where status = 'published' order by published_at desc nulls last limit 1),
        (select id from raa_versions where status = 'published' order by published_at desc nulls last limit 1),
-       (select id from rai_versions where status = 'published' order by published_at desc nulls last limit 1))`,
-    [name, start, end],
-  );
-  return name;
+       (select id from rai_versions where status = 'published' order by published_at desc nulls last limit 1)) returning id, rab_version_id`,
+      [name, start, end, importFrom?.periodId ?? null],
+    );
+    id = rows[0].id;
+    await inheritOpd(client, id);
+    if (importFrom) {
+      const source = (await client.query("select name from architecture_periods where id = $1", [importFrom.periodId])).rows[0];
+      if (!source) throw new Error("Periode sumber impor history tidak ditemukan.");
+      const inserted = await client.query(
+        `insert into process_businesses (${COPY_COLUMNS}, period_id, status, created_by, copied_from)
+         select ${COPY_COLUMNS}, $2, 'draft', $3, id from process_businesses where period_id = $1 and status = 'approved' returning id`,
+        [importFrom.periodId, id, importFrom.actor.id],
+      );
+      copied = inserted.rowCount ?? 0;
+      await client.query(
+        "insert into probis_reviews (process_business_id, actor_id, actor_name, from_status, to_status, note) select unnest($1::uuid[]), $2, $3, null, 'draft', $4",
+        [inserted.rows.map((r) => r.id), importFrom.actor.id, importFrom.actor.name, `Disalin dari periode ${source.name}`],
+      );
+      const latest = (await client.query("select id from rab_versions where status = 'published' order by published_at desc nulls last limit 1")).rows[0]?.id as string | undefined;
+      if (latest && latest !== rows[0].rab_version_id) remapTo = latest;
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+  return { id, name, copied, remapTo };
 }
 
 export async function setActivePeriod(id: string) {

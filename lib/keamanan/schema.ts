@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { pdByCode } from "@/lib/probis/reference";
 import { kegiatanConfig, kegiatanKeys } from "./jenis";
 
 const date = /^\d{4}-\d{2}-\d{2}$/;
@@ -8,7 +7,7 @@ const date = /^\d{4}-\d{2}-\d{2}$/;
 export const keamananInput = z
   .object({
     /** Instansi pelaksana (Perangkat Daerah pemilik isian). */
-    opd: z.string().refine((v) => pdByCode.has(v), "Pilih instansi pelaksana"),
+    opd: z.string().trim().min(1, "Pilih instansi pelaksana").max(40),
     jenis: z.enum(kegiatanKeys, { message: "Pilih jenis kegiatan keamanan" }),
     name: z.string().trim().min(3, "Nama kegiatan minimal 3 karakter").max(250),
     /** Keberadaan periode dicek di server (daftar periode dikelola di CMS). */

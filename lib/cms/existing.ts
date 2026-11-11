@@ -12,9 +12,9 @@ export async function findEditableRecords(db: Pick<Pool, "query">, actor: Actor,
   if (!actor.perms.includes("edit") && !actor.perms.includes("editAny")) return [];
   const scope = can.readAll(actor) ? null : actor.opdId ?? NIL_UUID;
   const { rows } = await db.query<ExistingRecord>(
-    `select t.id, t.code, t.name, o.name as opd, p.name as period, t.status::text as status,
+    `select t.id, t.code, t.name, coalesce(op.name, o.name) as opd, p.name as period, t.status::text as status,
        ${domain === "infrastruktur" || domain === "keamanan" ? "t.kind" : "null::text"} as kind
-     from ${tables[domain]} t join opd o on o.id=t.opd_id join architecture_periods p on p.id=t.period_id
+     from ${tables[domain]} t join opd o on o.id=t.opd_id left join opd_periods op on op.opd_id=o.id and op.period_id=t.period_id join architecture_periods p on p.id=t.period_id
      where ($1::uuid is null or t.opd_id=$1)
        and ($2::boolean or t.status::text in ('draft','rejected'))
        and (t.code ilike $3 escape '\\' or t.name ilike $3 escape '\\')

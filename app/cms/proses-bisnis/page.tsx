@@ -10,7 +10,7 @@ export default async function ProbisListPage({ searchParams }: { searchParams: P
   const opdId = opdScope(actor);
   const view = parseProbisParams(params);
   const load = (page: number) =>
-    probisPage({ opdId, tab: view.tab, pd: can.readAll(actor) ? view.pd : [], rab1: view.rab1, period: view.period, q: view.q, page, pageSize: PAGE_SIZE, sort: view.sort });
+    probisPage({ opdId, tab: view.tab, pd: can.readAll(actor) ? view.pd : [], rab1: view.rab1, diagram: view.diagram, period: view.period, q: view.q, page, pageSize: PAGE_SIZE, sort: view.sort });
   const [first, any] = await Promise.all([load(view.page), hasProbis(opdId)]);
   let page = first;
   // Halaman di luar jangkauan (mis. tautan lama setelah data berkurang): tampilkan halaman terakhir.

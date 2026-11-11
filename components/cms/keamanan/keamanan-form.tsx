@@ -25,8 +25,9 @@ import { Textarea } from "@/components/ui/textarea";
 import type { KeamananSuggestion } from "@/lib/ai/keamanan-suggest";
 import { groups, kegiatanConfig, type Kegiatan, type KegiatanField } from "@/lib/keamanan/jenis";
 import type { KeamananInput } from "@/lib/keamanan/schema";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { KeamananRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Values = { opd: string; jenis: Kegiatan | ""; name: string; period: string; deskripsi: string; tanggal: string; atribut: Record<string, string> };
@@ -53,6 +54,7 @@ export function KeamananForm({
   lockedOpd: string | null;
   periods: PeriodOptions;
 }) {
+  const opd = useOpd();
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const picker = useRef<HTMLDivElement>(null);
@@ -206,7 +208,7 @@ export function KeamananForm({
                         <SelectValue placeholder="Pilih Perangkat Daerah" />
                       </SelectTrigger>
                       <SelectContent>
-                        {perangkatDaerah.map((pd) => (
+                        {opd.list(values.period, values.opd).map((pd) => (
                           <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -308,7 +310,7 @@ export function KeamananForm({
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Kegiatan diajukan" : "Draf tersimpan"}</DialogTitle>
-          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Keamanan Diskominfo." : `${values.name} — ${pdByCode.get(values.opd)?.name ?? ""}`}</DialogDescription>
+          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Keamanan Diskominfo." : `${values.name} — ${opd.name(values.opd, values.period)}`}</DialogDescription>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/keamanan/${record.id}`) : (setDone(null), setValues(fromRecord(null, values.jenis || null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}

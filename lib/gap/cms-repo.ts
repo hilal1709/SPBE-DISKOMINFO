@@ -3,11 +3,11 @@ import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import { insertRencana } from "@/lib/peta-rencana/cms-repo";
-import { muatanConfig, type Muatan } from "@/lib/peta-rencana/muatan";
+import { muatanConfig, type DefaultMuatan } from "@/lib/peta-rencana/muatan";
 import type { RencanaValues } from "@/lib/peta-rencana/schema";
 import type { GapRecord } from "@/lib/types";
 import { detectGaps } from "./detect";
-import { ruleConfig, type GapPriority, type GapStatus } from "./rules";
+import { ruleConfig, type GapPriority, type GapRule, type GapStatus } from "./rules";
 import type { GapValues } from "./schema";
 import { cached, TAGS } from "@/lib/cache";
 
@@ -35,12 +35,13 @@ async function tx<T>(run: (client: PoolClient) => Promise<T>) {
 }
 
 const SELECT = `
-  select g.id, g.code, ap.name as period, g.opd_id, o.name as opd_name, g.domain, g.rule, g.subject_code, g.subject_name, g.sasaran,
+  select g.id, g.code, ap.name as period, g.opd_id, o.code as opd_code, coalesce(op.name, o.name) as opd_name, g.domain, g.rule, g.subject_code, g.subject_name, g.sasaran,
          g.as_is, g.target, g.rekomendasi, g.priority, g.status, g.note, g.roadmap_item_id, r.code as roadmap_code, r.status as roadmap_status,
          g.updated_at, g.is_sample
   from gap_analyses g
   join architecture_periods ap on ap.id = g.period_id
   left join opd o on o.id = g.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = g.period_id
   left join roadmap_items r on r.id = g.roadmap_item_id`;
 
 type Row = Record<string, string | null> & { updated_at: Date; is_sample: boolean };
@@ -50,8 +51,9 @@ const toRecord = (r: Row): GapRecord => ({
   code: r.code!,
   period: r.period!,
   opdId: r.opd_id,
+  opdCode: r.opd_code,
   opdName: r.opd_name,
-  domain: r.domain as Muatan,
+  domain: r.domain as DefaultMuatan,
   rule: r.rule,
   subjectCode: r.subject_code,
   subjectName: r.subject_name!,
@@ -106,7 +108,7 @@ async function codeMaker(client: PoolClient) {
     const m = String(code).match(/^GSK-GAP ([A-Z]+)\.(\d+)$/);
     if (m) max.set(m[1]!, Math.max(max.get(m[1]!) ?? 0, Number(m[2])));
   }
-  return (domain: Muatan) => {
+  return (domain: DefaultMuatan) => {
     const abbr = muatanConfig[domain].abbr;
     const n = (max.get(abbr) ?? 0) + 1;
     max.set(abbr, n);
@@ -204,10 +206,12 @@ export async function deleteGap(id: string) {
 /** Jadikan temuan usulan Peta Rencana: kegiatan baru bersumber gap, temuan berstatus diusulkan. */
 export function proposeToRoadmap(id: string, v: RencanaValues, actor: Actor) {
   return tx(async (client) => {
-    const { rows } = await client.query("select code, status from gap_analyses where id = $1 for update", [id]);
+    const { rows } = await client.query("select code, status, rule, subject_code from gap_analyses where id = $1 for update", [id]);
     if (!rows[0]) throw new Error("Temuan tidak ditemukan.");
     if (rows[0].status !== "terbuka") throw new Error("Hanya temuan terbuka yang bisa diusulkan.");
-    const roadmapId = await insertRencana(client, { ...v, source: "gap", sourceRef: rows[0].code }, actor);
+    const subject = ruleConfig[rows[0].rule as GapRule]?.subjectDomain;
+    const tautan = subject && rows[0].subject_code ? [...(v.tautan ?? []), { domain: subject, code: rows[0].subject_code as string }] : v.tautan;
+    const roadmapId = await insertRencana(client, { ...v, tautan, source: "gap", sourceRef: rows[0].code }, actor);
     await client.query("update gap_analyses set status = 'diusulkan', roadmap_item_id = $2, updated_by = $3, updated_at = now() where id = $1", [id, roadmapId, actor.id]);
     return roadmapId;
   });
@@ -218,6 +222,7 @@ export async function clearSamples() {
   return rowCount ?? 0;
 }
 
-/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+/** Ringkasan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
 export const gapSummary = cached(loadGapSummary, "gap/cms-repo:gapSummary", [TAGS.content]);
-export const listGaps = cached(loadListGaps, "gap/cms-repo:listGaps", [TAGS.content]);
+/** Tanpa cache: daftar temuan >2 MB, melebihi batas Data Cache Next.js (unstable_cache menolaknya). */
+export const listGaps = loadListGaps;

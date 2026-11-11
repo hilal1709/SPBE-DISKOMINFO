@@ -6,7 +6,8 @@ import { withSecurityLabels } from "@/lib/keamanan/link";
 import { listData } from "@/lib/data/cms-repo";
 import { rad } from "@/lib/data/rad";
 import { jenisLabel, securityFields, sifatLabel } from "@/lib/data/reference";
-import { pdByCode, reviewLabel } from "@/lib/probis/reference";
+import { opdBookSafe } from "@/lib/opd/repo";
+import { reviewLabel } from "@/lib/probis/reference";
 import { refResolver } from "@/lib/reference/versioned";
 
 /** Ekspor data dalam format kolom template "Domain Arsitektur Data dan Informasi.xlsx" (+ periode & status). */
@@ -17,6 +18,7 @@ export async function GET() {
   // Dependensi keamanan tertaut diekspor sebagai "kode nama" agar terbaca dan bisa diimpor ulang.
   const rows = withSecurityLabels(records, refs);
   const radFor = refResolver(radSet);
+  const opd = await opdBookSafe();
 
   const security = securityFields.map((f) => `← ${f.label} (Dependency)`);
   const header = [
@@ -35,7 +37,7 @@ export async function GET() {
         ID: r.code,
         "Uraian Data": r.uraian,
         "Tujuan Data": r.tujuan,
-        "← Penghasil Data/Produsen Data": r.produsen ? (pdByCode.get(r.produsen)?.name ?? r.produsen) : "",
+        "← Penghasil Data/Produsen Data": r.produsen ? opd.name(r.produsen, r.period) : "",
         "→ Penanggung Jawab Data/ Wali Data (Dependency)": r.opdName,
         "Informasi yang Terkait (Output)": r.output ?? "",
         "Informasi yang Terkait (Input)": r.input ?? "",

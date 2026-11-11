@@ -6,6 +6,8 @@ export type ProbisView = {
   tab: ProbisTab;
   pd: string[];
   rab1: string[];
+  /** Saring menurut ada tidaknya diagram BPMN; "" = semua. */
+  diagram: "" | "ada" | "belum";
   /** Nama periode, atau "__all". */
   period: string;
   q: string;
@@ -24,10 +26,12 @@ export function parseProbisParams(params: Record<string, string | string[] | und
   const tab = one(params.tab) as ProbisTab;
   const page = Number.parseInt(one(params.hal), 10);
   const key = one(params.urut);
+  const diagram = one(params.diagram);
   return {
     tab: TABS.includes(tab) ? tab : "all",
     pd: list(params.pd),
     rab1: list(params.rab1),
+    diagram: diagram === "ada" || diagram === "belum" ? diagram : "",
     period: one(params.periode) || ALL_CMS_PERIODS,
     q: one(params.q).slice(0, 100),
     page: Number.isFinite(page) && page > 1 ? Math.min(page, 10_000) - 1 : 0,
@@ -41,6 +45,7 @@ export function probisParams(view: ProbisView) {
   if (view.tab !== "all") out.set("tab", view.tab);
   if (view.pd.length) out.set("pd", view.pd.join(","));
   if (view.rab1.length) out.set("rab1", view.rab1.join(","));
+  if (view.diagram) out.set("diagram", view.diagram);
   if (view.period !== ALL_CMS_PERIODS) out.set("periode", view.period);
   if (view.q.trim()) out.set("q", view.q.trim());
   if (view.page > 0) out.set("hal", String(view.page + 1));

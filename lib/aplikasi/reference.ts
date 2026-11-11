@@ -76,9 +76,9 @@ export const instansiPusat = [
 ];
 const pusatSet = new Set(instansiPusat);
 
-/** Kepemilikan diturunkan dari unit pengembang: PD Gresik → Pemda, K/L → Pusat, selain itu pihak ketiga. */
-export function kepemilikanOf(pengembang: string): Kepemilikan {
-  if (pdByCode.has(pengembang)) return "pemda";
+/** Kepemilikan diturunkan dari unit pengembang: PD Gresik → Pemda, K/L → Pusat, selain itu pihak ketiga. `isOpd` = pengecek kode OPD dari direktori database. */
+export function kepemilikanOf(pengembang: string, isOpd: (code: string) => boolean = (code) => pdByCode.has(code)): Kepemilikan {
+  if (isOpd(pengembang)) return "pemda";
   return pusatSet.has(pengembang) ? "pusat" : "pihak_ketiga";
 }
 

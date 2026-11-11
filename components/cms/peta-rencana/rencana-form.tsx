@@ -1,4 +1,5 @@
 "use client";
+import { ArchitectureLinks } from "@/components/peta-rencana/architecture-links";
 import { UnsavedGuard } from "@/components/cms/unsaved-guard";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,12 +19,14 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { muatanConfig, muatanKeys, sourceLabel, statusConfig, statusKeys, type Muatan, type RencanaSource, type RencanaStatus } from "@/lib/peta-rencana/muatan";
+import { useMuatan } from "@/components/peta-rencana/muatan-context";
+import { sourceLabel, statusConfig, statusKeys, type Muatan, type RencanaSource, type RencanaStatus } from "@/lib/peta-rencana/muatan";
 import { yearsOf } from "@/lib/peta-rencana/query";
 import { inisiatifBySasaran } from "@/lib/peta-rencana/sasaran";
 import type { RencanaInput } from "@/lib/peta-rencana/schema";
-import { ikuBySasaran, perangkatDaerah, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
-import type { RencanaRecord } from "@/lib/types";
+import { ikuBySasaran, sasaranStrategis, type PeriodOptions } from "@/lib/probis/reference";
+import type { RencanaLink, RencanaRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Values = {
@@ -43,6 +46,7 @@ type Values = {
   evaluasi: string;
   source: RencanaSource;
   sourceRef: string;
+  tautan: RencanaLink[];
 };
 
 const fromRecord = (r: RencanaRecord | null, active: string): Values => ({
@@ -62,10 +66,13 @@ const fromRecord = (r: RencanaRecord | null, active: string): Values => ({
   evaluasi: r?.evaluasi ?? "",
   source: r?.source ?? "manual",
   sourceRef: r?.sourceRef ?? "",
+  tautan: r?.tautan ?? [],
 });
 
 /** Form kegiatan Peta Rencana: muatan → sasaran & inisiatif → kegiatan & target, lalu evaluasi & realisasi terpisah. */
 export function RencanaForm({ record, periods: { periods, active } }: { record: RencanaRecord | null; periods: PeriodOptions }) {
+  const opd = useOpd();
+  const muatanBook = useMuatan();
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const picker = useRef<HTMLDivElement>(null);
@@ -99,7 +106,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
 
   const submit = () => {
     startSaving(async () => {
-      const result = await saveRencana({ ...values, muatan: values.muatan || undefined } as RencanaInput, { id: record?.id });
+      const result = await saveRencana({ ...values, muatan: values.muatan || undefined, tautan: values.tautan.map(({ domain, code }) => ({ domain, code })) } as RencanaInput, { id: record?.id });
       if (!result.ok) {
         setErrors(result.fields ?? {});
         toast.error(result.error);
@@ -130,8 +137,8 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
           </CardHeader>
           <CardContent>
             <div ref={picker} data-field="muatan" className={cn("grid grid-cols-2 gap-2 rounded-lg sm:grid-cols-4", errors.muatan && "ring-2 ring-destructive/40")}>
-              {muatanKeys.map((k) => {
-                const c = muatanConfig[k];
+              {muatanBook.keys.map((k) => {
+                const c = muatanBook.get(k);
                 const on = values.muatan === k;
                 return (
                   <button
@@ -153,6 +160,9 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
               })}
             </div>
             {errors.muatan && <p className="mt-2 text-sm text-destructive">{errors.muatan}</p>}
+            <Link href="/cms/peta-rencana/muatan" className="mt-3 inline-block text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              Tambah atau hapus muatan
+            </Link>
           </CardContent>
         </Card>
 
@@ -160,7 +170,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
           <CardHeader>
             <CardTitle as="h2" className="section-title">Rincian</CardTitle>
             <CardDescription>
-              ID: <b className="tabular-nums">{record?.code ?? (values.muatan ? `GSK-PRN ${muatanConfig[values.muatan].abbr}.xxx (otomatis)` : "otomatis")}</b>
+              ID: <b className="tabular-nums">{record?.code ?? (values.muatan ? `GSK-PRN ${muatanBook.get(values.muatan).abbr}.xxx (otomatis)` : "otomatis")}</b>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -193,7 +203,7 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
                       <SelectValue placeholder="Pilih Perangkat Daerah" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perangkatDaerah.map((pd) => (
+                      {opd.list(values.period, values.opd).map((pd) => (
                         <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -250,6 +260,16 @@ export function RencanaForm({ record, periods: { periods, active } }: { record: 
                 </Field>
               )}
             </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card data-reveal>
+          <CardHeader>
+            <CardTitle as="h2" className="section-title">Arsitektur terkait</CardTitle>
+            <CardDescription>Entri tervalidasi periode {values.period} yang ditangani kegiatan ini.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ArchitectureLinks period={values.period} opd={values.opd} value={values.tautan} onChange={(v) => set("tautan", v)} />
           </CardContent>
         </Card>
 

@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { jenisConfig, jenisOptions, kepemilikanLabel, kepemilikanOptions } from "@/lib/infrastruktur/jenis";
 import { can, type Actor } from "@/lib/permissions";
-import { perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
+import { useOpd } from "@/components/opd/opd-context";
 import type { InfrastrukturRecord, SubmissionStatus } from "@/lib/types";
 
 type Tab = "all" | "review" | SubmissionStatus;
@@ -36,6 +37,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 /** Daftar komponen CMS: tab status, filter komponen, tabel ramping (kolom inti, notulen), detail via pop-up. */
 export function InfrastrukturList({ rows, actor, periods }: { rows: InfrastrukturRecord[]; actor: Actor; periods: PeriodOptions }) {
+  const opd = useOpd();
   const rais = useRaiSet();
   const rai = (code: string | null, period: string) => (code ? rais.forPeriod(period).label(code) : "—");
   const { tab, setTab, period, setPeriod } = useListFilters();
@@ -90,7 +92,7 @@ export function InfrastrukturList({ rows, actor, periods }: { rows: Infrastruktu
 
       <FilterBar
         filters={[
-          ...(can.readAll(actor) ? [{ label: "Instansi", wide: true, multiple: true, searchable: true, options: perangkatDaerah.map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
+          ...(can.readAll(actor) ? [{ label: "Instansi", wide: true, multiple: true, searchable: true, options: opd.all().map((p) => ({ value: p.code, label: p.name })), values: pd, onValuesChange: setPd }] : []),
           { label: "Komponen", wide: true, multiple: true, options: jenisOptions, values: jenis, onValuesChange: setJenis },
           { label: "Kepemilikan", multiple: true, options: [...kepemilikanOptions], values: owner, onValuesChange: setOwner },
           { label: "Periode", options: periods.periods, value: period, onChange: setPeriod },

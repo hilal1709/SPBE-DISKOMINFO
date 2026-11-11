@@ -76,7 +76,8 @@ function fakePool(security: boolean, fail = false) {
       ...(security ? [{ domain: "keamanan", id: "k", code: "K", name: "Audit", opd: "O", opd_name: "OPD", period: "2025–2029", category: "audit", sample: false }] : []),
     ] };
     if (sql.startsWith("select domain")) return { rows: [{ domain: "aplikasi", opd: "O", opd_name: "OPD", period: "2025–2029", category: "web", count: 1, sample: false }] };
-    if (sql === "select code, name from opd") return { rows: [{ code: "O", name: "OPD" }] };
+    // Nama OPD per periode (opd_periods) + nama dasar sebagai cadangan.
+    if (sql.startsWith("select o.code, null::text as period, o.name from opd o")) return { rows: [{ code: "O", period: null, name: "OPD" }] };
     if (sql.includes("security from")) return { rows: [{ domain: "aplikasi", tbl: "applications", id: "a", security: { audit: ["K"], standar: ["LEGACY PRIVATE TEXT"] } }] };
     return { rows: [] };
   };

@@ -20,13 +20,14 @@ function db() {
 }
 
 const SELECT = `
-  select pb.id, pb.code, pb.name, pb.description, o.code as opd_code, o.name as opd_name, o.id as opd_id,
+  select pb.id, pb.code, pb.name, pb.description, o.code as opd_code, coalesce(op.name, o.name) as opd_name, o.id as opd_id,
          ap.name as period, pb.probis_status, pb.status::text as status,
          r1.code as rab1, r2.code as rab2, r3.code as rab3, r4.code as rab4, r5.code as rab5, pb.rab_l4, pb.rab_l5,
          pb.strategic_goal, pb.iku, pb.iku_target, pb.iku_realization, pb.updated_at, pb.is_sample, pb.rab_review,
          pb.bpmn_xml is not null as has_diagram
   from process_businesses pb
   join opd o on o.id = pb.opd_id
+  left join opd_periods op on op.opd_id = o.id and op.period_id = pb.period_id
   left join architecture_periods ap on ap.id = pb.period_id
   left join rab_references r3 on r3.id = pb.rab_id
   left join rab_references r4 on r4.id = pb.rab4_id
@@ -91,6 +92,7 @@ export type ProbisPageQuery = {
   tab: ProbisTab;
   pd: string[];
   rab1: string[];
+  diagram?: "" | "ada" | "belum";
   /** Nama periode, atau "__all". */
   period: string;
   q: string;
@@ -105,7 +107,7 @@ const PROBIS_SORT: Record<string, string> = {
   status: "pb.status",
   code: "pb.code",
   name: "pb.name",
-  opd: "o.name",
+  opd: "coalesce(op.name, o.name)",
   rab3: "r3.code",
   probisStatus: "pb.probis_status",
   rab1: "r1.code",
@@ -113,6 +115,7 @@ const PROBIS_SORT: Record<string, string> = {
   rabL4: "pb.rab_l4",
   rabL5: "pb.rab_l5",
   period: "ap.name",
+  diagram: "(pb.bpmn_xml is not null)",
 };
 
 /**
@@ -125,9 +128,10 @@ async function loadProbisPage(query: ProbisPageQuery) {
   if (query.opdId) where.push(`pb.opd_id = $${params.push(query.opdId)}`);
   if (query.pd.length) where.push(`o.code = any($${params.push(query.pd)})`);
   if (query.rab1.length) where.push(`r1.code = any($${params.push(query.rab1)})`);
+  if (query.diagram) where.push(`pb.bpmn_xml is ${query.diagram === "ada" ? "not null" : "null"}`);
   if (query.period !== "__all") where.push(`ap.name = $${params.push(query.period)}`);
   const q = query.q.trim();
-  if (q) where.push(`(pb.code ilike $${params.push(`%${q}%`)} or pb.name ilike $${params.length} or o.name ilike $${params.length})`);
+  if (q) where.push(`(pb.code ilike $${params.push(`%${q}%`)} or pb.name ilike ${params.length} or coalesce(op.name, o.name) ilike ${params.length})`);
   const scoped = where.length ? `where ${where.join(" and ")}` : "";
 
   const tabWhere = query.tab === "all" ? "" : query.tab === "review" ? "pb.rab_review" : `pb.status::text = $${params.length + 1}`;
@@ -145,6 +149,7 @@ async function loadProbisPage(query: ProbisPageQuery) {
               count(*) filter (where pb.status = 'rejected')::int as rejected
        from process_businesses pb
        join opd o on o.id = pb.opd_id
+       left join opd_periods op on op.opd_id = o.id and op.period_id = pb.period_id
        left join architecture_periods ap on ap.id = pb.period_id
        left join rab_references r3 on r3.id = pb.rab_id
        left join rab_references r2 on r2.id = r3.parent_id
@@ -325,6 +330,22 @@ export function updateProbis(id: string, v: ProbisValues, actor: Actor, submit: 
     if (to !== from) await review(client, id, actor, from, to, "Diajukan");
     return id;
   });
+}
+
+export type ProbisHistoryItem = { id: string; period: string; name: string; opdName: string; status: SubmissionStatus; hasDiagram: boolean };
+
+/** Probis berkode sama di semua periode, urut waktu (nama bisa berubah antarperiode). */
+export async function probisHistory(code: string): Promise<ProbisHistoryItem[]> {
+  const { rows } = await db().query(
+    `select pb.id, ap.name as period, pb.name, coalesce(op.name, o.name) as opd_name, pb.status::text as status, pb.bpmn_xml is not null as has_diagram
+     from process_businesses pb
+     join opd o on o.id = pb.opd_id
+     join architecture_periods ap on ap.id = pb.period_id
+     left join opd_periods op on op.opd_id = o.id and op.period_id = pb.period_id
+     where pb.code = $1 order by ap.start_year`,
+    [code],
+  );
+  return rows.map((r) => ({ id: r.id, period: r.period, name: r.name, opdName: r.opd_name, status: r.status, hasDiagram: r.has_diagram }));
 }
 
 export type ProbisDiagram = { xml: string | null; svg: string | null; updatedAt: string | null };

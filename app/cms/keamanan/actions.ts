@@ -12,6 +12,8 @@ import type { Kegiatan } from "@/lib/keamanan/jenis";
 import { keamananInput, type KeamananInput } from "@/lib/keamanan/schema";
 import * as periods from "@/lib/probis/periods";
 import { opdCodeOf, opdIdOf } from "@/lib/probis/repo";
+import { assertOpdBerlaku, opdBookSafe } from "@/lib/opd/repo";
+import { flagInactivePd, setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 /** Operator hanya boleh menyimpan untuk OPD-nya sendiri (instansi pelaksana). */
@@ -35,10 +37,12 @@ export async function saveKeamanan(input: KeamananInput, options: { id?: string;
     if (options.id) {
       const current = await repo.getKeamanan(options.id);
       if (!current) throw new Error("Kegiatan keamanan tidak ditemukan.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period, current.opdCode);
       if (!can.edit(actor, current)) throw new Error("Kegiatan ini tidak dapat diubah pada status sekarang.");
       id = await repo.updateKeamanan(options.id, parsed.data, actor, options.submit);
     } else {
       if (!can.create(actor)) throw new Error("Peran Anda tidak dapat menambah kegiatan keamanan.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period);
       id = await repo.createKeamanan(parsed.data, actor, options.submit);
     }
     refresh();
@@ -120,9 +124,10 @@ export async function previewKeamananImport(form: FormData): Promise<ActionResul
     await assertImportQuota(actor.id);
     const file = form.get("file");
     assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
+    setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
-    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };
+    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: flagInactivePd(validateRows(upload.rows, ctx)) } };
   } catch (error) {
     return fail(error);
   }
@@ -135,7 +140,8 @@ export async function commitKeamananImport(rows: KeamananImportRow[], options: {
     arg(importOptions, options);
     await assertImportQuota((await currentActor()).id);
     const { actor, ctx } = await importContext(rows.map((r) => r.code).filter((c): c is string => !!c));
-    const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
+    setPdBook(await opdBookSafe());
+    const valid = flagInactivePd(validateRows(rows, ctx)).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...keamananInput.parse({ opd: r.opd ?? "", jenis: r.jenis, name: r.name, period: r.period, deskripsi: r.deskripsi ?? undefined, tanggal: r.tanggal ?? undefined, atribut: r.atribut }),
       code: r.code,

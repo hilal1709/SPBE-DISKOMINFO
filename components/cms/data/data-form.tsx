@@ -31,8 +31,9 @@ import type { DataSuggestion } from "@/lib/ai/data-suggest";
 import { SecurityLinks, securityCount } from "@/components/keamanan/security-links";
 import { jenisLabel, jenisOptions, sifatLabel, sifatOptions, validitasOptions, type Jenis, type SecurityKey, type Sifat } from "@/lib/data/reference";
 import type { DataInput } from "@/lib/data/schema";
-import { pdByCode, perangkatDaerah, type PeriodOptions } from "@/lib/probis/reference";
+import { type PeriodOptions } from "@/lib/probis/reference";
 import type { DataRecord } from "@/lib/types";
+import { useOpd } from "@/components/opd/opd-context";
 import { cn } from "@/lib/utils";
 
 type Text = Exclude<keyof DataInput, "probis" | "layanan" | "security" | "interoperabel">;
@@ -69,6 +70,7 @@ const fromRecord = (r: DataRecord | null, lockedOpd: string | null, activePeriod
 
 /** Form tambah/ubah data (kolom template analis "Domain Arsitektur Data dan Informasi") dengan asisten AI, pemilih RAD, dan dependensi. */
 export function DataForm({ record, lockedOpd, periods: { periods, active } }: { record: DataRecord | null; lockedOpd: string | null; periods: PeriodOptions }) {
+  const opd = useOpd();
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const [values, setValues] = useState<Values>(() => fromRecord(record, lockedOpd, active));
@@ -78,7 +80,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
   const [saving, startSaving] = useTransition();
   const [savingMode, setSavingMode] = useState<"draft" | "submit" | null>(null);
   const [done, setDone] = useState<{ submitted: boolean } | null>(null);
-  const [producerOther, setProducerOther] = useState(() => !!record?.produsen && !pdByCode.has(record.produsen));
+  const [producerOther, setProducerOther] = useState(() => !!record?.produsen && !opd.has(record.produsen));
 
   const [note, setNote] = useState("");
   const [thinking, startThinking] = useTransition();
@@ -99,11 +101,11 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
       if (result.ok)
         setOptions({
           probis: result.data.probis,
-          layanan: result.data.layanan.map((l) => ({ code: l.code, name: l.name, hint: l.opd === values.opd ? undefined : pdByCode.get(l.opd)?.name })),
+          layanan: result.data.layanan.map((l) => ({ code: l.code, name: l.name, hint: l.opd === values.opd ? undefined : opd.name(l.opd, values.period) })),
           loaded: true,
         });
     });
-  }, [values.opd, values.period]);
+  }, [values.opd, values.period, opd]);
   /** Probis adalah master (notulen): tanpa probis di periode ini, data belum bisa diajukan. */
   const noProbis = options.loaded && !loadingDeps && options.probis.length === 0;
 
@@ -201,7 +203,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
                       <SelectValue placeholder="Pilih Perangkat Daerah" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perangkatDaerah.map((pd) => (
+                      {opd.list(values.period, values.opd).map((pd) => (
                         <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -243,7 +245,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
                       <SelectValue placeholder="Sama dengan wali data" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perangkatDaerah.map((pd) => (
+                      {opd.list(values.period, values.produsen).map((pd) => (
                         <SelectItem key={pd.code} value={pd.code}>{pd.name}</SelectItem>
                       ))}
                       <SelectItem value={OTHER}>Instansi lain…</SelectItem>
@@ -362,7 +364,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
         <Card data-reveal>
           <CardHeader>
             <CardTitle as="h2" className="section-title">Dependensi</CardTitle>
-            <CardDescription>Proses bisnis {pdByCode.get(values.opd)?.name ?? "Perangkat Daerah"} dan layanan pada periode {values.period}.</CardDescription>
+            <CardDescription>Proses bisnis {(values.opd ? opd.name(values.opd, values.period) : "Perangkat Daerah")} dan layanan pada periode {values.period}.</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>
@@ -476,7 +478,7 @@ export function DataForm({ record, lockedOpd, periods: { periods, active } }: { 
         <DialogContent className="text-center sm:max-w-sm">
           <Illustration name="success" loop={false} className="mx-auto w-32" />
           <DialogTitle>{done?.submitted ? "Data diajukan" : "Draf tersimpan"}</DialogTitle>
-          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Data Diskominfo." : `${values.name} — ${pdByCode.get(values.opd)?.name ?? ""}`}</DialogDescription>
+          <DialogDescription>{done?.submitted ? "Menunggu verifikasi Verifikator Data Diskominfo." : `${values.name} — ${opd.name(values.opd, values.period)}`}</DialogDescription>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Button variant="outline" onClick={() => (record ? router.push(`/cms/data/${record.id}`) : (setDone(null), setValues(fromRecord(null, lockedOpd, active)), setSuggestion(null)))}>
               {record ? "Tetap di sini" : "Tambah lagi"}

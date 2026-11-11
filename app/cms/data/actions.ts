@@ -17,6 +17,8 @@ import * as periods from "@/lib/probis/periods";
 import { rab } from "@/lib/probis/rab";
 import { listProbis, opdCodeOf, opdIdOf } from "@/lib/probis/repo";
 import { refResolver } from "@/lib/reference/versioned";
+import { assertOpdBerlaku, opdBookSafe } from "@/lib/opd/repo";
+import { flagInactivePd, setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 /** Indeks RAD untuk periode tertentu (versi milik periode itu). */
@@ -45,10 +47,12 @@ export async function saveData(input: DataInput, options: { id?: string; submit:
     if (options.id) {
       const current = await repo.getData(options.id);
       if (!current) throw new Error("Data tidak ditemukan.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period, current.opdCode);
       if (!can.edit(actor, current)) throw new Error("Data ini tidak dapat diubah pada status sekarang.");
       id = await repo.updateData(options.id, parsed.data, actor, options.submit);
     } else {
       if (!can.create(actor)) throw new Error("Peran Anda tidak dapat menambah data.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period);
       id = await repo.createData(parsed.data, actor, options.submit);
     }
     refresh();
@@ -156,9 +160,10 @@ export async function previewDataImport(form: FormData): Promise<ActionResult<Da
     await assertImportQuota(actor.id);
     const file = form.get("file");
     assertUploadFile(file, "Pilih berkas .xlsx atau .zip.");
+    setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
-    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };
+    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: flagInactivePd(validateRows(upload.rows, ctx)) } };
   } catch (error) {
     return fail(error);
   }
@@ -171,7 +176,8 @@ export async function commitDataImport(rows: DataImportRow[], options: { status:
     arg(importOptions, options);
     await assertImportQuota((await currentActor()).id);
     const [{ actor, ctx }, refs] = await Promise.all([importContext(rows.map((r) => r.code).filter((c): c is string => !!c)), securityRefs()]);
-    const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
+    setPdBook(await opdBookSafe());
+    const valid = flagInactivePd(validateRows(rows, ctx)).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...makeDataInput(ctx.radFor(r.period)).parse({
         opd: r.opd ?? "",
