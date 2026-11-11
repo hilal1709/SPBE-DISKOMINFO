@@ -34,26 +34,22 @@ export function RecordMap({ selected, nodes, edges, onSelect }: {
 
   return <div className="grid gap-3">
     <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
-      <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="w-8 border-t-2 border-brand-teal" />Utuh: tautan langsung antarrecord</span>
-      <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="w-8 border-t-2 border-dashed border-destructive" />Putus-putus: kecocokan kode/nama, misalnya cloud atau server</span>
+      {kinds.map((k) => <span key={k} className="inline-flex items-center gap-2"><svg aria-hidden="true" width="34" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke={kindStyle[k].color} strokeWidth={2} strokeDasharray={kindStyle[k].dash} /><path d="M 26 0 L 34 4 L 26 8 z" fill={kindStyle[k].color} /></svg>{kindStyle[k].legend}</span>)}
     </div>
-    <p className="text-xs text-muted-foreground">Panah mengarah dari record sumber ke record yang dirujuk. Klik record lain untuk mengganti pilihan.</p>
+    <p className="text-xs text-muted-foreground">Data masuk mengarah ke aplikasi, data keluar mengarah dari aplikasi; tautan lain mengarah dari record sumber ke record yang dirujuk. Klik record lain untuk mengganti pilihan.</p>
     <div className="overflow-x-auto rounded-xl border bg-muted/30" tabIndex={0} role="region" aria-label="Visualisasi hubungan langsung, geser untuk melihat seluruh domain">
       <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: width }} role="group" aria-label={`Hubungan langsung ${selected.name}`}>
-        <defs>{["solid", "dashed"].map((style) => <marker key={style} id={`${marker}-${style}`} viewBox="0 0 10 10" refX={9} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={style === "solid" ? "var(--brand-teal)" : "var(--destructive)"} /></marker>)}</defs>
+        <defs>{kinds.map((k) => <marker key={k} id={`${marker}-${k}`} viewBox="0 0 10 10" refX={9} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={kindStyle[k].color} /></marker>)}</defs>
         {columns.map((d, i) => <text key={d} x={i * 230 + 15} y={27} className="fill-foreground text-xs font-semibold">{domains[d].label}</text>)}
-        {visibleEdges.map(({ edge: e, labels, reverse, solid }, index) => {
-          const a = points.get(e.source)!, b = points.get(e.target)!;
+        {visibleEdges.map(({ from, to, kind, labels, reverse, offset }, index) => {
+          const a = points.get(from)!, b = points.get(to)!;
           const forward = a.x < b.x;
           const sameColumn = a.x === b.x;
-          const pair = [e.source, e.target].sort();
-          const parallel = connections.has(JSON.stringify([pair, solid ? "reference" : "solid"]));
-          const offset = parallel ? (solid ? -13 : 13) : 0;
           const sx = a.x + (sameColumn || forward ? 190 : 0), tx = b.x + (sameColumn || !forward ? 190 : 0);
           const sy = a.y + 34 + offset, ty = b.y + 34 + offset;
           const bend = sameColumn ? sx + 35 + offset + index % 3 * 6 : (sx + tx) / 2;
-          const arrow = `url(#${marker}-${solid ? "solid" : "dashed"})`;
-          return <path data-edge key={e.id} d={`M ${sx} ${sy} C ${bend} ${sy}, ${bend} ${ty}, ${tx} ${ty}`} fill="none" stroke={solid ? "var(--brand-teal)" : "var(--destructive)"} strokeWidth={2} strokeDasharray={solid ? undefined : "6 4"} markerStart={reverse ? arrow : undefined} markerEnd={arrow}><title>{[...labels].join("; ")}</title></path>;
+          const arrow = `url(#${marker}-${kind})`;
+          return <path data-edge key={`${from}|${to}|${kind}`} d={`M ${sx} ${sy} C ${bend} ${sy}, ${bend} ${ty}, ${tx} ${ty}`} fill="none" stroke={kindStyle[kind].color} strokeWidth={2} strokeDasharray={kindStyle[kind].dash} markerStart={reverse ? arrow : undefined} markerEnd={arrow}><title>{[...labels].join("; ")}</title></path>;
         })}
         {displayed.map((n) => { const p = points.get(n.id)!; return <foreignObject data-record key={n.id} x={p.x} y={p.y} width={190} height={78}>
           <button type="button" onClick={() => onSelect(n)} aria-pressed={n.id === selected.id} title={`${n.code}: ${n.name}`} className={cn("flex h-[72px] w-full flex-col justify-center rounded-xl border bg-card px-3 text-left shadow-sm hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring", n.id === selected.id && "border-primary bg-accent")}>
@@ -63,8 +59,24 @@ export function RecordMap({ selected, nodes, edges, onSelect }: {
       </svg>
     </div>
     {!edges.length && <p className="text-sm text-muted-foreground">Data ini belum memiliki hubungan langsung dalam cakupan filter.</p>}
-    <p className="text-xs text-muted-foreground">Jika dua record memiliki tautan langsung sekaligus referensi kode/nama, kedua jenis garis ditampilkan pada jalur terpisah. Panah dua arah menandakan hubungan timbal balik. {visibleEdges.length < connections.size ? `Cuplikan ${visibleEdges.length} dari ${connections.size} hubungan, maksimal 6 record per domain. ` : ""}Rincian seluruh relasi ada pada daftar di bawah.</p>
+    <p className="text-xs text-muted-foreground">Jenis hubungan berbeda antara dua record digambar pada jalur terpisah. Panah dua arah menandakan hubungan timbal balik. {visibleEdges.length < connections.size ? `Cuplikan ${visibleEdges.length} dari ${connections.size} hubungan, maksimal 6 record per domain. ` : ""}Rincian seluruh relasi ada pada daftar di bawah.</p>
   </div>;
+}
+
+type Kind = "in" | "out" | "solid" | "reference";
+const kinds: Kind[] = ["in", "out", "solid", "reference"];
+const kindStyle: Record<Kind, { color: string; dash?: string; legend: string }> = {
+  in: { color: "var(--brand-teal)", legend: "Data masuk ke aplikasi" },
+  out: { color: "var(--brand-orange)", legend: "Data keluar dari aplikasi" },
+  solid: { color: "var(--muted-foreground)", legend: "Tautan langsung antarrecord" },
+  reference: { color: "var(--destructive)", dash: "6 4", legend: "Kecocokan kode/nama, misalnya cloud atau server" },
+};
+
+/** Arah gambar: "Input data" dibalik agar panah menuju aplikasi; model dan analisis dampak tidak berubah. */
+function drawn(edge: DomainEdge): { from: string; to: string; kind: Kind } {
+  if (edge.label === "Input data") return { from: edge.target, to: edge.source, kind: "in" };
+  if (edge.label === "Output data") return { from: edge.source, to: edge.target, kind: "out" };
+  return { from: edge.source, to: edge.target, kind: edge.storage === "junction" ? "solid" : "reference" };
 }
 
 /** Tata letak cuplikan: maks. 6 record per domain, posisi baris dihitung dengan penghitung per kolom (bukan indexOf berulang). */
@@ -79,15 +91,21 @@ function recordLayout(selected: DomainNode, nodes: DomainNode[], edges: DomainEd
   const width = Math.max(400, columns.length * 230);
   const height = Math.max(210, ...groups.map((g) => g.length * 100 + 60));
   const points = new Map(groups.flatMap((g, ci) => g.map((n, ri) => [n.id, { x: ci * 230 + 15, y: 55 + ri * 100 }] as const)));
-  const connections = new Map<string, { edge: DomainEdge; labels: Set<string>; reverse: boolean; solid: boolean }>();
+  type Connection = { from: string; to: string; kind: Kind; labels: Set<string>; reverse: boolean; offset: number };
+  const connections = new Map<string, Connection>();
   for (const edge of edges) {
-    const key = JSON.stringify([[edge.source, edge.target].sort(), edge.storage === "junction" ? "solid" : "reference"]);
+    const d = drawn(edge);
+    const key = JSON.stringify([[d.from, d.to].sort(), d.kind]);
     const existing = connections.get(key);
     if (existing) {
       existing.labels.add(edge.label);
-      if (edge.source !== existing.edge.source) existing.reverse = true;
-    } else connections.set(key, { edge, labels: new Set([edge.label]), reverse: false, solid: edge.storage === "junction" });
+      if (d.from !== existing.from) existing.reverse = true;
+    } else connections.set(key, { ...d, labels: new Set([edge.label]), reverse: false, offset: 0 });
   }
-  const visibleEdges = [...connections.values()].filter(({ edge }) => points.has(edge.source) && points.has(edge.target));
+  // Beberapa jenis hubungan pada pasangan yang sama digambar sejajar (selang 13 px).
+  const byPair = new Map<string, Connection[]>();
+  for (const c of connections.values()) { const k = [c.from, c.to].sort().join("|"); byPair.set(k, [...(byPair.get(k) ?? []), c]); }
+  for (const list of byPair.values()) list.forEach((c, i) => { c.offset = (i - (list.length - 1) / 2) * 13; });
+  const visibleEdges = [...connections.values()].filter((c) => points.has(c.from) && points.has(c.to));
   return { columns, displayed, width, height, points, connections, visibleEdges };
 }

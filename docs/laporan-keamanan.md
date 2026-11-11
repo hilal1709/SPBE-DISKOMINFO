@@ -143,6 +143,10 @@ Diisi dari artefak run `security-scan` (tab Actions → run terbaru → `securit
 | F8 | Bahasa pemrograman & mesin basis data aplikasi menerima "Tidak berlaku"/"Tidak diketahui" dan tampil sebagai kategori sendiri | `lib/aplikasi/reference.ts` |
 | Dependensi | `next` 16.3.8 → 16.4.1 (2 kritis RCE + 1 tinggi DoS) dan `zod` 4.5.4 → 4.6.7 (1 tinggi); `pnpm audit --prod` bersih | `package.json` |
 
+### Perubahan 10 Nov 2026: Keamanan tidak dikunci
+
+Web SPBE dipakai internal, jadi domain Keamanan dibuka untuk semua pengguna portal: `/keamanan` tanpa login (`proxy.ts`), `canReadSecurity()` selalu `true` (Ringkasan & Integrasi menampilkan Keamanan serta nama asli infrastruktur dan data tertutup), dan kegiatan Peta Rencana bermuatan Keamanan/Audit tampil utuh beserta tautan semua domain. Ini menggantikan S5 dan penyamaran S1/S2 di Integrasi. Halaman `/keamanan` tetap `noindex`.
+
 ### Uji lanjutan
 
 - Akun uji per peran untuk staging: `pnpm akun:uji --staging <domain-email> [kode-OPD]`. Skrip membuat Tim Verifikasi, Tim Validasi, Pimpinan, empat verifikator domain, dan Operator OPD dengan sandi sementara acak yang wajib diganti. Skrip menolak berjalan tanpa `--staging`.

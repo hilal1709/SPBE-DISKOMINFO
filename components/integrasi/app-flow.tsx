@@ -1,117 +1,39 @@
 "use client";
-import { useMemo } from "react";
-import { DataTable } from "@/components/blocks/data-table";
-import { EmptyState } from "@/components/blocks/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatNumber } from "@/lib/format";
-import { appFlows, flowLanes, type AppFlow as Flow, type DomainEdge, type DomainNode, type FlowLane } from "@/lib/integrasi/model";
+import { flowLanes, type AppFlow as Flow, type DomainNode, type FlowLane } from "@/lib/integrasi/model";
 import { cn } from "@/lib/utils";
 
 /**
- * Integrasi berpusat pada aplikasi: layanan yang didukung, aliran data masuk dan keluar, infrastruktur yang
- * menjalankannya, dan kegiatan keamanan yang melindunginya. Lajur Keamanan hanya tampil bila pengguna berhak.
+ * Lajur aliran satu aplikasi: layanan yang didukung, data masuk dan keluar, infrastruktur yang menjalankannya,
+ * dan kegiatan keamanan yang melindunginya. Lajur Keamanan hanya tampil bila `securityVisible`.
  */
-export function AppFlow({
-  nodes,
-  edges,
-  securityVisible,
-  selectedId,
-  onSelect,
-  onOpen,
-}: {
-  nodes: DomainNode[];
-  edges: DomainEdge[];
-  securityVisible: boolean;
-  selectedId: string;
-  onSelect: (id: string) => void;
-  /** Buka rincian record di lajur. */
-  onOpen: (node: DomainNode) => void;
-}) {
-  const flows = useMemo(() => appFlows(nodes, edges), [nodes, edges]);
+export function AppFlowLanes({ flow, securityVisible, onOpen }: { flow: Flow; securityVisible: boolean; /** Buka rincian record di lajur. */ onOpen: (node: DomainNode) => void }) {
   const lanes = flowLanes.filter((lane) => lane.key !== "keamanan" || securityVisible);
-  const selected = flows.find((f) => f.app.id === selectedId) ?? flows[0] ?? null;
-
-  if (!flows.length) {
-    return (
-      <Card data-reveal>
-        <EmptyState illustration="filter-empty" title="Belum ada aplikasi tervalidasi" description="Pilih Perangkat Daerah atau periode lain." />
-      </Card>
-    );
-  }
-
   return (
-    <>
-      <div data-aos="fade-blur" suppressHydrationWarning>
-        <Card>
-          <CardHeader>
-            <CardTitle as="h2">{selected!.app.name}</CardTitle>
-            <CardDescription>
-              {selected!.app.code} · {selected!.app.opdName}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`Aliran integrasi ${selected!.app.name}, geser untuk melihat seluruh lajur`}>
-              <ol className="grid min-w-max auto-cols-[minmax(11rem,1fr)] grid-flow-col gap-3">
-                {lanes.slice(0, 2).map((lane) => (
-                  <Lane key={lane.key} lane={lane} items={selected![lane.key]} onOpen={onOpen} />
-                ))}
-                <li className="grid content-start gap-2">
-                  <p className="eyebrow">Aplikasi</p>
-                  <div className="rounded-xl bg-brand-teal p-3 text-on-brand">
-                    <p className="text-[10px] tabular-nums opacity-80">{selected!.app.code}</p>
-                    <p className="text-sm leading-snug font-semibold">{selected!.app.name}</p>
-                  </div>
-                  {selected!.dataLain.length > 0 && (
-                    <div className="grid gap-1.5">
-                      <p className="text-xs text-muted-foreground">Data lain yang digunakan</p>
-                      {selected!.dataLain.map((n) => (
-                        <Item key={n.id} node={n} onOpen={onOpen} />
-                      ))}
-                    </div>
-                  )}
-                </li>
-                {lanes.slice(2).map((lane) => (
-                  <Lane key={lane.key} lane={lane} items={selected![lane.key]} onOpen={onOpen} />
-                ))}
-              </ol>
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`Aliran integrasi ${flow.app.name}, geser untuk melihat seluruh lajur`}>
+      <ol className="grid min-w-max auto-cols-[minmax(11rem,1fr)] grid-flow-col gap-3">
+        {lanes.slice(0, 2).map((lane) => (
+          <Lane key={lane.key} lane={lane} items={flow[lane.key]} onOpen={onOpen} />
+        ))}
+        <li className="grid content-start gap-2">
+          <p className="eyebrow">Aplikasi</p>
+          <div className="rounded-xl bg-brand-teal p-3 text-on-brand">
+            <p className="text-[10px] tabular-nums opacity-80">{flow.app.code}</p>
+            <p className="text-sm leading-snug font-semibold">{flow.app.name}</p>
+          </div>
+          {flow.dataLain.length > 0 && (
+            <div className="grid gap-1.5">
+              <p className="text-xs text-muted-foreground">Data lain yang digunakan</p>
+              {flow.dataLain.map((n) => (
+                <Item key={n.id} node={n} onOpen={onOpen} />
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <DataTable
-        title="Aliran data aplikasi"
-        rows={flows}
-        rowId={(f) => f.app.id}
-        searchText={(f) => `${f.app.code} ${f.app.name} ${f.app.opdName}`}
-        searchPlaceholder="Cari aplikasi atau PD"
-        onRowClick={(f) => onSelect(f.app.id)}
-        pageSize={10}
-        minWidth={880}
-        columns={[
-          {
-            header: "Aplikasi",
-            sortValue: (f) => f.app.name,
-            cell: (f) => (
-              <span className="grid gap-0.5">
-                <span className="font-semibold">
-                  {f.app.name}
-                  {f.app.id === selected!.app.id && <Badge className="ml-2 align-middle" variant="secondary">Dipilih</Badge>}
-                </span>
-                <span className="text-xs text-muted-foreground">{f.app.opdName}</span>
-              </span>
-            ),
-          },
-          ...lanes.map((lane) => ({
-            header: lane.label,
-            className: "text-center",
-            sortValue: (f: Flow) => f[lane.key].length,
-            cell: (f: Flow) => (f[lane.key].length ? <span className="tabular-nums">{formatNumber(f[lane.key].length)}</span> : <Badge variant="muted">Belum</Badge>),
-          })),
-        ]}
-      />
-    </>
+          )}
+        </li>
+        {lanes.slice(2).map((lane) => (
+          <Lane key={lane.key} lane={lane} items={flow[lane.key]} onOpen={onOpen} />
+        ))}
+      </ol>
+    </div>
   );
 }
 

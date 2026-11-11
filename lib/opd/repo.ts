@@ -130,3 +130,13 @@ export async function inheritOpd(client: PoolClient, periodId: string) {
     [periodId],
   );
 }
+
+/**
+ * Tolak OPD yang tidak berlaku pada periode rekaman (formulir hanya menyembunyikannya). `keep` = OPD rekaman lama,
+ * yang tetap boleh dipakai agar rekaman lama bisa disimpan ulang.
+ */
+export async function assertOpdBerlaku(opdCode: string, period: string, keep?: string | null) {
+  const book = await opdBookSafe();
+  if (!book.has(opdCode) || opdCode === keep) return;
+  if (!book.list(period).some((o) => o.code === opdCode)) throw new Error(`Perangkat Daerah “${book.name(opdCode, period)}” tidak berlaku pada periode ${period}.`);
+}

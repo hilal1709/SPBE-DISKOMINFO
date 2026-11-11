@@ -1,3 +1,4 @@
+import type { DefaultMuatan } from "@/lib/peta-rencana/muatan";
 /** Peran bawaan (sheet Functional Requirement). */
 export type BuiltinRole = "operator_opd" | "organisasi" | "validator_data" | "validator_aplikasi" | "validator_infrastruktur" | "validator_keamanan" | "operator_diskominfo" | "admin" | "pimpinan" | "superadmin";
 /** Peran akun: bawaan atau peran kustom yang dibuat Superadmin di Pengaturan → Hak Akses. */
@@ -321,7 +322,7 @@ export type Rencana = {
   year: number;
   sasaran: string;
   inisiatif: string | null;
-  muatan: "aplikasi" | "layanan" | "data" | "infrastruktur" | "keamanan" | "tata_kelola" | "manajemen" | "audit";
+  muatan: string;
   program: string | null;
   target: string | null;
   jumlah: number;
@@ -365,7 +366,7 @@ export type GapRecord = {
   opdId: string | null;
   opdCode: string | null;
   opdName: string | null;
-  domain: Rencana["muatan"];
+  domain: DefaultMuatan;
   rule: string | null;
   subjectCode: string | null;
   subjectName: string;

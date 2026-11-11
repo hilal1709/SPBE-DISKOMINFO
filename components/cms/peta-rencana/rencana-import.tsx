@@ -2,10 +2,11 @@
 import { commitRencanaImport, previewRencanaImport } from "@/app/cms/peta-rencana/actions";
 import { ToneBadge } from "@/components/blocks/status-badge";
 import { ImportPanel } from "@/components/cms/import-panel";
-import { muatanConfig } from "@/lib/peta-rencana/muatan";
+import { useMuatan } from "@/components/peta-rencana/muatan-context";
 
 /** Impor/ekspor Peta Rencana: satu sheet berkolom Sasaran … Kegiatan … Tahun (format tabel Peta Rencana Gresik). */
 export function RencanaImport({ canImport, canExport }: { canImport: boolean; canExport: boolean }) {
+  const muatanBook = useMuatan();
   return (
     <ImportPanel
       canImport={canImport}
@@ -27,7 +28,7 @@ export function RencanaImport({ canImport, canExport }: { canImport: boolean; ca
         search: (r) => `${r.muatan ?? r.muatanRaw ?? ""} ${r.year ?? ""}`,
         cell: (r) => (
           <span className="grid gap-1">
-            {r.muatan ? <ToneBadge tone={muatanConfig[r.muatan].tone}>{muatanConfig[r.muatan].label}</ToneBadge> : <span className="text-destructive">{r.muatanRaw ?? "—"}</span>}
+            {r.muatan ? <ToneBadge tone={muatanBook.get(r.muatan).tone}>{muatanBook.get(r.muatan).label}</ToneBadge> : <span className="text-destructive">{r.muatanRaw ?? "—"}</span>}
             <span className="text-muted-foreground tabular-nums">{r.year ?? "—"}</span>
           </span>
         ),

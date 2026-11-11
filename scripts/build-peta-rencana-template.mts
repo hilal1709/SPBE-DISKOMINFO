@@ -13,7 +13,7 @@ const sheet = (cols: { header: string; width: number }[], name: string) => {
   ws["!cols"] = cols.map((c) => ({ wch: c.width }));
   XLSX.utils.book_append_sheet(book, ws, name);
 };
-sheet(rencanaColumns.filter((c) => c.header !== "Asal Usulan" && c.header !== "Referensi Asal"), "Peta Rencana");
+sheet(rencanaColumns().filter((c) => c.header !== "Asal Usulan" && c.header !== "Referensi Asal"), "Peta Rencana");
 sheet(indicatorColumns(yearsOf(sampleActivePeriod)), "Indikator");
 const out = join(import.meta.dirname, "../public/templates/peta-rencana.xlsx");
 writeFileSync(out, XLSX.write(book, { type: "buffer", bookType: "xlsx" }));

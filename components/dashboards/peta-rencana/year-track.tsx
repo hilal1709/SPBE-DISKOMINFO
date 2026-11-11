@@ -3,7 +3,8 @@ import { useEffect, useRef } from "react";
 import { animate, motionOk, stagger } from "@/components/motion/anime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInView } from "@/hooks/use-in-view";
-import { muatanConfig, muatanKeys, type Muatan } from "@/lib/peta-rencana/muatan";
+import { useMuatan } from "@/components/peta-rencana/muatan-context";
+import type { Muatan } from "@/lib/peta-rencana/muatan";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
 
@@ -18,6 +19,7 @@ export type YearStat = { year: string; total: number; terlaksana: number; muatan
 export function YearTrack({ stats, current, selected, onToggle, className }: { stats: YearStat[]; current: number; selected: string[]; onToggle: (year: string) => void; className?: string }) {
   const root = useRef<HTMLDivElement>(null);
   const [ref, inView] = useInView<HTMLDivElement>();
+  const book = useMuatan();
   const last = stats.length - 1;
   // Posisi tahun berjalan pada garis (0–1); di luar periode → penuh atau kosong.
   const reach = !stats.length ? 0 : current > Number(stats[last]!.year) ? 1 : current < Number(stats[0]!.year) ? 0 : (current - Number(stats[0]!.year)) / (last || 1);
@@ -80,8 +82,8 @@ export function YearTrack({ stats, current, selected, onToggle, className }: { s
                       </span>
                       <span className="text-xs text-muted-foreground tabular-nums">{formatNumber(s.total)} kegiatan</span>
                       <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
-                        {muatanKeys.map((k) =>
-                          s.muatan[k] ? <span key={k} className="h-full transition-[width] duration-500" style={{ width: `${(s.muatan[k]! / (s.total || 1)) * 100}%`, background: `var(${muatanConfig[k].tone})` }} /> : null,
+                        {book.keys.map((k) =>
+                          s.muatan[k] ? <span key={k} className="h-full transition-[width] duration-500" style={{ width: `${(s.muatan[k]! / (s.total || 1)) * 100}%`, background: `var(${book.get(k).tone})` }} /> : null,
                         )}
                       </span>
                     </span>

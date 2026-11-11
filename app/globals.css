@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@source not "../.next-strix";
+@source not "../strix_runs";
+@source not "../graphify-out";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

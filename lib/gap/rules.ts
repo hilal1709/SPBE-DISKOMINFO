@@ -1,5 +1,5 @@
 import type { DomainKey } from "@/lib/domains";
-import type { Muatan } from "@/lib/peta-rencana/muatan";
+import type { DefaultMuatan } from "@/lib/peta-rencana/muatan";
 
 /**
  * Aturan deteksi kesenjangan otomatis. AS-IS = data tervalidasi tiap domain; target = kondisi ideal arsitektur SPBE.
@@ -28,7 +28,7 @@ export const ruleKeys = [
 export type GapRule = (typeof ruleKeys)[number];
 
 /** `subject` = jenis entri yang diperiksa (label); `subjectDomain` = domain arsitekturnya (untuk tautan ke Peta Rencana). */
-export const ruleConfig: Record<GapRule, { label: string; domain: Muatan; stage: ChainStage; subject: string; subjectDomain: DomainKey; target: string }> = {
+export const ruleConfig: Record<GapRule, { label: string; domain: DefaultMuatan; stage: ChainStage; subject: string; subjectDomain: DomainKey; target: string }> = {
   probis_tanpa_layanan: { label: "Probis belum menghasilkan layanan", domain: "layanan", stage: "layanan", subject: "Proses bisnis", subjectDomain: "probis", target: "Proses bisnis menghasilkan layanan yang terdaftar" },
   layanan_belum_digital: { label: "Layanan belum elektronik", domain: "layanan", stage: "layanan", subject: "Layanan", subjectDomain: "layanan", target: "Layanan diselenggarakan secara elektronik" },
   layanan_tanpa_data: { label: "Layanan belum memiliki data", domain: "data", stage: "data", subject: "Layanan", subjectDomain: "layanan", target: "Layanan menghasilkan atau memakai data yang terdaftar" },

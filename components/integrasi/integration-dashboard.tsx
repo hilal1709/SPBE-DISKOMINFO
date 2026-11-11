@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ExploreHint } from "@/components/dashboards/probis/explore-hint";
 import { useMemo, useState } from "react";
 import { useUrlParams } from "@/hooks/use-url-params";
-import { AppFlow } from "@/components/integrasi/app-flow";
+import { AppFlowLanes } from "@/components/integrasi/app-flow";
 import { DomainMap } from "@/components/integrasi/domain-map";
 import { RecordMap } from "@/components/integrasi/record-map";
 import { Banner } from "@/components/blocks/banner";
@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { domainKeys, domains, isDomain } from "@/lib/domains";
-import { analyzeImpact, relationPairs, unpackArchitecture, type DomainNode, type PackedArchitecture } from "@/lib/integrasi/model";
+import { analyzeImpact, appFlows, relationPairs, unpackArchitecture, type DomainNode, type PackedArchitecture } from "@/lib/integrasi/model";
 import type { PeriodOptions } from "@/lib/probis/reference";
 
 const storageLabel = { junction: "Relasi tersimpan", jsonb: "Referensi JSONB", text: "Referensi kode/nama" };
@@ -38,9 +38,6 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
   const [selectedId, setSelectedId] = useState(params.get("record") ?? "");
   const [mode, setMode] = useState<"change" | "delete">("change");
   const [detail, setDetail] = useState<DomainNode | null>(null);
-  /** Bawaan: integrasi berpusat aplikasi. Tautan lama yang membawa record/domain tetap membuka peta domain. */
-  const [view, setView] = useState<"aplikasi" | "domain">(() => (params.get("record") || params.get("domain") ? "domain" : "aplikasi"));
-  const [appId, setAppId] = useState("");
   const update = (p: string, o: string[], d = domain, record = selectedId) => {
     setPeriod(p); setOpds(o); setDomain(d); setSelectedId(record);
     const q = new URLSearchParams({ periode: p });
@@ -57,6 +54,8 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
   const directEdges = useMemo(() => edges.filter((e) => e.source === selected?.id || e.target === selected?.id), [edges, selected]);
   const byId = useMemo(() => new Map(scoped.map((n) => [n.id, n])), [scoped]);
   const pairs = useMemo(() => relationPairs(scoped, edges), [scoped, edges]);
+  /** Aliran aplikasi (layanan, data masuk/keluar, infra, keamanan) hanya bila record terpilih adalah aplikasi. */
+  const flow = useMemo(() => selected?.domain === "aplikasi" ? appFlows(scoped, directEdges).find((f) => f.app.id === selected.id) ?? null : null, [selected, scoped, directEdges]);
   const stats = useMemo(() => {
     const linked = new Set<string>();
     for (const [a, b] of pairs) { linked.add(a.id); linked.add(b.id); }
@@ -95,7 +94,7 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
       illustration="domain-integration"
       sample={data.summary.some((r) => r.sample && r.period === period && (!opds.length || opds.includes(r.opd)))}
       title="Panduan Integrasi Domain"
-      description="Pilih aplikasi untuk melihat layanan yang didukung, aliran data masuk dan keluar, infrastruktur, dan keamanannya. Peta domain menampilkan hubungan seluruh domain dan analisis dampak."
+      description="Peta hubungan merangkum relasi antardomain. Pilih record untuk melihat keterkaitan dan dampaknya; untuk aplikasi tampil juga layanan, data masuk dan keluar, infrastruktur, dan keamanannya."
       tips={[]}
     />
     {!data.available && <Banner label="Data belum tersedia" variant="warning" dismissible={false}>Peta belum dapat dibaca dari database. Tidak ada perubahan data yang dijalankan.</Banner>}
@@ -117,8 +116,6 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
         <StatCard tone={statTones[2]} label="Record terhubung" value={stats.linked} suffix="%" hint="punya relasi ke domain lain" />
         <StatCard tone={statTones[3]} label="Domain terhubung" value={stats.domains} hint="ikut dalam relasi" />
       </StatRow>
-      <Segmented label="Tampilan integrasi" value={view} onChange={setView} options={[{ value: "aplikasi", label: "Aliran aplikasi" }, { value: "domain", label: "Peta domain" }]} />
-      {view === "aplikasi" ? <AppFlow nodes={scoped} edges={edges} securityVisible={data.securityVisible} selectedId={appId} onSelect={setAppId} onOpen={setDetail} /> : <>
       <div data-aos="fade-blur" suppressHydrationWarning><Card><CardHeader><CardTitle as="h2">Peta hubungan</CardTitle></CardHeader><CardContent className="grid gap-4">
         <DomainMap nodes={scoped} pairs={pairs} selected={domain === "__all" ? null : domain} securityVisible={data.securityVisible} onSelect={chooseDomain} />
       </CardContent></Card></div>
@@ -137,6 +134,9 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
         </>}
       </CardContent></Card></div>
       {selected && <>
+        {flow && <div data-aos="fade-blur" suppressHydrationWarning><Card><CardHeader><CardTitle as="h2">Aliran aplikasi</CardTitle></CardHeader><CardContent>
+          <AppFlowLanes flow={flow} securityVisible={data.securityVisible} onOpen={setDetail} />
+        </CardContent></Card></div>}
         <div data-aos="fade-blur" suppressHydrationWarning><Card><CardHeader><CardTitle as="h2">Visualisasi keterkaitan data</CardTitle></CardHeader><CardContent>
           <RecordMap selected={selected} nodes={scoped} edges={directEdges} onSelect={choose} />
         </CardContent></Card></div>
@@ -148,12 +148,10 @@ export function IntegrationDashboard({ packed, periods }: { packed: PackedArchit
           { header: "Dari", cell: (e) => byId.get(e.source)?.name }, { header: "Ke", cell: (e) => byId.get(e.target)?.name }, { header: "Hubungan", cell: (e) => e.label }, { header: "Bentuk referensi", cell: (e) => storageLabel[e.storage] },
         ]} />
       </>}
-      </>}
     </>}
     {detail && <DetailDialog open title={detail.name} eyebrow={detail.code} onOpenChange={(open) => !open && setDetail(null)}>
       <div className="grid gap-2 sm:grid-cols-2"><DetailField label="Domain" value={domains[detail.domain].label} /><DetailField label="OPD" value={detail.opdName} /><DetailField label="Periode" value={detail.period} /><DetailField label="Kategori" value={detail.category.replaceAll("_", " ")} /></div>
-      <p className="text-sm text-muted-foreground">Record tervalidasi. Detail sensitif tidak disertakan dalam peta publik.</p>
-      <Button variant="outline" onClick={() => { choose(detail); setView("domain"); setDetail(null); }}>Telusuri hubungan record ini</Button>
+      <Button variant="outline" onClick={() => { choose(detail); setDetail(null); }}>Telusuri hubungan record ini</Button>
       <Button asChild><Link href={`${domains[detail.domain].href}?${new URLSearchParams({ periode: detail.period, pd: detail.opd })}`}>Buka dashboard domain</Link></Button>
     </DetailDialog>}
   </Reveal>;

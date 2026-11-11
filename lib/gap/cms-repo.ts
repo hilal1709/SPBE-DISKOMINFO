@@ -3,7 +3,7 @@ import type { PoolClient } from "pg";
 import type { Actor } from "@/lib/access";
 import { getDb } from "@/lib/db";
 import { insertRencana } from "@/lib/peta-rencana/cms-repo";
-import { muatanConfig, type Muatan } from "@/lib/peta-rencana/muatan";
+import { muatanConfig, type DefaultMuatan } from "@/lib/peta-rencana/muatan";
 import type { RencanaValues } from "@/lib/peta-rencana/schema";
 import type { GapRecord } from "@/lib/types";
 import { detectGaps } from "./detect";
@@ -53,7 +53,7 @@ const toRecord = (r: Row): GapRecord => ({
   opdId: r.opd_id,
   opdCode: r.opd_code,
   opdName: r.opd_name,
-  domain: r.domain as Muatan,
+  domain: r.domain as DefaultMuatan,
   rule: r.rule,
   subjectCode: r.subject_code,
   subjectName: r.subject_name!,
@@ -108,7 +108,7 @@ async function codeMaker(client: PoolClient) {
     const m = String(code).match(/^GSK-GAP ([A-Z]+)\.(\d+)$/);
     if (m) max.set(m[1]!, Math.max(max.get(m[1]!) ?? 0, Number(m[2])));
   }
-  return (domain: Muatan) => {
+  return (domain: DefaultMuatan) => {
     const abbr = muatanConfig[domain].abbr;
     const n = (max.get(abbr) ?? 0) + 1;
     max.set(abbr, n);
@@ -222,6 +222,7 @@ export async function clearSamples() {
   return rowCount ?? 0;
 }
 
-/** Bacaan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
+/** Ringkasan ber-cache (dibagi semua request, dibuang saat CMS menyimpan). */
 export const gapSummary = cached(loadGapSummary, "gap/cms-repo:gapSummary", [TAGS.content]);
-export const listGaps = cached(loadListGaps, "gap/cms-repo:listGaps", [TAGS.content]);
+/** Tanpa cache: daftar temuan >2 MB, melebihi batas Data Cache Next.js (unstable_cache menolaknya). */
+export const listGaps = loadListGaps;

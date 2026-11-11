@@ -201,3 +201,12 @@ export function readUpload(name: string, data: Uint8Array) {
   else if (!name.toLowerCase().endsWith(".xlsx")) throw new Error("Format berkas harus .xlsx atau .zip");
   return { file: file?.name ?? null, unsupported, rows: file ? parseSheet(file.data) : [] };
 }
+
+/** Tandai baris impor yang OPD-nya tidak berlaku pada periode baris (memakai direktori dari `setPdBook`). */
+export function flagInactivePd<T extends { opd: string | null; period: string; issues: { level: "error" | "warning"; message: string }[] }>(rows: T[]): T[] {
+  return rows.map((row) =>
+    row.opd && pdBook.has(row.opd) && !pdBook.list(row.period).some((o) => o.code === row.opd)
+      ? { ...row, issues: [...row.issues, { level: "error" as const, message: `Perangkat daerah “${pdBook.name(row.opd, row.period)}” tidak berlaku pada periode ${row.period}` }] }
+      : row,
+  );
+}

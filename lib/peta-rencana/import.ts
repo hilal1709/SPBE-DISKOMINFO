@@ -1,8 +1,9 @@
 import * as XLSX from "xlsx";
+import { domainKeys, domains, type DomainKey } from "@/lib/domains";
 import { readWorkbook } from "@/lib/security/upload";
 import { matchPd, normalize, text } from "@/lib/probis/import";
 import type { PeriodOptions } from "@/lib/probis/reference";
-import { muatanFromLabel, sourceKeys, sourceLabel, statusFromLabel, type Muatan, type RencanaSource, type RencanaStatus } from "./muatan";
+import { defaultMuatanBook, sourceKeys, sourceLabel, statusFromLabel, type Muatan, type MuatanBook, type RencanaSource, type RencanaStatus } from "./muatan";
 
 export type ImportIssue = { level: "error" | "warning"; message: string };
 export type RencanaImportRow = {
@@ -29,12 +30,15 @@ export type RencanaImportRow = {
   evaluasi: string | null;
   source: RencanaSource;
   sourceRef: string | null;
+  /** Isi sel "Arsitektur Terkait"; null = kolom/sel kosong (tautan lama tidak diubah). */
+  tautanRaw: string | null;
+  tautan: { domain: DomainKey; code: string }[] | null;
   issues: ImportIssue[];
 };
 export type RencanaImportResult = { file: string | null; unsupported: string[]; rows: RencanaImportRow[] };
 
-type Raw = Omit<RencanaImportRow, "issues">;
-type Field = "code" | "sasaran" | "inisiatif" | "muatan" | "program" | "name" | "opd" | "year" | "period" | "target" | "jumlah" | "satuan" | "status" | "realisasi" | "evaluasi" | "source" | "sourceRef";
+type Raw = Omit<RencanaImportRow, "issues" | "tautan">;
+type Field = "code" | "sasaran" | "inisiatif" | "muatan" | "program" | "name" | "opd" | "year" | "period" | "target" | "jumlah" | "satuan" | "status" | "realisasi" | "evaluasi" | "source" | "sourceRef" | "tautan";
 
 /** Header (sudah dinormalisasi) → kolom. Urutan penting: "referensi asal" sebelum "asal usulan". */
 const patterns: [Field, RegExp][] = [
@@ -54,6 +58,7 @@ const patterns: [Field, RegExp][] = [
   ["realisasi", /^realisasi/],
   ["evaluasi", /evaluasi/],
   ["sourceRef", /^referensi asal/],
+  ["tautan", /^arsitektur terkait/],
   ["source", /^asal/],
 ];
 
@@ -84,7 +89,7 @@ function parseSheet(sheet: XLSX.WorkSheet, source: string): Raw[] {
         code: text(get("code")),
         sasaran: text(get("sasaran")) ?? "",
         inisiatif: text(get("inisiatif")),
-        muatan: muatanRaw ? muatanFromLabel(muatanRaw) : null,
+        muatan: null,
         muatanRaw,
         program: text(get("program")),
         name: text(get("name")) ?? "",
@@ -101,13 +106,28 @@ function parseSheet(sheet: XLSX.WorkSheet, source: string): Raw[] {
         evaluasi: text(get("evaluasi")),
         source: sourceFromLabel(text(get("source"))),
         sourceRef: text(get("sourceRef")),
+        tautanRaw: text(get("tautan")),
       };
     })
     .filter((row) => row.name || row.code);
 }
 
-/** Validasi & normalisasi: PD dicocokkan, periode diturunkan dari tahun bila kosong, ID ganda ditandai. */
-export function validateRows(rows: Raw[], { existing, periods }: { existing: Set<string>; periods: PeriodOptions }): RencanaImportRow[] {
+const labelDomain = new Map(domainKeys.map((d) => [domains[d].label.toLowerCase(), d]));
+
+/** Baris sel "Arsitektur Terkait" (format ekspor "Aplikasi: APL-001 Nama"; label domain boleh tidak ditulis). */
+export function parseLinkLines(raw: string | null): { domain: DomainKey | null; code: string; line: string }[] {
+  return (raw ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+    const m = line.match(/^([^:]+):\s*(\S+)/);
+    const domain = m ? labelDomain.get(m[1]!.trim().toLowerCase()) : undefined;
+    return domain ? { domain, code: m![2]!, line } : { domain: null, code: line.split(/\s+/)[0]!, line };
+  });
+}
+
+/** Validasi & normalisasi: PD dicocokkan, periode diturunkan dari tahun bila kosong, ID ganda ditandai, tautan arsitektur dicocokkan. */
+export function validateRows(
+  rows: Raw[],
+  { existing, periods, muatan: muatanList = defaultMuatanBook, linkDomains = () => [] }: { existing: Set<string>; periods: PeriodOptions; /** Muatan yang berlaku (dikelola di CMS). */ muatan?: MuatanBook; /** Domain yang memuat kode tervalidasi pada periode itu. */ linkDomains?: (period: string, code: string) => DomainKey[] },
+): RencanaImportRow[] {
   const seen = new Set<string>();
   const periodOf = (year: number) =>
     periods.periods.find((p) => {
@@ -119,7 +139,9 @@ export function validateRows(rows: Raw[], { existing, periods }: { existing: Set
     const period = row.period || (row.year ? (periodOf(row.year) ?? "") : periods.active);
     if (!row.name || row.name.length < 3) issues.push({ level: "error", message: "Nama kegiatan kosong" });
     if (!row.sasaran) issues.push({ level: "error", message: "Sasaran kosong" });
-    if (!row.muatan) issues.push({ level: "error", message: row.muatanRaw ? `Muatan “${row.muatanRaw}” tidak dikenal` : "Muatan kosong" });
+    // Muatan selalu dicocokkan ulang dari teks aslinya terhadap daftar yang berlaku.
+    const muatan = row.muatanRaw ? muatanList.fromLabel(row.muatanRaw) : null;
+    if (!muatan) issues.push({ level: "error", message: row.muatanRaw ? `Muatan “${row.muatanRaw}” tidak dikenal` : "Muatan kosong" });
     if (!row.year) issues.push({ level: "error", message: "Tahun kosong atau tidak valid" });
     if (!periods.periods.includes(period)) issues.push({ level: "error", message: period ? `Periode “${period}” belum terdaftar` : `Tidak ada periode untuk tahun ${row.year}` });
     else if (row.year && periodOf(row.year) !== period) issues.push({ level: "error", message: `Tahun ${row.year} di luar periode ${period}` });
@@ -132,7 +154,19 @@ export function validateRows(rows: Raw[], { existing, periods }: { existing: Set
       else if (existing.has(key)) issues.push({ level: "warning", message: `ID sudah ada di periode ${period}` });
       seen.add(key);
     }
-    return { ...row, period, issues };
+    let tautan: RencanaImportRow["tautan"] = null;
+    if (row.tautanRaw) {
+      tautan = [];
+      for (const link of parseLinkLines(row.tautanRaw)) {
+        const found = linkDomains(period, link.code);
+        const domain = link.domain ? (found.includes(link.domain) ? link.domain : null) : found.length === 1 ? found[0]! : null;
+        if (domain) tautan.push({ domain, code: link.code });
+        else issues.push({ level: "warning", message: found.length > 1 && !link.domain
+          ? `Tautan “${link.code}” ada di beberapa domain; tulis labelnya, mis. “Aplikasi: ${link.code}”`
+          : `Tautan “${link.line}” bukan entri tervalidasi periode ${period}, dilewati` });
+      }
+    }
+    return { ...row, muatan, period, tautan, issues };
   });
 }
 

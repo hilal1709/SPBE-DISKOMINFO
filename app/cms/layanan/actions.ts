@@ -14,8 +14,8 @@ import * as periods from "@/lib/probis/periods";
 import { rab } from "@/lib/probis/rab";
 import { listProbis, opdCodeOf, opdIdOf } from "@/lib/probis/repo";
 import { refResolver } from "@/lib/reference/versioned";
-import { opdBookSafe } from "@/lib/opd/repo";
-import { setPdBook } from "@/lib/probis/import";
+import { assertOpdBerlaku, opdBookSafe } from "@/lib/opd/repo";
+import { flagInactivePd, setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 /** Indeks RAL dan RAB untuk periode tertentu (versi milik periode itu). */
@@ -46,10 +46,12 @@ export async function saveLayanan(input: LayananInput, options: { id?: string; s
     if (options.id) {
       const current = await repo.getLayanan(options.id);
       if (!current) throw new Error("Layanan tidak ditemukan.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period, current.opdCode);
       if (!can.edit(actor, current)) throw new Error("Layanan ini tidak dapat diubah pada status sekarang.");
       id = await repo.updateLayanan(options.id, parsed.data, actor, options.submit);
     } else {
       if (!can.create(actor)) throw new Error("Peran Anda tidak dapat menambah layanan.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period);
       id = await repo.createLayanan(parsed.data, actor, options.submit);
     }
     refresh();
@@ -157,7 +159,7 @@ export async function previewLayananImport(form: FormData): Promise<ActionResult
     setPdBook(await opdBookSafe());
     const upload = readUpload(file.name, new Uint8Array(await file.arrayBuffer()));
     const { ctx } = await importContext(upload.rows.map((r) => r.code).filter((c): c is string => !!c));
-    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, ctx) } };
+    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: flagInactivePd(validateRows(upload.rows, ctx)) } };
   } catch (error) {
     return fail(error);
   }
@@ -170,7 +172,8 @@ export async function commitLayananImport(rows: LayananImportRow[], options: { s
     arg(importOptions, options);
     await assertImportQuota((await currentActor()).id);
     const { actor, ctx } = await importContext(rows.map((r) => r.code).filter((c): c is string => !!c));
-    const valid = validateRows(rows, ctx).filter((r) => !r.issues.some((i) => i.level === "error"));
+    setPdBook(await opdBookSafe());
+    const valid = flagInactivePd(validateRows(rows, ctx)).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...makeLayananInput(ctx.ralFor(r.period), ctx.rabFor(r.period)).parse({
         opd: r.opd ?? "",

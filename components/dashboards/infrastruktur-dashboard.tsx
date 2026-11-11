@@ -234,7 +234,7 @@ export function InfrastrukturDashboard({
           </section>
 
           <section className="grid gap-5 *:min-w-0 xl:grid-cols-[1.6fr_1fr]">
-            <LinkMapCard rows={rows} selected={filter.jenis} onToggle={toggleJenis} />
+            <LinkMapCard rows={withoutJenis} selected={filter.jenis} onToggle={toggleJenis} />
             <Card data-reveal className="gap-3">
               <CardHeader>
                 <CardTitle as="h2" className="section-title">Status kepemilikan</CardTitle>

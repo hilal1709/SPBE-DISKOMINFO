@@ -33,7 +33,7 @@ export function DetailDialog({
           {description ? <DialogDescription>{description}</DialogDescription> : <DialogDescription className="sr-only">Detail {title}</DialogDescription>}
           {meta && <div className="mt-1 flex flex-wrap gap-2">{meta}</div>}
         </DialogHeader>
-        <div className="grid gap-4 px-6 py-5">{children}</div>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 px-6 py-5">{children}</div>
         <DialogFooter className="sticky bottom-0 mx-0 mb-0">
           <DialogClose asChild>
             <Button>Tutup</Button>

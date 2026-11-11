@@ -1,13 +1,13 @@
 import { mulberry32 } from "@/lib/probis/generate";
 import { ikuBySasaran, sampleActivePeriod as activePeriod, samplePeriods as periods, sasaranStrategis } from "@/lib/probis/reference";
 import type { Rencana, RencanaIndicator } from "@/lib/types";
-import { muatanConfig, type Muatan } from "./muatan";
+import { muatanConfig, type DefaultMuatan } from "./muatan";
 import { inisiatifBySasaran } from "./sasaran";
 
 /** Data contoh Peta Rencana (dashboard publik saat database kosong, dan `pnpm seed:peta-rencana`). */
 
 /** Program per sasaran: [muatan, nama program, objek kegiatan, PD pelaksana]. */
-type Program = [Muatan, string, string, string[]];
+type Program = [DefaultMuatan, string, string, string[]];
 const programs: Program[][] = [
   [["aplikasi", "Pengembangan Aplikasi Bantuan Sosial", "Aplikasi Bansos Terpadu", ["DINSOS", "DISKOMINFO"]], ["data", "Satu Data Kesejahteraan", "Basis Data Penerima Bantuan", ["DINSOS", "BAPPEDA"]]],
   [["layanan", "Digitalisasi Layanan Kebudayaan", "Layanan Cagar Budaya Daring", ["DISPARBUD"]], ["aplikasi", "Pengembangan Aplikasi Kebudayaan", "Aplikasi Kalender Budaya", ["DISPARBUD", "DISKOMINFO"]]],
@@ -28,7 +28,7 @@ const programs: Program[][] = [
 ];
 
 /** Tahapan kegiatan dalam satu program (urut tahun). */
-const stages: Record<Muatan, string[]> = {
+const stages: Record<DefaultMuatan, string[]> = {
   aplikasi: ["Pembangunan", "Pengembangan", "Integrasi", "Pemeliharaan", "Pemeliharaan"],
   layanan: ["Perancangan", "Penerapan", "Perluasan", "Evaluasi", "Evaluasi"],
   data: ["Penyusunan", "Pengumpulan", "Integrasi", "Pemutakhiran", "Pemutakhiran"],
@@ -39,7 +39,7 @@ const stages: Record<Muatan, string[]> = {
   audit: ["Perencanaan", "Pelaksanaan", "Tindak Lanjut", "Pelaksanaan", "Tindak Lanjut"],
 };
 
-const targets: Record<Muatan, string> = {
+const targets: Record<DefaultMuatan, string> = {
   aplikasi: "Aplikasi berjalan dan terintegrasi portal layanan",
   layanan: "Layanan tersedia secara elektronik",
   data: "Data tersedia di portal Satu Data",
@@ -58,8 +58,8 @@ function generate() {
   const rows: Rencana[] = [];
   for (const period of periods) {
     const [start, end] = period.split("–").map(Number) as [number, number];
-    const seq = new Map<Muatan, number>();
-    const code = (muatan: Muatan) => {
+    const seq = new Map<DefaultMuatan, number>();
+    const code = (muatan: DefaultMuatan) => {
       const n = (seq.get(muatan) ?? 0) + 1;
       seq.set(muatan, n);
       return `GSK-PRN ${muatanConfig[muatan].abbr}.${String(n).padStart(3, "0")}`;

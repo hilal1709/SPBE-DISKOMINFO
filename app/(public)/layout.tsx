@@ -1,6 +1,7 @@
 import { PublicShell } from "@/components/layout/public-shell";
 import { JsonLd } from "@/components/seo/json-ld";
 import { OpdScope } from "@/components/opd/opd-scope";
+import { MuatanScope } from "@/components/peta-rencana/muatan-scope";
 import { siteJsonLd } from "@/lib/seo";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <>
       <JsonLd data={siteJsonLd()} />
       <PublicShell>
-        <OpdScope>{children}</OpdScope>
+        <OpdScope><MuatanScope>{children}</MuatanScope></OpdScope>
       </PublicShell>
     </>
   );

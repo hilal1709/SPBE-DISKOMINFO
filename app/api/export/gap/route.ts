@@ -1,17 +1,26 @@
 import * as XLSX from "xlsx";
 import { forbidden, xlsxResponse } from "@/lib/export/xlsx-response";
-import { can, currentActor } from "@/lib/access";
-import { listGaps } from "@/lib/gap/cms-repo";
-import { gapColumns } from "@/lib/gap/columns";
+import { can, currentActor, opdScope } from "@/lib/access";
+import { chainCoverage } from "@/lib/gap/chain";
+import { chainLabel, chainStages } from "@/lib/gap/rules";
+import { periodOptions } from "@/lib/probis/periods";
+import { periodName } from "@/lib/security/schemas";
 
-/** Ekspor seluruh temuan Gap Analysis (semua periode). */
-export async function GET() {
+/** Ekspor matriks kelengkapan proses bisnis (Ada/Belum per domain) untuk satu periode. */
+export async function GET(request: Request) {
   const actor = await currentActor().catch(() => null);
   if (!actor || !can.export(actor) || !can.viewGap(actor)) return forbidden();
-  const rows = await listGaps();
+  const asked = new URL(request.url).searchParams.get("period");
+  const period = asked && periodName.safeParse(asked).success ? asked : (await periodOptions()).active;
+  const rows = await chainCoverage(period, opdScope(actor));
+  const header = ["ID", "Proses bisnis", "Perangkat Daerah", ...chainStages.map((s) => chainLabel[s]), "Kelengkapan"];
+  const body = rows.map((r) => {
+    const have = chainStages.filter((s) => r[s]).length;
+    return [r.code, r.name, r.opdName, ...chainStages.map((s) => (r[s] ? "Ada" : "Belum")), `${have}/${chainStages.length}`];
+  });
   const book = XLSX.utils.book_new();
-  const sheet = XLSX.utils.aoa_to_sheet([gapColumns.map((c) => c.header), ...rows.map((r) => gapColumns.map((c) => c.value(r)))]);
-  sheet["!cols"] = gapColumns.map((c) => ({ wch: c.width }));
+  const sheet = XLSX.utils.aoa_to_sheet([header, ...body]);
+  sheet["!cols"] = [{ wch: 18 }, { wch: 48 }, { wch: 40 }, ...chainStages.map(() => ({ wch: 14 })), { wch: 12 }];
   XLSX.utils.book_append_sheet(book, sheet, "Gap Analysis");
-  return xlsxResponse(book, "gap-analysis");
+  return xlsxResponse(book, `gap-analysis-${period}`);
 }

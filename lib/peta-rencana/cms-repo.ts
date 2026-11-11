@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { usedCodesSql } from "@/lib/cms/codes";
 import type { RencanaIndicator, RencanaLink, RencanaRecord } from "@/lib/types";
 import { copyLinks, LINKS_SQL, saveLinks } from "./links";
-import { muatanConfig, type Muatan, type RencanaStatus } from "./muatan";
+import type { Muatan, RencanaStatus } from "./muatan";
 import type { IndicatorValues, RencanaValues } from "./schema";
 import { cached, TAGS } from "@/lib/cache";
 import { importBatch, type ImportBatch } from "@/lib/cms/batch";
@@ -117,7 +117,9 @@ async function ids(client: PoolClient, v: Pick<RencanaValues, "opd" | "period">,
 
 /** ID kegiatan otomatis: GSK-PRN {singkatan muatan}.{urutan 3 digit}. */
 async function nextCode(client: PoolClient, muatan: Muatan, batch?: ImportBatch) {
-  const prefix = `GSK-PRN ${muatanConfig[muatan].abbr}.`;
+  const { rows: found } = await client.query("select abbr from muatan where key = $1", [muatan]);
+  if (!found[0]) throw new Error("Muatan tidak ditemukan.");
+  const prefix = `GSK-PRN ${found[0].abbr}.`;
   if (batch) return batch.code(prefix, 3);
   const { rows } = await client.query(usedCodesSql("roadmap_items"), [`${prefix}%`]);
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.code).slice(prefix.length)) || 0), 0);
@@ -244,6 +246,7 @@ export function importRows(rows: (RencanaValues & { code?: string | null })[], a
         }
         const ref = await ids(client, row, batch);
         await client.query(`${UPDATE} where id = $1`, [existing, ...columns(row), ref.opd_id, ref.period_id, actor.id]);
+        if (row.tautan) await saveLinks(client, existing, row.tautan);
         updated++;
       } else {
         await insertRencana(client, row, actor, { code: row.code ?? undefined }, batch);

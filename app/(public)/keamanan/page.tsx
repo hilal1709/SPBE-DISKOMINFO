@@ -1,43 +1,18 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { allKeamanan, sampleCoverage } from "@/lib/keamanan/generate";
-import { auth } from "@/auth";
 import { DashboardSkeleton } from "@/components/blocks/dashboard-skeleton";
-import { EmptyState } from "@/components/blocks/empty-state";
 import { KeamananDashboard } from "@/components/dashboards/keamanan-dashboard";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { listApprovedKeamanan, securityCoverage, type Coverage } from "@/lib/keamanan/repo";
-import { actorFor, can } from "@/lib/access";
 import { periodOptions } from "@/lib/probis/periods";
 import { samplePeriodOptions } from "@/lib/portal/load";
 import { pageMetadata } from "@/lib/seo";
 import type { KegiatanKeamanan } from "@/lib/types";
 
-// Wajib login: tidak diindeks mesin pencari.
+// Tidak diindeks mesin pencari.
 export const metadata = pageMetadata("/keamanan");
 
-/**
- * Dashboard Keamanan: wajib login (proxy.ts mengarahkan pengunjung ke /login) dan hanya untuk tim Diskominfo & pimpinan.
- * Sesi dibaca langsung dari Auth.js, bukan `currentActor`, agar mode demo CMS tidak membuka halaman ini.
- */
+/** Dashboard Keamanan: terbuka bagi semua pengguna portal karena web SPBE dipakai internal. */
 export default async function Page() {
-  const session = await auth();
-  const actor = session?.user ? await actorFor(session.user) : null;
-  if (actor?.mustChangePassword) redirect("/akun/sandi");
-  if (!actor || !can.viewKeamanan(actor)) {
-    return (
-      <Card className="mt-2">
-        <EmptyState illustration="security-shield" title="Halaman ini untuk tim Diskominfo dan pimpinan" description="Data keamanan SPBE hanya dapat dilihat akun Diskominfo dan pimpinan. Hubungi admin Diskominfo bila Anda memerlukan akses.">
-          <Button asChild variant="outline">
-            <Link href="/">Kembali ke portal</Link>
-          </Button>
-        </EmptyState>
-      </Card>
-    );
-  }
-
   let approved: { rows: KegiatanKeamanan[]; sample: boolean } = { rows: [], sample: true };
   let coverage: Coverage | null = null;
   try {

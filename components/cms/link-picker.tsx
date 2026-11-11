@@ -32,7 +32,7 @@ export function LinkPicker({
   const name = (code: string) => options.find((o) => o.code === code)?.name;
   const toggle = (code: string) => onChange(values.includes(code) ? values.filter((v) => v !== code) : [...values, code]);
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button type="button" variant="outline" role="combobox" aria-expanded={open} disabled={disabled} className="group/pb h-auto min-h-10 w-full justify-between gap-2 py-2 font-normal">
@@ -62,8 +62,8 @@ export function LinkPicker({
         <ul className="flex flex-wrap gap-1.5">
           {values.map((code) => (
             <li key={code} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-teal/15 py-1 pr-1 pl-3 text-xs">
-              <span className="text-muted-foreground tabular-nums">{code}</span>
-              <span className="truncate font-medium">{name(code) ?? ""}</span>
+              <span className="shrink-0 whitespace-nowrap text-muted-foreground tabular-nums">{code}</span>
+              <span className="min-w-0 truncate font-medium">{name(code) ?? ""}</span>
               <Button type="button" variant="ghost" size="icon-xs" aria-label={`Lepas ${code}`} onClick={() => toggle(code)} className="size-5 rounded-full">
                 <Icon icon={Cancel01Icon} size={11} />
               </Button>

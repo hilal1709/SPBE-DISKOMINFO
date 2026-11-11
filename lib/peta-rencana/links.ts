@@ -21,18 +21,23 @@ const nameOf = `case l.domain ${domainKeys.map((d) => `when '${d}' then (select 
 export const LINKS_SQL = `(select coalesce(jsonb_agg(jsonb_build_object('domain', l.domain, 'code', l.record_code, 'name', coalesce(${nameOf}, l.record_code)) order by l.domain, l.record_code), '[]'::jsonb)
   from roadmap_item_links l where l.roadmap_item_id = r.id) as tautan`;
 
-const PUBLIC_DOMAINS = ["probis", "layanan", "aplikasi"] as const;
-const publicName = `case l.domain ${PUBLIC_DOMAINS.map((d) => `when '${d}' then (select t.name from ${TABLES[d]} t where t.code = l.record_code and t.period_id = r.period_id and t.status = 'approved' limit 1)`).join(" ")} end`;
+const publicName = `case l.domain ${domainKeys.map((d) => `when '${d}' then (select t.name from ${TABLES[d]} t where t.code = l.record_code and t.period_id = r.period_id and t.status = 'approved' limit 1)`).join(" ")} end`;
 
-/**
- * Versi portal publik: nama infrastruktur, data tertutup, dan kegiatan keamanan tidak dikirim ke pengunjung umum
- * (S1, S2, S5), jadi hanya tautan proses bisnis, layanan, dan aplikasi tervalidasi yang disertakan.
- */
+/** Versi portal: semua domain (web internal), hanya entri tervalidasi pada periode kegiatan. */
 export const PUBLIC_LINKS_SQL = `(select coalesce(jsonb_agg(jsonb_build_object('domain', x.domain, 'code', x.code, 'name', x.name) order by x.domain, x.code), '[]'::jsonb)
   from (select l.domain, l.record_code as code, ${publicName} as name from roadmap_item_links l
-        where l.roadmap_item_id = r.id and l.domain in (${PUBLIC_DOMAINS.map((d) => `'${d}'`).join(", ")})) x where x.name is not null) as tautan`;
+        where l.roadmap_item_id = r.id) x where x.name is not null) as tautan`;
 
 export type LinkInput = { domain: DomainKey; code: string };
+
+/** Kode entri tervalidasi yang ada di salah satu domain (impor): [{domain, code, period}]. */
+export async function resolveLinkCodes(codes: string[]): Promise<{ domain: DomainKey; code: string; period: string }[]> {
+  if (!codes.length) return [];
+  const sql = domainKeys.map((d) => `select '${d}'::text as domain, t.code, ap.name as period from ${TABLES[d]} t
+     join architecture_periods ap on ap.id = t.period_id where t.status = 'approved' and t.code = any($1)`).join(" union all ");
+  const { rows } = await db().query(sql, [codes]);
+  return rows;
+}
 
 /** Ganti seluruh tautan satu kegiatan. */
 export async function saveLinks(client: PoolClient, id: string, links: readonly LinkInput[]) {

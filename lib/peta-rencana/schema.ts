@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { domainKeys } from "@/lib/domains";
-import { muatanKeys, sourceKeys, statusKeys } from "./muatan";
+import { sourceKeys, statusKeys } from "./muatan";
 
 const optional = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
 
@@ -13,7 +13,8 @@ export const rencanaInput = z
     year: z.coerce.number().int("Tahun tidak valid").min(2000, "Tahun tidak valid").max(2100, "Tahun tidak valid"),
     sasaran: z.string().trim().min(3, "Pilih sasaran strategis").max(500),
     inisiatif: optional(250),
-    muatan: z.enum(muatanKeys, { message: "Pilih muatan" }),
+    /** Keberadaan muatan dicek di server (daftar muatan dikelola di CMS). */
+    muatan: z.string().trim().min(1, "Pilih muatan").max(60),
     program: optional(250),
     name: z.string().trim().min(3, "Nama kegiatan minimal 3 karakter").max(250),
     target: optional(500),
@@ -46,3 +47,12 @@ export const indicatorInput = z.object({
 });
 
 export type IndicatorValues = z.output<typeof indicatorInput>;
+
+/** Isian muatan (master): kunci dibuat dari label saat baru. Singkatan dipakai di ID otomatis GSK-PRN {singkatan}.nnn. */
+export const muatanInput = z.object({
+  key: z.string().trim().max(60).optional(),
+  label: z.string().trim().min(2, "Nama minimal 2 karakter").max(40, "Nama maksimal 40 karakter"),
+  abbr: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{2,5}$/, "Singkatan 2–5 huruf/angka"),
+  tone: z.string().regex(/^--brand-(teal|sky|yellow|amber|orange)$/, "Pilih warna"),
+});
+export type MuatanValues = z.infer<typeof muatanInput>;

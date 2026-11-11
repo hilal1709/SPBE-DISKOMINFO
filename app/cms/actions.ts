@@ -26,8 +26,8 @@ import type { RefKind, VersionedRef } from "@/lib/reference/versioned";
 import type { RabStatus } from "@/lib/probis/rab-index";
 import { diagramInput, makeProbisInput, type ProbisInput } from "@/lib/probis/schema";
 import * as opdRepo from "@/lib/opd/repo";
-import { opdBookSafe } from "@/lib/opd/repo";
-import { setPdBook } from "@/lib/probis/import";
+import { assertOpdBerlaku, opdBookSafe } from "@/lib/opd/repo";
+import { flagInactivePd, setPdBook } from "@/lib/probis/import";
 import type { SubmissionStatus } from "@/lib/types";
 
 export type { ActionResult } from "@/lib/cms/result";
@@ -58,10 +58,12 @@ export async function saveProbis(input: ProbisInput, options: { id?: string; sub
     if (options.id) {
       const current = await repo.getProbis(options.id);
       if (!current) throw new Error("Probis tidak ditemukan.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period, current.opdCode);
       if (!can.edit(actor, current)) throw new Error("Probis ini tidak dapat diubah pada status sekarang.");
       id = await repo.updateProbis(options.id, parsed.data, actor, options.submit);
     } else {
       if (!can.create(actor)) throw new Error("Peran Anda tidak dapat menambah probis.");
+      await assertOpdBerlaku(parsed.data.opd, parsed.data.period);
       id = await repo.createProbis(parsed.data, actor, options.submit);
     }
     refresh();
@@ -188,7 +190,7 @@ export async function previewImport(form: FormData): Promise<ActionResult<Import
       periods.periodOptions(),
       rabFor(),
     ]);
-    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: validateRows(upload.rows, { existing, lockedOpd, periods: options, rabFor: resolve }) } };
+    return { ok: true, data: { file: upload.file, unsupported: upload.unsupported, rows: flagInactivePd(validateRows(upload.rows, { existing, lockedOpd, periods: options, rabFor: resolve })) } };
   } catch (error) {
     return fail(error);
   }
@@ -209,7 +211,8 @@ export async function commitImport(rows: ImportRow[], options: { status: "draft"
       periods.periodOptions(),
       rabFor(),
     ]);
-    const valid = validateRows(rows, { existing, lockedOpd, periods: periodList, rabFor: resolve }).filter((r) => !r.issues.some((i) => i.level === "error"));
+    setPdBook(await opdBookSafe());
+    const valid = flagInactivePd(validateRows(rows, { existing, lockedOpd, periods: periodList, rabFor: resolve })).filter((r) => !r.issues.some((i) => i.level === "error"));
     const values = valid.map((r) => ({
       ...makeProbisInput(resolve(r.period)).parse({
         opd: r.opd,

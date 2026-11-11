@@ -387,7 +387,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
                 <FieldDescription>Hanya proses bisnis yang sudah tervalidasi Diskominfo.</FieldDescription>
                 <FieldError>{errors.probis}</FieldError>
               </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                 <Field data-field="layanan" className="rounded-lg">
                   <FieldLabel>
                     → Layanan didukung <span className="font-normal text-muted-foreground">(opsional)</span>
@@ -406,7 +406,7 @@ export function AplikasiForm({ record, lockedOpd, periods: { periods, active } }
         </Card>
 
         <Collapsible title="Aliran data" hint="Inputan & luaran dari modul Data, supplier dari instansi" filled={[values.inputData, values.supplier, values.outputData, values.customer].filter(Boolean).length}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             {(
               [
                 ["inputData", "← Inputan data", "data", options.data],
